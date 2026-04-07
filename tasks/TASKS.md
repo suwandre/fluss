@@ -11,7 +11,7 @@
 
 - [x] **1.1.1** Initialize Next.js 16 project with Bun (`bun create next-app` — TypeScript, App Router, Tailwind CSS) _(A §10, Phase 1)_
 - [x] **1.1.2** Install shadcn/ui (`bunx shadcn@latest init`) with dark theme defaults
-- [] **1.1.3** Install core dependencies: `@xyflow/react`, `@dagrejs/dagre`, `drizzle-orm`, `drizzle-kit`, `postgres` (PostgreSQL driver for Drizzle) _(A §2)_
+- [x] **1.1.3** Install core dependencies: `@xyflow/react`, `@dagrejs/dagre`, `drizzle-orm`, `drizzle-kit`, `postgres` (PostgreSQL driver for Drizzle) _(A §2)_
 - [] **1.1.4** Install market data packages: `yahoo-finance2` _(A §2, §9)_
 - [] **1.1.5** Install Recharts: `recharts` _(A §2, V §4.13)_
 
