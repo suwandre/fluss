@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Factory - Draft V1</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ops: {
+                            bg: '#0a0c10',
+                            surface: '#111520',
+                            border: '#1e2535',
+                            accent: '#3b82f6',
+                            muted: '#64748b',
+                            text: '#e2e8f0'
+                        },
+                        status: {
+                            green: '#22c55e',
+                            amber: '#f59e0b',
+                            red: '#ef4444'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Animations */
+        @keyframes dashFlow {
+            from { stroke-dashoffset: 24; }
+            to { stroke-dashoffset: 0; }
+        }
+        .animate-flow {
+            stroke-dasharray: 8 4;
+            animation: dashFlow 1s linear infinite;
+        }
+
+        @keyframes pulseBorderRed {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); border-color: #ef4444; }
+            50% { box-shadow: 0 0 15px 2px rgba(239, 68, 68, 0.4); border-color: #f87171; }
+        }
+        .node-critical {
+            animation: pulseBorderRed 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulseBorderAmber {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); border-color: #f59e0b; }
+            50% { box-shadow: 0 0 10px 1px rgba(245, 158, 11, 0.3); border-color: #fbbf24; }
+        }
+        .node-warning {
+            animation: pulseBorderAmber 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .node-nominal {
+            border-color: #22c55e;
+            box-shadow: inset 0 2px 10px rgba(34, 197, 94, 0.05);
+        }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(17, 21, 32, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(30, 37, 53, 0.8);
+        }
+
+        /* Dot pattern for bg */
+        .bg-dot-pattern {
+            background-image: radial-gradient(circle at 1px 1px, #1e2535 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        
+        /* Agent Panel terminal cursor */
+        .terminal-cursor::after {
+            content: '▋';
+            animation: blink 1s step-end infinite;
+            color: #3b82f6;
+            margin-left: 4px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="bg-ops-bg text-ops-text font-sans h-screen w-screen overflow-hidden flex flex-col antialiased">
+    
+    <!-- Zone 1: Summary Bar (Glassmorphism, clean FinTech) -->
+    <header class="glass h-16 w-full flex items-center justify-between px-6 z-20 flex-shrink-0">
+        <div class="flex items-center gap-4">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg border border-ops-border bg-ops-surface">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-ops-accent"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h10"/></svg>
+            </div>
+            <h1 class="text-lg font-semibold tracking-tight">Portfolio Factory</h1>
+            <span class="ml-2 rounded-full border border-status-amber/30 bg-status-amber/10 px-2 py-0.5 text-xs font-medium text-status-amber">Agent Analysis: Active</span>
+        </div>
+        
+        <div class="flex items-center gap-8">
+            <div class="flex flex-col items-end">
+                <span class="text-xs text-ops-muted uppercase tracking-wider font-semibold">Total Net Value</span>
+                <span class="font-mono text-lg font-bold tracking-tight">$142,850.40</span>
+            </div>
+            <div class="h-8 w-px bg-ops-border"></div>
+            <div class="flex flex-col items-end">
+                <span class="text-xs text-ops-muted uppercase tracking-wider font-semibold">Unrealised P&L</span>
+                <span class="font-mono text-status-green flex gap-1 items-center font-bold">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                    +8.4%
+                </span>
+            </div>
+            <div class="h-8 w-px bg-ops-border"></div>
+             <div class="flex flex-col items-end">
+                <span class="text-xs text-ops-muted uppercase tracking-wider font-semibold">Sharpe Ratio</span>
+                <span class="font-mono text-md">1.24 <span class="text-ops-muted text-sm">(Good)</span></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Split -->
+    <div class="flex-1 flex w-full relative overflow-hidden">
+        
+        <!-- Zone 2: Factory Floor (React Flow Mockup) -->
+        <main class="flex-1 relative bg-ops-bg bg-dot-pattern z-0 overflow-hidden">
+            <!-- Simulated SVG Edges (Conveyor Belts) -->
+            <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 1;">
+                <defs>
+                    <linearGradient id="edgeGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8" />
+                        <stop offset="100%" stop-color="#ef4444" stop-opacity="0.8" />
+                    </linearGradient>
+                </defs>
+                <!-- QQQ to SPY Edge (Nominal) -->
+                <path d="M 300 200 C 450 200, 450 400, 600 400" fill="none" stroke="#22c55e" stroke-width="2" class="animate-flow opacity-50"/>
+                
+                <!-- AAPL to TSLA Edge (Warning/Bottleneck) -->
+                <path d="M 300 450 C 450 450, 450 400, 600 400" fill="none" stroke="url(#edgeGrad1)" stroke-width="3" class="animate-flow opacity-90"/>
+            </svg>
+
+            <!-- Card 1: QQQ -->
+            <div class="absolute w-[280px] top-[100px] left-[100px] rounded-xl border-2 node-nominal bg-ops-surface text-sm shadow-xl z-10 transition-transform hover:scale-[1.02]">
+                <div class="p-3 border-b border-ops-border flex items-center justify-between bg-[#131926]">
+                    <div class="flex items-center gap-2">
+                        <svg class="animate-[spin_4s_linear_infinite] text-ops-muted" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+                        <span class="font-bold tracking-tight">QQQ</span>
+                        <span class="text-xs text-ops-muted ml-1">Invesco — ETF</span>
+                    </div>
+                    <div class="h-2 w-2 rounded-full bg-status-green animate-pulse"></div>
+                </div>
+                <div class="p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">Weight</span>
+                        <span class="font-mono">15.5%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">P&L</span>
+                        <span class="font-mono text-status-green">+4.1%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">Volatility</span>
+                        <span>Low / 12%</span>
+                    </div>
+                </div>
+                <div class="px-4 py-2 border-t border-ops-border bg-status-green/5 text-xs text-status-green font-medium rounded-b-xl flex gap-2">
+                    <span class="uppercase">Nominal</span> Flow steady.
+                </div>
+            </div>
+
+            <!-- Card 2: AAPL -->
+            <div class="absolute w-[280px] top-[350px] left-[100px] rounded-xl border-2 node-warning bg-ops-surface text-sm shadow-xl z-10 transition-transform hover:scale-[1.02]">
+                <div class="p-3 border-b border-ops-border flex items-center justify-between bg-[#131926]">
+                    <div class="flex items-center gap-2">
+                        <svg class="animate-[spin_4s_linear_infinite] text-ops-muted" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+                        <span class="font-bold tracking-tight">AAPL</span>
+                        <span class="text-xs text-ops-muted ml-1">Apple — Equity</span>
+                    </div>
+                    <div class="h-2 w-2 rounded-full bg-status-amber animate-pulse"></div>
+                </div>
+                <div class="p-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">Weight</span>
+                        <span class="font-mono">22.4%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">P&L</span>
+                        <span class="font-mono text-ops-text">-2.3% <span class="text-[10px] text-status-amber">(1d)</span></span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">Volatility</span>
+                        <span>Med / 18%</span>
+                    </div>
+                </div>
+                <div class="px-4 py-2 border-t border-ops-border bg-status-amber/5 text-xs text-status-amber font-medium rounded-b-xl flex gap-2 items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <span class="uppercase">Warning</span> High concentration.
+                </div>
+            </div>
+
+            <!-- Card 3: TSLA (Bottleneck) -->
+            <div class="absolute w-[290px] top-[260px] left-[600px] rounded-xl border-2 border-ops-border bg-ops-surface text-sm shadow-2xl z-20 node-critical transition-transform hover:scale-[1.02]">
+                <div class="p-3 border-b border-status-red/30 flex items-center justify-between bg-status-red/10 overflow-hidden relative">
+                    <div class="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#ef4444_10px,#ef4444_20px)] pointer-events-none"></div>
+                    <div class="flex items-center gap-2 relative z-10">
+                        <svg class="text-status-red" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                        <span class="font-bold tracking-tight text-status-red">TSLA</span>
+                        <span class="text-xs text-status-red/70 ml-1">Tesla — Equity</span>
+                    </div>
+                    <div class="h-2 w-2 rounded-full bg-status-red animate-ping absolute right-3 z-10"></div>
+                </div>
+                <div class="p-4 space-y-3 relative z-10 bg-ops-surface/95">
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">Weight</span>
+                        <span class="font-mono">8.2%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted text-status-red">P&L</span>
+                        <span class="font-mono text-status-red">-18.4%</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-ops-muted">Volatility</span>
+                        <span class="text-status-red">High / 45%</span>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-ops-border/50">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-ops-muted">Marginal VaR (95%)</span>
+                            <span class="font-mono text-status-amber">-3.2%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-4 py-2 border-t border-status-red/30 bg-status-red/10 text-xs text-status-red font-semibold rounded-b-xl flex gap-2">
+                    <span class="uppercase">BOTTLENECK IDENTIFIED</span>
+                </div>
+            </div>
+            
+            <!-- Map Legend (floating bottom left) -->
+            <div class="absolute bottom-6 left-6 rounded-lg border border-ops-border bg-ops-surface/80 backdrop-blur tracking-tight p-3 text-xs flex flex-col gap-2 z-10">
+                <div class="font-semibold text-ops-muted mb-1">FACTORY STATUS PING</div>
+                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-sm bg-status-green/20 border border-status-green"></div><span class="text-ops-muted text-xs">Nominal Operation</span></div>
+                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-sm bg-status-amber/20 border border-status-amber"></div><span class="text-ops-muted text-xs">Sub-optimal Yield / Warning</span></div>
+                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-sm bg-status-red/20 border border-status-red"></div><span class="text-ops-muted text-xs">Critical Bottleneck</span></div>
+            </div>
+        </main>
+
+        <!-- Zone 3: Agent panel (Ops Terminal Vibe) -->
+        <aside class="w-[420px] bg-[#0c0f16] border-l border-ops-border flex flex-col z-10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
+            <!-- Panel Header -->
+            <div class="p-4 border-b border-ops-border flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg class="text-ops-muted" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    <h2 class="text-sm font-semibold tracking-wide uppercase text-ops-text">Run Log</h2>
+                </div>
+                <span class="font-mono text-[10px] text-ops-muted px-2 py-1 rounded bg-ops-border/50">ID: run_08f92a</span>
+            </div>
+
+            <!-- Agent Stream Area -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4 text-sm relative scroll-smooth">
+                <!-- Subtle grid overlay -->
+                <div class="absolute inset-0 bg-[#3b82f6]/[0.02] bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
+                
+                <!-- Monitor Agent Block -->
+                <div class="border border-ops-border rounded bg-ops-surface/50 relative z-10">
+                    <div class="flex items-center justify-between border-b border-ops-border px-3 py-2 bg-[#131926]">
+                        <div class="flex items-center gap-2">
+                            <span class="h-2 w-2 rounded-full bg-status-amber"></span>
+                            <span class="font-mono text-xs text-status-amber font-semibold">MONITOR_AGENT</span>
+                        </div>
+                        <span class="font-mono text-[10px] text-ops-muted">0.12s</span>
+                    </div>
+                    <div class="p-3">
+                        <div class="font-mono text-xs flex justify-between text-ops-muted mb-2 border-b border-ops-border/50 pb-2">
+                            <div>DRAWDOWN: <span class="text-status-red">-14.2%</span></div>
+                            <div>CONC: AAPL (22.4%)</div>
+                        </div>
+                        <p class="text-ops-text font-sans text-[13px] leading-relaxed">
+                            Overall portfolio health is degraded. Large drawdown detected originating from Tech sector. Concentration warning for AAPL. Escalating to Bottleneck Agent for root cause analysis.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Bottleneck Agent Block -->
+                <div class="border border-status-red/40 rounded bg-status-red/[0.02] relative z-10">
+                    <div class="flex items-center justify-between border-b border-status-red/20 px-3 py-2 bg-status-red/[0.05]">
+                        <div class="flex items-center gap-2">
+                            <span class="h-2 w-2 rounded-full bg-status-red animate-pulse"></span>
+                            <span class="font-mono text-xs text-status-red font-semibold">BOTTLENECK_AGENT</span>
+                        </div>
+                        <span class="font-mono text-[10px] text-ops-muted">2.44s</span>
+                    </div>
+                    <div class="p-3">
+                        <div class="font-mono text-xs flex justify-between text-ops-muted mb-2 border-b border-status-red/20 pb-2">
+                            <div>PRMRY: TSLA</div>
+                            <div>VAR_MARGINAL: <span class="text-status-amber">-3.2%</span></div>
+                        </div>
+                        <p class="text-ops-text font-sans text-[13px] leading-relaxed">
+                            TSLA is the primary bottleneck. It accounts for only 8.2% of the portfolio weight but is responsible for 41% of recent portfolio volatility and has breached its VaR threshold (-18.4% 30d performance).
+                        </p>
+                        <p class="text-ops-text font-sans text-[13px] leading-relaxed mt-2 text-ops-muted italic">
+                            Triggering redesign protocol to reduce TSLA allocation...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Redesign Agent (Streaming Example) -->
+                <div class="border border-ops-accent/40 rounded bg-ops-accent/[0.02] shadow-[0_0_15px_rgba(59,130,246,0.05)] relative z-10">
+                    <div class="flex items-center justify-between border-b border-ops-accent/20 px-3 py-2 bg-ops-accent/[0.05]">
+                        <div class="flex items-center gap-2">
+                            <svg class="animate-spin text-ops-accent h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span class="font-mono text-xs text-ops-accent font-semibold">REDESIGN_AGENT</span>
+                        </div>
+                        <span class="font-mono text-[10px] text-ops-accent">streaming...</span>
+                    </div>
+                    <div class="p-3">
+                        <p class="text-ops-text font-sans text-[13px] leading-relaxed terminal-cursor">
+                            Proposing a target allocation adjustment: Reduce TSLA down to 3.0%. Reallocate proceeds into stable yield (SPY and TLT) to normalize portfolio VaR profile. Simulating impact on Sharpe... expected delta +0.12
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Agent Input / Status footer -->
+            <div class="p-3 border-t border-ops-border bg-[#0a0c10] flex items-center justify-between">
+                <div class="text-xs font-mono text-ops-muted flex gap-2"><span class="text-ops-accent">●</span> Awaiting Redesign verification...</div>
+            </div>
+        </aside>
+    </div>
+</body>
+</html>
