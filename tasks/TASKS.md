@@ -17,7 +17,7 @@
 
 ### 1.2 Theme & styling foundation
 
-- [ ] **1.2.1** Configure Tailwind: extend theme with color tokens (`--bg-primary`, `--bg-card`, `--green`, `--amber`, `--red`, etc.), font families (Inter, JetBrains Mono), border radius _(V §2.3, §2.4)_
+- [x] **1.2.1** Configure Tailwind: extend theme with color tokens (`--bg-primary`, `--bg-card`, `--green`, `--amber`, `--red`, etc.), font families (Inter, JetBrains Mono), border radius _(V §2.3, §2.4)_
 - [ ] **1.2.2** Set up `globals.css`: CSS custom properties in `:root` matching the full palette _(V §2.4)_
 - [ ] **1.2.3** Create `src/styles/animations.css` with all `@keyframes` definitions (pulse-green, pulse-amber, pulse-red, dot-pulse, cursor-blink, edge-flow, fade-in-up) _(V §5.2)_
 - [ ] **1.2.4** Add `prefers-reduced-motion` media query in `globals.css` _(V §5.3)_
