@@ -35,6 +35,8 @@ const TICKER_TO_ID: Record<string, string> = {
   MKR: "maker",
 };
 
+const FETCH_TIMEOUT_MS = 10_000;
+
 function getApiKey(): string | undefined {
   return process.env.COINGECKO_API_KEY || undefined;
 }
@@ -49,6 +51,17 @@ function tickerToId(ticker: string): string | null {
   return TICKER_TO_ID[ticker.toUpperCase()] ?? null;
 }
 
+async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function getCryptoPriceSnapshot(ticker: string): Promise<PriceSnapshot | null> {
   const coinId = tickerToId(ticker);
   if (!coinId) return null;
@@ -61,7 +74,7 @@ export async function getCryptoPriceSnapshot(ticker: string): Promise<PriceSnaps
     include_market_cap: "true",
   });
 
-  const res = await fetch(`${BASE_URL}/simple/price?${params}`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/simple/price?${params}`, {
     headers: buildHeaders(),
   });
 
@@ -104,7 +117,7 @@ export async function getBatchCryptoPriceSnapshots(tickers: string[]): Promise<M
     include_market_cap: "true",
   });
 
-  const res = await fetch(`${BASE_URL}/simple/price?${params}`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/simple/price?${params}`, {
     headers: buildHeaders(),
   });
 
@@ -135,33 +148,65 @@ export async function getBatchCryptoPriceSnapshots(tickers: string[]): Promise<M
 export async function getCryptoHistoricalOHLCV(
   ticker: string,
   days: 1 | 7 | 14 | 30 | 90 | 180 | 365 = 30,
-): Promise<OHLCVBar[]> {
+): Promise<OHLCVBar[] | null> {
   const coinId = tickerToId(ticker);
-  if (!coinId) {
-    throw new Error(`Unknown crypto ticker: ${ticker}`);
-  }
+  if (!coinId) return null;
 
   const params = new URLSearchParams({
     vs_currency: "usd",
     days: String(days),
   });
 
-  const res = await fetch(`${BASE_URL}/coins/${coinId}/ohlc?${params}`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/coins/${coinId}/market_chart?${params}`, {
     headers: buildHeaders(),
   });
 
   if (!res.ok) {
-    throw new Error(`CoinGecko OHLCV fetch failed for ${ticker}: ${res.status}`);
+    throw new Error(`CoinGecko market chart fetch failed for ${ticker}: ${res.status}`);
   }
 
-  const data: number[][] = await res.json();
+  const data: { prices: number[][]; total_volumes: number[][] } = await res.json();
 
-  return data.map(([timestamp, open, high, low, close]) => ({
-    date: new Date(timestamp),
-    open,
-    high,
-    low,
-    close,
-    volume: 0,
-  }));
+  // Group prices by calendar day, then derive OHLCV from intraday ticks
+  const dailyGroups = new Map<string, { opens: number[]; closes: number[]; highs: number[]; lows: number[]; volumes: number[] }>();
+
+  for (const [timestamp, price] of data.prices) {
+    const dayKey = new Date(timestamp).toISOString().slice(0, 10);
+    let group = dailyGroups.get(dayKey);
+    if (!group) {
+      group = { opens: [], closes: [], highs: [], lows: [], volumes: [] };
+      dailyGroups.set(dayKey, group);
+    }
+    if (group.opens.length === 0) {
+      group.opens.push(price);
+    } else {
+      group.closes.push(price);
+    }
+    group.highs.push(price);
+    group.lows.push(price);
+  }
+
+  for (const [timestamp, volume] of data.total_volumes) {
+    const dayKey = new Date(timestamp).toISOString().slice(0, 10);
+    const group = dailyGroups.get(dayKey);
+    if (group) group.volumes.push(volume);
+  }
+
+  const bars: OHLCVBar[] = [];
+
+  for (const [dayKey, group] of dailyGroups) {
+    const allPrices = [...group.opens, ...group.closes];
+    if (allPrices.length === 0) continue;
+
+    bars.push({
+      date: new Date(dayKey),
+      open: allPrices[0],
+      high: Math.max(...group.highs),
+      low: Math.min(...group.lows),
+      close: allPrices[allPrices.length - 1],
+      volume: group.volumes.reduce((sum, v) => sum + v, 0),
+    });
+  }
+
+  return bars.sort((a, b) => a.date.getTime() - b.date.getTime());
 }

@@ -5,8 +5,8 @@ export const holdings = pgTable("holdings", (t) => ({
   userId: t.text("user_id").notNull(),
   ticker: t.text().notNull(),
   assetClass: t.text("asset_class").notNull(),
-  quantity: t.numeric({ precision: 20, scale: 8 }).notNull(),
-  avgCost: t.numeric("avg_cost", { precision: 20, scale: 8 }).notNull(),
+  quantity: t.numeric({ precision: 20, scale: 8, mode: "number" }).notNull(),
+  avgCost: t.numeric("avg_cost", { precision: 20, scale: 8, mode: "number" }).notNull(),
   currency: t.text().notNull().default("USD"),
   createdAt: t.timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }));
@@ -14,11 +14,11 @@ export const holdings = pgTable("holdings", (t) => ({
 export const marketSnapshots = pgTable("market_snapshots", (t) => ({
   id: t.uuid().defaultRandom().primaryKey(),
   ticker: t.text().notNull(),
-  price: t.numeric({ precision: 20, scale: 8 }).notNull(),
-  changePct1d: t.numeric("change_pct_1d", { precision: 10, scale: 4 }),
-  changePct7d: t.numeric("change_pct_7d", { precision: 10, scale: 4 }),
-  volume24h: t.numeric("volume_24h"),
-  marketCap: t.numeric("market_cap"),
+  price: t.numeric({ precision: 20, scale: 8, mode: "number" }).notNull(),
+  changePct1d: t.numeric("change_pct_1d", { precision: 10, scale: 4, mode: "number" }),
+  changePct7d: t.numeric("change_pct_7d", { precision: 10, scale: 4, mode: "number" }),
+  volume24h: t.numeric("volume_24h", { mode: "number" }),
+  marketCap: t.numeric("market_cap", { mode: "number" }),
   fetchedAt: t.timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(),
 }));
 

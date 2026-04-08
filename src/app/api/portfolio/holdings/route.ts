@@ -69,8 +69,8 @@ export async function POST(request: Request) {
         userId: "default",
         ticker,
         assetClass,
-        quantity,
-        avgCost,
+        quantity: Number(quantity),
+        avgCost: Number(avgCost),
         currency,
       })
       .returning();
