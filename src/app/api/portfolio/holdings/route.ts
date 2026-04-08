@@ -1,10 +1,8 @@
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
+import { getBatchPriceSnapshots } from "@/lib/market/yahoo";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import YahooFinance from "yahoo-finance2";
-
-const yahooFinance = new YahooFinance();
 
 const createHoldingSchema = z.object({
   ticker: z.string().min(1),
@@ -26,18 +24,14 @@ export async function GET() {
     }
 
     const tickers = [...new Set(allHoldings.map((h) => h.ticker))];
-
-    const quotes = await yahooFinance.quote(tickers, {
-      return: "object",
-      fields: ["symbol", "regularMarketPrice", "regularMarketChangePercent", "currency"],
-    });
+    const snapshots = await getBatchPriceSnapshots(tickers);
 
     const enriched = allHoldings.map((holding) => {
-      const quote = quotes[holding.ticker];
+      const snapshot = snapshots.get(holding.ticker);
       return {
         ...holding,
-        currentPrice: quote?.regularMarketPrice ?? null,
-        changePercent24h: quote?.regularMarketChangePercent ?? null,
+        currentPrice: snapshot?.price ?? null,
+        changePercent24h: snapshot?.changePercent1d ?? null,
       };
     });
 
