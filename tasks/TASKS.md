@@ -48,7 +48,7 @@
 
 ### 1.6 UI components — primitives
 
-- [ ] **1.6.1** `<StatusDot />` — health indicator dot with glow and optional pulse animation _(V §4.10)_
+- [x] **1.6.1** `<StatusDot />` — health indicator dot with glow and optional pulse animation _(V §4.10)_
 - [ ] **1.6.2** `<MetricDisplay />` — label + value pair with color variants _(V §4.9)_
 - [ ] **1.6.3** `<VolatilityBar />` — inline mini bar with filled/unfilled segments _(V §4.11)_
 
