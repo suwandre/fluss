@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
+import YahooFinance from "yahoo-finance2";
+
+const yahooFinance = new YahooFinance();
 
 const createHoldingSchema = z.object({
   ticker: z.string().min(1),
@@ -9,6 +13,40 @@ const createHoldingSchema = z.object({
   avgCost: z.string().refine((val) => !isNaN(Number(val)) && val.trim() !== "", "Must be a valid number"),
   currency: z.string().default("USD"),
 });
+
+export async function GET() {
+  try {
+    const allHoldings = await db
+      .select()
+      .from(holdings)
+      .where(eq(holdings.userId, "default"));
+
+    if (allHoldings.length === 0) {
+      return Response.json([]);
+    }
+
+    const tickers = [...new Set(allHoldings.map((h) => h.ticker))];
+
+    const quotes = await yahooFinance.quote(tickers, {
+      return: "object",
+      fields: ["symbol", "regularMarketPrice", "regularMarketChangePercent", "currency"],
+    });
+
+    const enriched = allHoldings.map((holding) => {
+      const quote = quotes[holding.ticker];
+      return {
+        ...holding,
+        currentPrice: quote?.regularMarketPrice ?? null,
+        changePercent24h: quote?.regularMarketChangePercent ?? null,
+      };
+    });
+
+    return Response.json(enriched);
+  } catch (error) {
+    console.error("Failed to fetch holdings:", error);
+    return Response.json({ error: "Failed to fetch holdings" }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   let body: unknown;
