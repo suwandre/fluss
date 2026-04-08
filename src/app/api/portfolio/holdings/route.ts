@@ -5,8 +5,8 @@ import { z } from "zod";
 const createHoldingSchema = z.object({
   ticker: z.string().min(1),
   assetClass: z.enum(["equity", "etf", "crypto", "bond", "fx"]),
-  quantity: z.string().min(1),
-  avgCost: z.string().min(1),
+  quantity: z.string().refine((val) => !isNaN(Number(val)) && val.trim() !== "", "Must be a valid number"),
+  avgCost: z.string().refine((val) => !isNaN(Number(val)) && val.trim() !== "", "Must be a valid number"),
   currency: z.string().default("USD"),
 });
 
