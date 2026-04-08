@@ -36,7 +36,7 @@
 
 - [x] **1.4.1** `POST /api/portfolio/holdings` — add a holding _(A §7)_
 - [x] **1.4.2** `GET /api/portfolio/holdings` — fetch all holdings with live prices _(A §7)_
-- [ ] **1.4.3** `DELETE /api/portfolio/holdings/:id` — remove a holding _(A §7)_
+- [x] **1.4.3** `DELETE /api/portfolio/holdings/:id` — remove a holding _(A §7)_
 
 ### 1.5 Market data integration
 
