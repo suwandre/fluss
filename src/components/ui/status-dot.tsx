@@ -16,12 +16,6 @@ const colorMap: Record<HealthState, string> = {
   critical: "bg-red shadow-[0_0_6px_var(--red-glow)]",
 }
 
-const pulseMap: Record<HealthState, string> = {
-  nominal: "animate-pulse-green",
-  warning: "animate-pulse-amber",
-  critical: "animate-pulse-red",
-}
-
 export function StatusDot({
   status,
   size = "md",
@@ -35,7 +29,7 @@ export function StatusDot({
         "shrink-0 rounded-full",
         sizeMap[size],
         colorMap[status],
-        animate && pulseMap[status],
+        animate && "animate-dot-pulse",
         className,
       )}
     />

@@ -62,6 +62,7 @@
   --color-amber-glow: var(--amber-glow);
   --color-red-glow: var(--red-glow);
   --color-teal-glow: var(--teal-glow);
+  --animate-dot-pulse: dot-pulse 1.5s ease-in-out infinite;
 }
 
 :root {
