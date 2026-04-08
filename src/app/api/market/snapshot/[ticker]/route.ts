@@ -1,10 +1,13 @@
-import { getCryptoPriceSnapshot } from "@/lib/market/coingecko";
-import { getPriceSnapshot } from "@/lib/market/yahoo";
-import type { PriceSnapshot } from "@/lib/market";
-import type { AssetClass } from "@/lib/market";
+import { getPrice, getPriceAutoDetect } from "@/lib/market";
+import { ASSET_CLASSES } from "@/lib/types/visual";
+import { z } from "zod";
+
+const snapshotQuerySchema = z.object({
+  assetClass: z.enum(ASSET_CLASSES).optional(),
+});
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ ticker: string }> },
 ) {
   const { ticker } = await params;
@@ -13,22 +16,24 @@ export async function GET(
     return Response.json({ error: "Missing ticker" }, { status: 400 });
   }
 
-  const url = new URL(_request.url);
-  const assetClass = url.searchParams.get("assetClass") as AssetClass | null;
+  const url = new URL(request.url);
+  const parsed = snapshotQuerySchema.safeParse(Object.fromEntries(
+    [...url.searchParams.entries()].filter(([key]) => key === "assetClass"),
+  ));
+
+  if (!parsed.success) {
+    return Response.json(
+      { error: "Invalid query params", details: parsed.error.flatten().fieldErrors },
+      { status: 400 },
+    );
+  }
+
+  const { assetClass } = parsed.data;
 
   try {
-    let snapshot: PriceSnapshot | null = null;
-
-    if (assetClass === "crypto") {
-      snapshot = await getCryptoPriceSnapshot(ticker);
-    } else if (assetClass) {
-      snapshot = await getPriceSnapshot(ticker);
-    } else {
-      snapshot = await getPriceSnapshot(ticker);
-      if (!snapshot) {
-        snapshot = await getCryptoPriceSnapshot(ticker);
-      }
-    }
+    const snapshot = assetClass
+      ? await getPrice(ticker, assetClass)
+      : await getPriceAutoDetect(ticker);
 
     if (!snapshot) {
       return Response.json({ error: `No price data found for ${ticker}` }, { status: 404 });

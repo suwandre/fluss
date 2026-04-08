@@ -1,6 +1,7 @@
 export type HealthState = "nominal" | "warning" | "critical";
 
-export type AssetClass = "equity" | "etf" | "crypto" | "bond" | "fx";
+export const ASSET_CLASSES = ["equity", "etf", "crypto", "bond", "fx"] as const;
+export type AssetClass = (typeof ASSET_CLASSES)[number];
 
 export type AgentStatus = "done" | "running" | "queued" | "error";
 

@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices } from "@/lib/market";
+import { ASSET_CLASSES } from "@/lib/types/visual";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const createHoldingSchema = z.object({
-  ticker: z.string().min(1),
-  assetClass: z.enum(["equity", "etf", "crypto", "bond", "fx"]),
+  ticker: z.string().min(1).transform((val) => val.toUpperCase()),
+  assetClass: z.enum(ASSET_CLASSES),
   quantity: z.string().refine((val) => !isNaN(Number(val)) && val.trim() !== "", "Must be a valid number"),
   avgCost: z.string().refine((val) => !isNaN(Number(val)) && val.trim() !== "", "Must be a valid number"),
   currency: z.string().default("USD"),
