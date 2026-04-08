@@ -41,7 +41,7 @@
 ### 1.5 Market data integration
 
 - [x] **1.5.1** Create `src/lib/market/yahoo.ts` — wrapper for `yahoo-finance2`: price snapshot, historical OHLCV _(A §9)_
-- [ ] **1.5.2** Create `src/lib/market/coingecko.ts` — wrapper for CoinGecko API: real-time price, OHLCV _(A §9)_
+- [x] **1.5.2** Create `src/lib/market/coingecko.ts` — wrapper for CoinGecko API: real-time price, OHLCV _(A §9)_
 - [ ] **1.5.3** Create `src/lib/market/index.ts` — unified `getPrice(ticker)`, `getHistory(ticker)` that routes to Yahoo or CoinGecko based on asset class
 - [ ] **1.5.4** `GET /api/market/snapshot/:ticker` — live price for a single ticker _(A §7)_
 - [ ] **1.5.5** `GET /api/market/historical/:ticker` — OHLCV history _(A §7)_

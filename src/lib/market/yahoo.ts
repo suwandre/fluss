@@ -85,18 +85,18 @@ export async function getHistoricalOHLCV(
   period2?: string | Date,
   interval: "1d" | "1wk" | "1mo" = "1d",
 ): Promise<OHLCVBar[]> {
-  const result = await yahooFinance.historical(ticker, {
+  const result = await yahooFinance.chart(ticker, {
     period1,
     period2,
     interval,
   });
 
-  return result.map((row) => ({
+  return result.quotes.map((row) => ({
     date: row.date,
-    open: row.open,
-    high: row.high,
-    low: row.low,
-    close: row.close,
-    volume: row.volume,
+    open: row.open ?? 0,
+    high: row.high ?? 0,
+    low: row.low ?? 0,
+    close: row.close ?? 0,
+    volume: row.volume ?? 0,
   }));
 }
