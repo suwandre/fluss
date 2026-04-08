@@ -22,7 +22,7 @@
 - [x] **1.2.3** Create `src/styles/animations.css` with all `@keyframes` definitions (pulse-green, pulse-amber, pulse-red, dot-pulse, cursor-blink, edge-flow, fade-in-up) _(V §5.2)_
 - [x] **1.2.4** Add `prefers-reduced-motion` media query in `globals.css` _(V §5.3)_
 - [x] **1.2.5** Configure font loading in `src/app/layout.tsx` — Inter + JetBrains Mono via `next/font/google` _(V §3.1)_
-- [ ] **1.2.6** Create `src/lib/types/visual.ts` with shared types: `HealthState`, `AssetClass`, `AgentStatus` _(V §8)_
+- [x] **1.2.6** Create `src/lib/types/visual.ts` with shared types: `HealthState`, `AssetClass`, `AgentStatus` _(V §8)_
 
 ### 1.3 Database
 
