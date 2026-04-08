@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
-import { getBatchPriceSnapshots } from "@/lib/market/yahoo";
+import { getBatchPrices } from "@/lib/market";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -23,8 +23,9 @@ export async function GET() {
       return Response.json([]);
     }
 
-    const tickers = [...new Set(allHoldings.map((h) => h.ticker))];
-    const snapshots = await getBatchPriceSnapshots(tickers);
+    const snapshots = await getBatchPrices(
+      allHoldings.map((h) => ({ ticker: h.ticker, assetClass: h.assetClass })),
+    );
 
     const enriched = allHoldings.map((holding) => {
       const snapshot = snapshots.get(holding.ticker);
