@@ -28,7 +28,7 @@
 
 - [x] **1.3.1** Define Drizzle schema in `src/lib/db/schema.ts`: `holdings`, `market_snapshots`, `agent_runs` tables _(A §4)_
 - [x] **1.3.2** Create `drizzle.config.ts` pointing to `DATABASE_URL`
-- [ ] **1.3.3** Generate initial migration (`bunx drizzle-kit generate`)
+- [x] **1.3.3** Generate initial migration (`bunx drizzle-kit generate`)
 - [ ] **1.3.4** Set up PostgreSQL (local dev via Docker or Supabase/Railway free tier)
 - [ ] **1.3.5** Run migrations (`bunx drizzle-kit push` or `migrate`)
 
