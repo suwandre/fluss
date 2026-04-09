@@ -66,6 +66,7 @@
   --animate-pulse-green: pulse-green 800ms ease-in-out 1;
   --animate-pulse-amber: pulse-amber 800ms ease-in-out 1;
   --animate-pulse-red: pulse-red 800ms ease-in-out 1;
+  --animate-edge-flow: edge-flow 1.2s linear infinite;
 }
 
 :root {

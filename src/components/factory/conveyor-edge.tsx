@@ -1,17 +1,12 @@
 "use client"
 
 import { memo } from "react"
-import {
-  BaseEdge,
-  getBezierPath,
-  type Edge,
-  type EdgeProps,
-} from "@xyflow/react"
+import { getBezierPath, type Edge, type EdgeProps } from "@xyflow/react"
 import { cn } from "@/lib/utils"
 
 type ConveyorEdgeData = {
   correlation: number
-  direction?: "left-to-right"
+  isCrossCorrelation?: boolean
 }
 
 export type ConveyorEdge = Edge<ConveyorEdgeData, "conveyor">
@@ -24,10 +19,10 @@ function correlationTier(value: number): CorrelationTier {
   return "low"
 }
 
-const tierColorMap: Record<CorrelationTier, string> = {
-  low: "#14b8a6",
-  medium: "#f59e0b",
-  high: "#ef4444",
+const tierColorVar: Record<CorrelationTier, string> = {
+  low: "var(--teal)",
+  medium: "var(--amber)",
+  high: "var(--red)",
 }
 
 const tierWidthMap: Record<CorrelationTier, number> = {
@@ -43,13 +38,14 @@ function ConveyorEdgeComponent({
   targetY,
   sourcePosition,
   targetPosition,
-  markerEnd,
   data,
 }: EdgeProps<ConveyorEdge>) {
   const correlation = data?.correlation ?? 0.5
+  const isCross = data?.isCrossCorrelation ?? false
   const tier = correlationTier(correlation)
-  const strokeColor = tierColorMap[tier]
+  const strokeColor = tierColorVar[tier]
   const strokeWidth = tierWidthMap[tier]
+  const markerId = `conveyor-arrow-${tier}`
 
   const [edgePath] = getBezierPath({
     sourceX,
@@ -61,19 +57,33 @@ function ConveyorEdgeComponent({
   })
 
   return (
-    <BaseEdge
-      path={edgePath}
-      markerEnd={markerEnd}
-      style={{
-        stroke: strokeColor,
-        strokeWidth,
-        strokeDasharray: "6 3",
-      }}
-      className={cn(
-        "transition-colors duration-150",
-        correlation > 0.7 && "opacity-50",
-      )}
-    />
+    <>
+      <defs>
+        <marker
+          id={markerId}
+          viewBox="0 0 10 10"
+          refX="10"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={strokeColor} />
+        </marker>
+      </defs>
+      <path
+        d={edgePath}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
+        strokeDasharray="8 4"
+        markerEnd={`url(#${markerId})`}
+        className={cn(
+          "transition-colors duration-150",
+          isCross && "opacity-50",
+        )}
+      />
+    </>
   )
 }
 
