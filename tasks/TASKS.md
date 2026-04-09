@@ -55,7 +55,7 @@
 ### 1.7 UI components — React Flow
 
 - [x] **1.7.1** `<MachineNode />` — custom React Flow node, static with hardcoded data matching spec layout _(V §4.1)_
-- [ ] **1.7.2** `<ConveyorEdge />` — custom React Flow edge, static SVG with dashed stroke (no animation yet) _(V §4.2)_
+- [x] **1.7.2** `<ConveyorEdge />` — custom React Flow edge, static SVG with dashed stroke (no animation yet) _(V §4.2)_
 - [ ] **1.7.3** `<PortfolioOutputNode />` — aggregate output node with accent border and inline SVG hexagon icon _(V §4.3)_
 - [ ] **1.7.4** `<PortfolioSummaryBar />` — top metrics bar with hardcoded values, "+" button placeholder _(V §4.8)_
 - [ ] **1.7.5** `src/components/factory/layout-engine.ts` — dagre auto-layout (left-to-right, nodesep 60, ranksep 200) _(V §7.3)_
