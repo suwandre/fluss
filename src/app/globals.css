@@ -67,6 +67,8 @@
   --animate-pulse-amber: pulse-amber 800ms ease-in-out 1;
   --animate-pulse-red: pulse-red 800ms ease-in-out 1;
   --animate-edge-flow: edge-flow 1.2s linear infinite;
+  --animate-cursor-blink: cursor-blink 1s step-end infinite;
+  --animate-fade-in-up: fade-in-up 200ms ease-out 1;
 }
 
 :root {

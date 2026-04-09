@@ -24,7 +24,7 @@ export async function getPrice(ticker: string, assetClass: AssetClass): Promise<
 export async function getPriceAutoDetect(ticker: string): Promise<PriceSnapshot | null> {
   try {
     const snapshot = await getPriceSnapshot(ticker);
-    if (snapshot) return snapshot;
+    if (snapshot?.price != null) return snapshot;
   } catch {
     // Yahoo didn't find it, try CoinGecko
   }

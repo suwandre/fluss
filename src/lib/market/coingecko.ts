@@ -204,7 +204,7 @@ export async function getCryptoHistoricalOHLCV(
       high: Math.max(...group.highs),
       low: Math.min(...group.lows),
       close: allPrices[allPrices.length - 1],
-      volume: group.volumes.reduce((sum, v) => sum + v, 0),
+      volume: group.volumes.length > 0 ? group.volumes[group.volumes.length - 1] : 0,
     });
   }
 

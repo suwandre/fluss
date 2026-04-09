@@ -91,12 +91,14 @@ export async function getHistoricalOHLCV(
     interval,
   });
 
-  return result.quotes.map((row) => ({
-    date: row.date,
-    open: row.open ?? 0,
-    high: row.high ?? 0,
-    low: row.low ?? 0,
-    close: row.close ?? 0,
-    volume: row.volume ?? 0,
-  }));
+  return result.quotes
+    .filter((row) => row.open != null && row.high != null && row.low != null && row.close != null)
+    .map((row) => ({
+      date: row.date,
+      open: row.open!,
+      high: row.high!,
+      low: row.low!,
+      close: row.close!,
+      volume: row.volume ?? 0,
+    }));
 }
