@@ -63,6 +63,9 @@
   --color-red-glow: var(--red-glow);
   --color-teal-glow: var(--teal-glow);
   --animate-dot-pulse: dot-pulse 1.5s ease-in-out infinite;
+  --animate-pulse-green: pulse-green 800ms ease-in-out 1;
+  --animate-pulse-amber: pulse-amber 800ms ease-in-out 1;
+  --animate-pulse-red: pulse-red 800ms ease-in-out 1;
 }
 
 :root {

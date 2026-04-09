@@ -17,11 +17,14 @@ export function VolatilityBar({
   return (
     <div
       data-slot="volatility-bar"
+      role="img"
+      aria-label={`Volatility: ${label}, ${filled} of ${segments}`}
       className={cn("inline-flex items-center gap-0.5", className)}
     >
       {Array.from({ length: segments }, (_, i) => (
         <span
           key={i}
+          aria-hidden="true"
           className={cn(
             "w-[6px] h-[10px] rounded-[1px]",
             i < filled ? "bg-amber" : "bg-border-bright",

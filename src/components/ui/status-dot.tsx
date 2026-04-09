@@ -5,6 +5,7 @@ type StatusDotProps = {
   status: HealthState
   size?: "sm" | "md"
   animate?: boolean
+  variant?: "filled" | "hollow"
   className?: string
 }
 
@@ -20,16 +21,21 @@ export function StatusDot({
   status,
   size = "md",
   animate = false,
+  variant = "filled",
   className,
 }: StatusDotProps) {
+  const isHollow = variant === "hollow"
+
   return (
     <span
       data-slot="status-dot"
+      role="status"
+      aria-label={`${status} status`}
       className={cn(
         "shrink-0 rounded-full",
         sizeMap[size],
-        colorMap[status],
-        animate && "animate-dot-pulse",
+        isHollow ? "border-[1.5px] border-text-dim" : colorMap[status],
+        !isHollow && animate && "animate-dot-pulse",
         className,
       )}
     />

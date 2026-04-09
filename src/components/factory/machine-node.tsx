@@ -46,12 +46,14 @@ function volatilityToFilled(vol: number): number {
   return Math.min(4, Math.max(1, Math.ceil(vol * 4)))
 }
 
-function pnlVariant(pnl: number): "positive" | "negative" {
-  return pnl >= 0 ? "positive" : "negative"
+function pnlVariant(pnl: number): "default" | "positive" | "negative" {
+  if (pnl === 0) return "default"
+  return pnl > 0 ? "positive" : "negative"
 }
 
 function pnlDisplay(pnl: number): string {
-  return `${pnl >= 0 ? "+" : ""}${pnl.toFixed(1)}%`
+  if (pnl === 0) return "0.0%"
+  return `${pnl > 0 ? "+" : ""}${pnl.toFixed(1)}%`
 }
 
 function MachineNodeComponent({ data }: NodeProps<MachineNode>) {
@@ -60,8 +62,10 @@ function MachineNodeComponent({ data }: NodeProps<MachineNode>) {
       <Handle type="target" position={Position.Left} className="!bg-border-bright !w-2 !h-2 !border-0" />
 
       <div
+        role="article"
+        aria-label={`${data.ticker} - ${data.name}`}
         className={cn(
-          "w-[220px] bg-card rounded-lg cursor-pointer",
+          "w-[220px] bg-bg-card rounded-lg cursor-pointer",
           "border-2 transition-colors duration-150",
           "hover:bg-bg-elevated",
           healthBorderMap[data.health],
@@ -82,7 +86,7 @@ function MachineNodeComponent({ data }: NodeProps<MachineNode>) {
           <MetricDisplay label="Weight" value={`${data.weight.toFixed(1)}%`} />
           <MetricDisplay label="P&L" value={pnlDisplay(data.pnlPct)} variant={pnlVariant(data.pnlPct)} />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted">Volatility</span>
+            <span className="text-xs font-medium text-text-muted">Volatility</span>
             <VolatilityBar segments={4} filled={volatilityToFilled(data.volatility)} label={data.volatilityLabel} />
           </div>
           <MetricDisplay label="Sharpe" value={data.sharpe.toFixed(2)} />
