@@ -43,7 +43,7 @@ const assetClassLabels: Record<AssetClass, string> = {
 }
 
 function volatilityToFilled(vol: number): number {
-  return Math.min(4, Math.max(1, Math.ceil(vol * 4)))
+  return Math.min(4, Math.max(0, Math.ceil(vol * 4)))
 }
 
 function pnlVariant(pnl: number): "default" | "positive" | "negative" {
@@ -56,17 +56,17 @@ function pnlDisplay(pnl: number): string {
   return `${pnl > 0 ? "+" : ""}${pnl.toFixed(1)}%`
 }
 
-function MachineNodeComponent({ data }: NodeProps<MachineNode>) {
+function MachineNodeComponent({ data, isConnectable }: NodeProps<MachineNode>) {
   return (
     <>
-      <Handle type="target" position={Position.Left} className="!bg-border-bright !w-2 !h-2 !border-0" />
+      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="!bg-border-bright !w-2 !h-2 !border-0" />
 
       <div
         role="article"
         aria-label={`${data.ticker} - ${data.name}`}
         className={cn(
-          "w-[220px] bg-bg-card rounded-lg cursor-pointer",
-          "border-2 transition-colors duration-150",
+          "w-[220px] bg-bg-card rounded-lg",
+          "border-2 transition-[background-color] duration-150",
           "hover:bg-bg-elevated",
           healthBorderMap[data.health],
         )}
@@ -102,7 +102,7 @@ function MachineNodeComponent({ data }: NodeProps<MachineNode>) {
         </div>
       </div>
 
-      <Handle type="source" position={Position.Right} className="!bg-border-bright !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="!bg-border-bright !w-2 !h-2 !border-0" />
     </>
   )
 }

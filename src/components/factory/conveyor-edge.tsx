@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 
 type ConveyorEdgeData = {
   correlation: number
+  direction?: "left-to-right"
   isCrossCorrelation?: boolean
 }
 
@@ -32,6 +33,7 @@ const tierWidthMap: Record<CorrelationTier, number> = {
 }
 
 function ConveyorEdgeComponent({
+  id,
   sourceX,
   sourceY,
   targetX,
@@ -45,7 +47,7 @@ function ConveyorEdgeComponent({
   const tier = correlationTier(correlation)
   const strokeColor = tierColorVar[tier]
   const strokeWidth = tierWidthMap[tier]
-  const markerId = `conveyor-arrow-${tier}`
+  const markerId = `conveyor-arrow-${id}`
 
   const [edgePath] = getBezierPath({
     sourceX,
