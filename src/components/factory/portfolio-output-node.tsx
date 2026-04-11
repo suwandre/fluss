@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import type { HealthState } from "@/lib/types/visual"
 import { StatusDot } from "@/components/ui/status-dot"
 import { MetricDisplay } from "@/components/ui/metric-display"
+import { healthLabelMap, pnlVariant, HANDLE_CLASSNAME } from "./shared"
 
 type PortfolioOutputData = {
   netPnl: number
@@ -16,12 +17,6 @@ type PortfolioOutputData = {
 }
 
 export type PortfolioOutputNode = Node<PortfolioOutputData, "portfolioOutput">
-
-const healthLabelMap: Record<HealthState, string> = {
-  nominal: "text-green",
-  warning: "text-amber",
-  critical: "text-red",
-}
 
 function HexagonIcon({ className }: { className?: string }) {
   return (
@@ -45,33 +40,29 @@ function HexagonIcon({ className }: { className?: string }) {
   )
 }
 
-function pnlVariant(value: number): "default" | "positive" | "negative" {
-  if (value === 0) return "default"
-  return value > 0 ? "positive" : "negative"
-}
-
 function pnlDisplay(value: number): string {
   if (value === 0) return "$0"
-  return `${value > 0 ? "+" : ""}$${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+  const sign = value > 0 ? "+" : "-"
+  return `${sign}$${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
 function drawdownDisplay(value: number): string {
-  return `${value.toFixed(1)}%`
+  return `-${Math.abs(value).toFixed(1)}%`
 }
 
 function PortfolioOutputNodeComponent({ data, isConnectable }: NodeProps<PortfolioOutputNode>) {
   return (
     <>
-      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="!bg-border-bright !w-2 !h-2 !border-0" />
+      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className={HANDLE_CLASSNAME} />
 
       <div
-        role="article"
+        role="group"
         aria-label="Portfolio Output"
         className={cn(
           "w-[220px] bg-bg-card rounded-lg",
           "border-2 border-accent transition-[background-color] duration-150",
           "hover:bg-bg-elevated",
-          "shadow-[0_0_12px_rgba(6,182,212,0.15)]",
+          "shadow-[0_0_12px_var(--accent-glow)]",
         )}
       >
         <div className="px-3.5 pt-2.5 pb-2 flex items-center gap-2">

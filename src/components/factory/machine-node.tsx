@@ -7,6 +7,7 @@ import type { HealthState, AssetClass, VolatilityLabel } from "@/lib/types/visua
 import { StatusDot } from "@/components/ui/status-dot"
 import { MetricDisplay } from "@/components/ui/metric-display"
 import { VolatilityBar } from "@/components/ui/volatility-bar"
+import { healthBorderMap, healthLabelMap, pnlVariant, HANDLE_CLASSNAME } from "./shared"
 
 type MachineNodeData = {
   ticker: string
@@ -22,18 +23,6 @@ type MachineNodeData = {
 
 export type MachineNode = Node<MachineNodeData, "machine">
 
-const healthBorderMap: Record<HealthState, string> = {
-  nominal: "border-green",
-  warning: "border-amber",
-  critical: "border-red",
-}
-
-const healthLabelMap: Record<HealthState, string> = {
-  nominal: "text-green",
-  warning: "text-amber",
-  critical: "text-red",
-}
-
 const assetClassLabels: Record<AssetClass, string> = {
   equity: "Equity",
   etf: "ETF",
@@ -46,23 +35,18 @@ function volatilityToFilled(vol: number): number {
   return Math.min(4, Math.max(0, Math.ceil(vol * 4)))
 }
 
-function pnlVariant(pnl: number): "default" | "positive" | "negative" {
-  if (pnl === 0) return "default"
-  return pnl > 0 ? "positive" : "negative"
-}
-
 function pnlDisplay(pnl: number): string {
   if (pnl === 0) return "0.0%"
-  return `${pnl > 0 ? "+" : ""}${pnl.toFixed(1)}%`
+  return `${pnl > 0 ? "+" : "-"}${Math.abs(pnl).toFixed(1)}%`
 }
 
 function MachineNodeComponent({ data, isConnectable }: NodeProps<MachineNode>) {
   return (
     <>
-      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="!bg-border-bright !w-2 !h-2 !border-0" />
+      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className={HANDLE_CLASSNAME} />
 
       <div
-        role="article"
+        role="group"
         aria-label={`${data.ticker} - ${data.name}`}
         className={cn(
           "w-[220px] bg-bg-card rounded-lg",
@@ -102,7 +86,7 @@ function MachineNodeComponent({ data, isConnectable }: NodeProps<MachineNode>) {
         </div>
       </div>
 
-      <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="!bg-border-bright !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Right} isConnectable={isConnectable} className={HANDLE_CLASSNAME} />
     </>
   )
 }
