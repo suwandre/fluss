@@ -30,8 +30,15 @@ function pnlDisplay(value: number, pct: number): { text: string; variant: "defau
   }
 }
 
+const pnlColorMap: Record<"default" | "positive" | "negative", string> = {
+  positive: "text-green",
+  negative: "text-red",
+  default: "text-text",
+}
+
 function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 0) return "just now"
   if (seconds < 60) return `${seconds}s ago`
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `${minutes} min ago`
@@ -47,7 +54,7 @@ type CellProps = {
 
 function Cell({ label, children, className }: CellProps) {
   return (
-    <div className={cn("flex flex-col justify-center gap-0.5 flex-1 min-w-0", className)}>
+    <div className={cn("flex flex-col justify-center gap-0.5 flex-1 min-w-0 px-3", className)}>
       <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">{label}</span>
       {children}
     </div>
@@ -68,7 +75,6 @@ export function PortfolioSummaryBar({
 
   return (
     <div
-      role="banner"
       aria-label="Portfolio summary"
       className="h-[72px] bg-bg-card border-b border-border flex items-stretch"
     >
@@ -79,7 +85,7 @@ export function PortfolioSummaryBar({
       <div className="w-px bg-border" />
 
       <Cell label="Unreal. P&L">
-        <span className={cn("font-mono text-lg font-medium", pnl.variant === "positive" ? "text-green" : pnl.variant === "negative" ? "text-red" : "text-text")}>
+        <span className={cn("font-mono text-lg font-medium", pnlColorMap[pnl.variant])}>
           {pnl.text}
         </span>
       </Cell>
