@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import type { HealthState } from "@/lib/types/visual"
 import { StatusDot } from "@/components/ui/status-dot"
 import { MetricDisplay } from "@/components/ui/metric-display"
+import { pnlDollars, drawdownPct } from "@/lib/format"
 import { healthLabelMap, pnlVariant, HANDLE_CLASSNAME } from "./shared"
 
 type PortfolioOutputData = {
@@ -40,17 +41,7 @@ function HexagonIcon({ className }: { className?: string }) {
   )
 }
 
-function pnlDisplay(value: number): string {
-  if (value === 0) return "$0"
-  const sign = value > 0 ? "+" : "-"
-  return `${sign}$${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-}
-
-function drawdownDisplay(value: number): string {
-  return `-${Math.abs(value).toFixed(1)}%`
-}
-
-function PortfolioOutputNodeComponent({ data, isConnectable }: NodeProps<PortfolioOutputNode>) {
+function PortfolioOutputNodeComponent({ data, isConnectable, selected }: NodeProps<PortfolioOutputNode>) {
   return (
     <>
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} className={HANDLE_CLASSNAME} />
@@ -62,6 +53,7 @@ function PortfolioOutputNodeComponent({ data, isConnectable }: NodeProps<Portfol
           "w-[220px] bg-bg-card rounded-lg",
           "border-2 border-accent transition-[background-color] duration-150",
           "hover:bg-bg-elevated",
+          selected && "ring-2 ring-accent ring-offset-2 ring-offset-bg-card",
           "shadow-[0_0_12px_var(--accent-glow)]",
         )}
       >
@@ -75,9 +67,9 @@ function PortfolioOutputNodeComponent({ data, isConnectable }: NodeProps<Portfol
         <div className="h-px bg-border mx-3.5" />
 
         <div className="px-3.5 py-2 flex flex-col gap-[5px]">
-          <MetricDisplay label="Net P&L" value={pnlDisplay(data.netPnl)} variant={pnlVariant(data.netPnl)} />
+          <MetricDisplay label="Net P&L" value={pnlDollars(data.netPnl)} variant={pnlVariant(data.netPnl)} />
           <MetricDisplay label="Sharpe" value={data.sharpe.toFixed(2)} />
-          <MetricDisplay label="Max DD" value={drawdownDisplay(data.maxDrawdownPct)} variant="negative" />
+          <MetricDisplay label="Max DD" value={drawdownPct(data.maxDrawdownPct)} variant="negative" />
         </div>
 
         <div className="h-px bg-border mx-3.5" />

@@ -23,4 +23,4 @@ export function pnlVariant(value: number): "default" | "positive" | "negative" {
 
 // ── React Flow Handle styling ───────────────────────────────────────
 
-export const HANDLE_CLASSNAME = "!bg-border-bright !w-2 !h-2 !border-0"
+export const HANDLE_CLASSNAME = "bg-border-bright! w-2! h-2! border-0!"

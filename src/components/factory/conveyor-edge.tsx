@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 
 type ConveyorEdgeData = {
   correlation: number
-  direction?: "left-to-right"
   isCrossCorrelation?: boolean
 }
 
@@ -15,8 +14,9 @@ export type ConveyorEdge = Edge<ConveyorEdgeData, "conveyor">
 type CorrelationTier = "low" | "medium" | "high"
 
 function correlationTier(value: number): CorrelationTier {
-  if (value > 0.7) return "high"
-  if (value >= 0.3) return "medium"
+  const abs = Math.abs(value)
+  if (abs > 0.7) return "high"
+  if (abs >= 0.3) return "medium"
   return "low"
 }
 
@@ -41,20 +41,21 @@ function ConveyorEdgeComponent({
   sourcePosition,
   targetPosition,
   data,
+  selected,
 }: EdgeProps<ConveyorEdge>) {
   const correlation = data?.correlation ?? 0.5
   const isCross = data?.isCrossCorrelation ?? false
   const tier = correlationTier(correlation)
   const strokeColor = tierColorVar[tier]
   const strokeWidth = tierWidthMap[tier]
-  const markerId = `conveyor-arrow-${id}`
+  const markerId = `conveyor-arrow-${tier}`
 
   const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
-    sourcePosition,
     targetX,
     targetY,
+    sourcePosition,
     targetPosition,
   })
 
@@ -82,7 +83,8 @@ function ConveyorEdgeComponent({
         markerEnd={`url(#${markerId})`}
         className={cn(
           "transition-colors duration-150",
-          isCross && "opacity-50",
+          isCross && !selected && "opacity-50",
+          selected && "opacity-100",
         )}
       />
     </>

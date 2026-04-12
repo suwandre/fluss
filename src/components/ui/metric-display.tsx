@@ -25,7 +25,6 @@ export function MetricDisplay({
   return (
     <div
       data-slot="metric-display"
-      aria-label={`${label}: ${value}`}
       className={cn("flex items-center justify-between", className)}
     >
       <span className="text-xs font-medium text-text-muted">{label}</span>

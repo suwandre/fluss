@@ -98,9 +98,9 @@ const initialEdges = [
 
 function useLayoutedGraph() {
   const layoutedNodes = useMemo(() => layoutGraph(initialNodes, initialEdges), [])
-  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
-  return { nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange }
+  const [nodes, , onNodesChange] = useNodesState(layoutedNodes)
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges)
+  return { nodes, onNodesChange, edges, onEdgesChange }
 }
 
 export function FactoryFloor() {

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import type { HealthState } from "@/lib/types/visual"
 import { StatusDot } from "@/components/ui/status-dot"
 import { Button } from "@/components/ui/button"
+import { currencyDisplay, pnlDollars, drawdownPct, timeAgo } from "@/lib/format"
 import { healthLabelMap } from "@/components/factory/shared"
 
 type PortfolioSummaryBarProps = {
@@ -17,15 +18,15 @@ type PortfolioSummaryBarProps = {
   onAddHolding: () => void
 }
 
-function currencyDisplay(value: number): string {
-  return `$${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-}
+type PnlInfo = { text: string; variant: "default" | "positive" | "negative" }
 
-function pnlDisplay(value: number, pct: number): { text: string; variant: "default" | "positive" | "negative" } {
-  if (value === 0) return { text: "$0 (0.0%)", variant: "default" }
+function pnlSummary(value: number, pct: number): PnlInfo {
+  if (value === 0) return { text: "$0 (0.0" + String.fromCharCode(37) + ")", variant: "default" }
   const sign = value > 0 ? "+" : "-"
+  const absCurrency = currencyDisplay(Math.abs(value))
+  const absPct = Math.abs(pct).toFixed(1)
   return {
-    text: `${sign}${currencyDisplay(value)} (${sign}${Math.abs(pct).toFixed(1)}%)`,
+    text: sign + absCurrency + " (" + sign + absPct + "%" + ")",
     variant: value > 0 ? "positive" : "negative",
   }
 }
@@ -34,16 +35,6 @@ const pnlColorMap: Record<"default" | "positive" | "negative", string> = {
   positive: "text-green",
   negative: "text-red",
   default: "text-text",
-}
-
-function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
-  if (seconds < 0) return "just now"
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.floor(minutes / 60)
-  return `${hours}h ago`
 }
 
 type CellProps = {
@@ -71,7 +62,7 @@ export function PortfolioSummaryBar({
   health,
   onAddHolding,
 }: PortfolioSummaryBarProps) {
-  const pnl = pnlDisplay(unrealisedPnl, unrealisedPnlPct)
+  const pnl = pnlSummary(unrealisedPnl, unrealisedPnlPct)
 
   return (
     <div
@@ -102,7 +93,7 @@ export function PortfolioSummaryBar({
 
       <Cell label="Max Drawdown">
         <span className="font-mono text-lg font-medium text-red">
-          -{Math.abs(maxDrawdownPct).toFixed(1)}%
+          {drawdownPct(maxDrawdownPct)}
         </span>
       </Cell>
 

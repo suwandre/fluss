@@ -36,6 +36,7 @@ export function layoutGraph<N extends Node = Node, E extends Edge = Edge>(
 
   return nodes.map((node) => {
     const pos = g.node(node.id)
+    if (!pos) return node
     return {
       ...node,
       position: {

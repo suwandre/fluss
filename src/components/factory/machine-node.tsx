@@ -3,10 +3,12 @@
 import { memo } from "react"
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react"
 import { cn } from "@/lib/utils"
-import type { HealthState, AssetClass, VolatilityLabel } from "@/lib/types/visual"
+import type { AssetClass, VolatilityLabel } from "@/lib/types/visual"
+import type { HealthState } from "@/lib/types/visual"
 import { StatusDot } from "@/components/ui/status-dot"
 import { MetricDisplay } from "@/components/ui/metric-display"
 import { VolatilityBar } from "@/components/ui/volatility-bar"
+import { pnlPercent } from "@/lib/format"
 import { healthBorderMap, healthLabelMap, pnlVariant, HANDLE_CLASSNAME } from "./shared"
 
 type MachineNodeData = {
@@ -35,12 +37,7 @@ function volatilityToFilled(vol: number): number {
   return Math.min(4, Math.max(0, Math.ceil(vol * 4)))
 }
 
-function pnlDisplay(pnl: number): string {
-  if (pnl === 0) return "0.0%"
-  return `${pnl > 0 ? "+" : "-"}${Math.abs(pnl).toFixed(1)}%`
-}
-
-function MachineNodeComponent({ data, isConnectable }: NodeProps<MachineNode>) {
+function MachineNodeComponent({ data, isConnectable, selected }: NodeProps<MachineNode>) {
   return (
     <>
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} className={HANDLE_CLASSNAME} />
@@ -52,6 +49,7 @@ function MachineNodeComponent({ data, isConnectable }: NodeProps<MachineNode>) {
           "w-[220px] bg-bg-card rounded-lg",
           "border-2 transition-[background-color] duration-150",
           "hover:bg-bg-elevated",
+          selected && "ring-2 ring-accent ring-offset-2 ring-offset-bg-card",
           healthBorderMap[data.health],
         )}
       >
@@ -68,7 +66,7 @@ function MachineNodeComponent({ data, isConnectable }: NodeProps<MachineNode>) {
 
         <div className="px-3.5 py-2 flex flex-col gap-[5px]">
           <MetricDisplay label="Weight" value={`${data.weight.toFixed(1)}%`} />
-          <MetricDisplay label="P&L" value={pnlDisplay(data.pnlPct)} variant={pnlVariant(data.pnlPct)} />
+          <MetricDisplay label="P&L" value={pnlPercent(data.pnlPct)} variant={pnlVariant(data.pnlPct)} />
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-text-muted">Volatility</span>
             <VolatilityBar segments={4} filled={volatilityToFilled(data.volatility)} label={data.volatilityLabel} />
