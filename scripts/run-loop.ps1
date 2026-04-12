@@ -3,8 +3,8 @@
 # Claude Code (backed by GLM via z.ai) runs both roles headlessly.
 #
 # Usage:
-#   .\scripts\run-loop.ps1              # runs until all tasks done
-#   .\scripts\run-loop.ps1 -MaxCycles 5 # stop after N task cycles
+#   powershell -ExecutionPolicy Bypass -File .\scripts\run-loop.ps1
+#   powershell -ExecutionPolicy Bypass -File .\scripts\run-loop.ps1 -MaxCycles 5
 
 param(
     [int]$MaxCycles = 999
@@ -26,7 +26,6 @@ function Test-IncompleteTasks {
     return $content -match '\- \[ \]'
 }
 
-# Guard: claude must be available
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     Log "ERROR: 'claude' not found. Run: npm install -g @anthropic-ai/claude-code" "Red"
     exit 1
@@ -47,14 +46,12 @@ while ($cycle -lt $MaxCycles) {
     }
 
     $cycle++
-    $separator = "=" * 50
-    Write-Host $separator -ForegroundColor DarkGray
-    Log "Cycle $cycle — Builder starting..." "Green"
+    $sep = "=" * 50
+    Write-Host $sep -ForegroundColor DarkGray
+    Log "Cycle $cycle - Builder starting..." "Green"
 
     $beforeCommit = Get-HeadCommit
 
-    # --- BUILDER ---
-    # AGENTS.md (builder role) is read automatically by Claude Code.
     claude -p "Builder role. Work on next task." --cwd $repo
 
     if ($LASTEXITCODE -ne 0) {
@@ -65,15 +62,14 @@ while ($cycle -lt $MaxCycles) {
     $afterCommit = Get-HeadCommit
 
     if ($afterCommit -eq $beforeCommit) {
-        Log "Builder ran but made no commit. Stopping — check output above." "Yellow"
+        Log "Builder ran but made no commit. Stopping - check output above." "Yellow"
         break
     }
 
     Log "Builder committed: $(Get-HeadMsg)" "Green"
     Write-Host ""
 
-    # --- REVIEWER ---
-    Log "Cycle $cycle — Reviewer starting..." "Cyan"
+    Log "Cycle $cycle - Reviewer starting..." "Cyan"
 
     claude -p "Reviewer role. Check the latest commit." --cwd $repo
 
@@ -83,7 +79,7 @@ while ($cycle -lt $MaxCycles) {
 
     $reviewMsg = Get-HeadMsg
     if ($reviewMsg -match "^fix:") {
-        Log "Reviewer found issues — fixed: $reviewMsg" "Yellow"
+        Log "Reviewer found issues - fixed: $reviewMsg" "Yellow"
     } else {
         Log "Reviewer: LGTM" "Green"
     }
