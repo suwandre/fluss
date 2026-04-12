@@ -37,7 +37,7 @@ function hasIncompleteTasks(): boolean {
 }
 
 function runClaude(prompt: string): number {
-  const result = spawnSync("claude", ["-p", prompt, "--cwd", repo], {
+  const result = spawnSync("claude", ["-p", prompt], {
     stdio: "inherit",
     cwd: repo,
   });

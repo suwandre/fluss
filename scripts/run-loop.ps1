@@ -52,7 +52,7 @@ while ($cycle -lt $MaxCycles) {
 
     $beforeCommit = Get-HeadCommit
 
-    claude -p "Builder role. Work on next task." --cwd $repo
+    claude -p "Builder role. Work on next task."
 
     if ($LASTEXITCODE -ne 0) {
         Log "Builder exited with error ($LASTEXITCODE). Stopping." "Red"
@@ -71,7 +71,7 @@ while ($cycle -lt $MaxCycles) {
 
     Log "Cycle $cycle - Reviewer starting..." "Cyan"
 
-    claude -p "Reviewer role. Check the latest commit." --cwd $repo
+    claude -p "Reviewer role. Check the latest commit."
 
     if ($LASTEXITCODE -ne 0) {
         Log "Reviewer exited with error ($LASTEXITCODE). Continuing anyway." "Yellow"
