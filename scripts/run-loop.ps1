@@ -21,7 +21,7 @@ function Log($msg, $color = "White") {
 function Get-HeadCommit { git rev-parse HEAD }
 function Get-HeadMsg    { git log -1 --pretty="%s" }
 
-function Has-IncompleteTasks {
+function Test-IncompleteTasks {
     $content = Get-Content "tasks/TASKS.md" -Raw
     return $content -match '\- \[ \]'
 }
@@ -41,7 +41,7 @@ $cycle = 0
 
 while ($cycle -lt $MaxCycles) {
 
-    if (-not (Has-IncompleteTasks)) {
+    if (-not (Test-IncompleteTasks)) {
         Log "All tasks complete. Loop done." "Green"
         break
     }
