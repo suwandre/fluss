@@ -58,7 +58,7 @@
 - [x] **1.7.2** `<ConveyorEdge />` — custom React Flow edge, static SVG with dashed stroke (no animation yet) _(V §4.2)_
 - [x] **1.7.3** `<PortfolioOutputNode />` — aggregate output node with accent border and inline SVG hexagon icon _(V §4.3)_
 - [x] **1.7.4** `<PortfolioSummaryBar />` — top metrics bar with hardcoded values, "+" button placeholder _(V §4.8)_
-- [ ] **1.7.5** `src/components/factory/layout-engine.ts` — dagre auto-layout (left-to-right, nodesep 60, ranksep 200) _(V §7.3)_
+- [x] **1.7.5** `src/components/factory/layout-engine.ts` — dagre auto-layout (left-to-right, nodesep 60, ranksep 200) _(V §7.3)_
 - [ ] **1.7.6** `<FactoryFloor />` — React Flow canvas composing MachineNode, ConveyorEdge, PortfolioOutputNode with dot grid background _(V §4.4, §7.4, §7.5)_
 
 ### 1.8 Page composition & validation
