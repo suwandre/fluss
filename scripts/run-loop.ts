@@ -55,14 +55,24 @@ function countTasks(): { done: number; total: number } {
 // up being passed to claude itself. Resolving the full path and passing it
 // directly to spawn avoids this entirely.
 function resolveBin(name: string): string {
-  const cmd = process.platform === "win32" ? `where ${name}` : `which ${name}`;
+  if (process.platform === "win32") {
+    const npmGlobal = `${process.env.APPDATA}\\npm\\${name}.cmd`;
+    try {
+      execSync(`"${npmGlobal}" --version`, {
+        stdio: "ignore",
+        shell: "cmd.exe",
+      });
+      return npmGlobal;
+    } catch {
+      log(`ERROR: '${npmGlobal}' not found or not executable.`, "red");
+      process.exit(1);
+    }
+  }
   try {
-    const result = execSync(cmd, { encoding: "utf8" })
+    return execSync(`which ${name}`, { encoding: "utf8" })
       .trim()
       .split("\n")[0]
       .trim();
-    if (!result) throw new Error("empty");
-    return result;
   } catch {
     log(`ERROR: '${name}' not found in PATH.`, "red");
     process.exit(1);
