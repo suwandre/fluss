@@ -243,8 +243,13 @@ Code comparison against draft. Fixes applied:
   - Gotcha: `^IRX` (13-week T-bill) used as proxy for 2Y Treasury since Yahoo's 2Y symbol (`^UST2Y`) is unreliable — arch says "2Y" but free API coverage varies.
   - Build passes clean (known Mastra PG non-blocking error only).
 
+### 3.3.2 — RiskOutput Zod schema (done)
+- Already defined in `risk.ts` lines 12-26 as part of 3.3.1.
+- Fields: `stress_results` (scenario, simulated_drawdown_pct, recovery_days nullable), `var_95`, `verdict` (approve/approve_with_caveats/reject), `caveats`, `risk_summary` — matches architecture §5.4 exactly.
+- Exported type via `z.infer`. No new code needed.
+
 ## Next Task
-**3.3.2** — Define `RiskOutput` Zod schema (already complete — defined in risk.ts as part of 3.3.1)
+**3.3.3** — Implement `runHistoricalStressTest(holdings, scenario)` tool (already complete — implemented in risk.ts as part of 3.3.1)
 
 ---
 
