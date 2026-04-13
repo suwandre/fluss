@@ -226,6 +226,8 @@ Code comparison against draft. Fixes applied:
 
 - **3.1.2** — BottleneckOutput Zod schema already defined in `bottleneck.ts` (lines 12-28) as part of 3.1.1. Matches architecture §5.2 exactly: `primary_bottleneck` (ticker, reason, severity, metric), `secondary_bottlenecks` array, `analysis` string. Exported type via `z.infer`. No new code needed.
 
+- **3.1.3** — `getCorrelationMatrix` tool verified complete (already implemented in 3.1.1, lines 61-130 of bottleneck.ts). Fetches daily returns for all tickers, aligns by date, pairwise Pearson correlation via `simple-statistics.sampleCorrelation`, edge-case guard for <10 overlapping points. Build passes clean.
+
 ## Next Task
-**3.1.3** — Implement `getCorrelationMatrix(tickers)` tool (already implemented in bottleneck.ts as part of 3.1.1)
+**3.1.4** — Implement `getVolatilityContribution(ticker)` tool (already implemented in bottleneck.ts as part of 3.1.1)
 
