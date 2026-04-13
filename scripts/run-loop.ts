@@ -49,6 +49,16 @@ function countTasks(): { done: number; total: number } {
   return { done, total };
 }
 
+interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
+function fmtTokens(u: TokenUsage): string {
+  return `in:${u.inputTokens.toLocaleString()}  out:${u.outputTokens.toLocaleString()}  $${u.costUsd.toFixed(4)}`;
+}
+
 // ── Resolve binary path once at startup ───────────────────────────────────────
 // Bare "claude" with shell:true on Windows causes cmd.exe to mangle the args
 // array. Resolving the full .cmd path avoids this.
@@ -83,18 +93,19 @@ const claudeBin = resolveBin("claude");
 // Claude Code emits JSONL when --output-format stream-json is used.
 // Each line is one of: system | assistant | result
 // assistant.message.content is an array of blocks: thinking | text | tool_use
+// Returns TokenUsage if this was a `result` event, otherwise null.
 function handleStreamEvent(
   raw: string,
   rolePrefix: string,
   touch: () => void,
-): void {
+): TokenUsage | null {
   let ev: Record<string, unknown>;
   try {
     ev = JSON.parse(raw);
   } catch {
     // Not JSON (e.g. plain text fallback) — print as-is.
     if (raw.trim()) process.stdout.write(`${rolePrefix} ${raw}\n`);
-    return;
+    return null;
   }
 
   const type = ev.type as string | undefined;
@@ -126,31 +137,29 @@ function handleStreamEvent(
         touch();
       }
     }
-  } else if (type === "result") {
-    // Final event — show token usage and cost.
+    return null;
+  }
+
+  if (type === "result") {
     const usage = ev.usage as
       | { input_tokens?: number; output_tokens?: number }
       | undefined;
-    const cost = ev.cost_usd as number | undefined;
-    const parts: string[] = [];
-    if (usage?.input_tokens !== undefined)
-      parts.push(`in:${usage.input_tokens}`);
-    if (usage?.output_tokens !== undefined)
-      parts.push(`out:${usage.output_tokens}`);
-    if (cost !== undefined) parts.push(`$${cost.toFixed(4)}`);
-    if (parts.length) {
-      process.stdout.write(`  ${colors.gray("📊 " + parts.join("  "))}\n`);
-    }
+    const costUsd = (ev.cost_usd as number | undefined) ?? 0;
+    const inputTokens = usage?.input_tokens ?? 0;
+    const outputTokens = usage?.output_tokens ?? 0;
     touch();
+    return { inputTokens, outputTokens, costUsd };
   }
+
   // "system" and "user" events are informational — skip them.
+  return null;
 }
 
-/** Streams Claude output live to the terminal. Resolves with exit code. */
+/** Streams Claude output live to the terminal. Resolves with exit code + token usage. */
 function runClaude(
   role: "Builder" | "Reviewer",
   prompt: string,
-): Promise<number> {
+): Promise<{ code: number; tokens: TokenUsage }> {
   return new Promise((resolve) => {
     const roleColor = role === "Builder" ? "green" : "cyan";
     const rolePrefix = colors[roleColor](`[${role}]`);
@@ -158,9 +167,6 @@ function runClaude(
     log(`${role} agent starting...`, roleColor);
     divider("·", "gray");
 
-    // --output-format stream-json emits JSONL events in real-time (thinking,
-    // tool calls, text, token counts). Prompt piped via stdin to avoid
-    // Windows shell mangling of -- tokens and && separators in the text.
     const proc = spawn(
       claudeBin,
       [
@@ -222,12 +228,16 @@ function runClaude(
     }, 5_000);
 
     let jsonBuf = "";
+    let callTokens: TokenUsage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+
     proc.stdout.on("data", (chunk: Buffer) => {
       jsonBuf += chunk.toString();
       const lines = jsonBuf.split("\n");
       jsonBuf = lines.pop() ?? "";
       for (const line of lines) {
-        if (line.trim()) handleStreamEvent(line.trim(), rolePrefix, touch);
+        if (!line.trim()) continue;
+        const usage = handleStreamEvent(line.trim(), rolePrefix, touch);
+        if (usage) callTokens = usage;
       }
     });
 
@@ -238,9 +248,16 @@ function runClaude(
 
     proc.on("close", (code) => {
       clearInterval(heartbeat);
-      if (jsonBuf.trim()) handleStreamEvent(jsonBuf.trim(), rolePrefix, touch);
+      if (jsonBuf.trim()) {
+        const usage = handleStreamEvent(jsonBuf.trim(), rolePrefix, touch);
+        if (usage) callTokens = usage;
+      }
+      // Print per-call token summary.
+      process.stdout.write(
+        `  ${colors.gray("📊 this call: " + fmtTokens(callTokens))}\n`,
+      );
       divider("·", "gray");
-      resolve(code ?? 1);
+      resolve({ code: code ?? 1, tokens: callTokens });
     });
   });
 }
@@ -272,6 +289,13 @@ divider("═");
 console.log("");
 
 let cycle = 0;
+const sessionTokens: TokenUsage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+
+function addTokens(acc: TokenUsage, t: TokenUsage): void {
+  acc.inputTokens += t.inputTokens;
+  acc.outputTokens += t.outputTokens;
+  acc.costUsd += t.costUsd;
+}
 
 while (cycle < maxCycles) {
   if (!hasIncompleteTasks()) {
@@ -290,7 +314,7 @@ while (cycle < maxCycles) {
   const before = git("rev-parse HEAD");
   log(`HEAD before build: ${before.slice(0, 7)}`, "gray");
 
-  const buildExit = await runClaude(
+  const { code: buildCode, tokens: buildTokens } = await runClaude(
     "Builder",
     `You are in Builder role (see AGENTS.md). ONE TASK ONLY this cycle.
 
@@ -298,9 +322,11 @@ Find the FIRST "- [ ]" in tasks/TASKS.md. Implement that single task. Do not tou
 
 When done: git add --all && git commit -m 'type(scope): description' && git push. Then STOP.`,
   );
+  addTokens(sessionTokens, buildTokens);
+  log(`Session tokens: ${fmtTokens(sessionTokens)}`, "gray");
 
-  if (buildExit !== 0) {
-    log(`Builder exited with error (${buildExit}). Stopping.`, "red");
+  if (buildCode !== 0) {
+    log(`Builder exited with error (${buildCode}). Stopping.`, "red");
     break;
   }
 
@@ -323,7 +349,7 @@ When done: git add --all && git commit -m 'type(scope): description' && git push
   console.log("");
 
   // ── Reviewer ─────────────────────────────────────────────────────────────────
-  const reviewExit = await runClaude(
+  const { code: reviewCode, tokens: reviewTokens } = await runClaude(
     "Reviewer",
     `You are in Reviewer role (see AGENTS.md). Inspect the LATEST commit only.
 
@@ -332,10 +358,12 @@ If clean: output exactly: LGTM
 
 Then STOP.`,
   );
+  addTokens(sessionTokens, reviewTokens);
+  log(`Session tokens: ${fmtTokens(sessionTokens)}`, "gray");
 
-  if (reviewExit !== 0) {
+  if (reviewCode !== 0) {
     log(
-      `Reviewer exited with error (${reviewExit}). Continuing anyway.`,
+      `Reviewer exited with error (${reviewCode}). Continuing anyway.`,
       "yellow",
     );
   }
@@ -358,4 +386,5 @@ divider("═");
 log(`Loop finished after ${cycle} cycle(s).`, "cyan");
 const { done: df, total: tf } = countTasks();
 log(`Final task status: ${df}/${tf} complete`, "gray");
+log(`Total tokens used: ${fmtTokens(sessionTokens)}`, "gray");
 divider("═");
