@@ -116,6 +116,12 @@ Code comparison against draft. Fixes applied:
 - Gotcha: `toAISdkStream()` returns `ReadableStream` which isn't typed as `AsyncIterable` in strict TS. Used `getReader()`/`reader.read()` loop instead of `for await...of`
 - Gotcha: Mastra `PostgresStore` throws `MASTRA_STORAGE_PG_CREATE_TABLE_FAILED` at build time when DB isn't reachable — non-blocking, route still compiles
 
+### Phase 2.2.4 — Save agent run to DB (done)
+- After stream completes, inserts a row into `agent_runs` with: `runId` (UUID), `agentName` ("monitor"), `input` (prompt + portfolio data), `output` (parsed JSON from accumulated text-delta chunks, falls back to `{ raw }` if parse fails), `reasoning` (full raw text), `tokensUsed` (null for now), `durationMs` (wall-clock from request start)
+- Accumulates text via `text-delta` chunks in `value.delta` — AI SDK v6 uses `text-delta` not `text`
+- DB insert runs inside `createUIMessageStream.execute` after stream loop finishes (guarantees all chunks collected)
+- Build passes clean (MASTRA_STORAGE_PG_CREATE_TABLE_FAILED is known non-blocking)
+
 ## Next Task
-**2.2.4** — Save agent run to `agent_runs` table on completion
+**2.3.1** — `<AgentStep />` component
 
