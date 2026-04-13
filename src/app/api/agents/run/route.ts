@@ -1,14 +1,12 @@
-import { type UIMessageChunk, createUIMessageStream, createUIMessageStreamResponse } from "ai";
-import { toAISdkStream } from "@mastra/ai-sdk";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { randomUUID } from "crypto";
 import { mastra } from "@/lib/mastra";
-import { MonitorOutput } from "@/lib/agents/monitor";
 import { db } from "@/lib/db";
 import { agentRuns, holdings } from "@/lib/db/schema";
-import { getBatchPrices } from "@/lib/market";
 
 export async function POST(req: Request) {
-  // Fetch current holdings from DB
+  // Quick check — workflow's fetchMarketSnapshot step also checks, but this
+  // gives an immediate 400 instead of a long-running stream that fails late.
   const rows = await db.select().from(holdings);
 
   if (rows.length === 0) {
@@ -18,91 +16,63 @@ export async function POST(req: Request) {
     );
   }
 
-  // Build portfolio context for the agent
-  const priceMap = await getBatchPrices(
-    rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
-  );
-
-  const portfolioData = rows.map((row) => {
-    const snapshot = priceMap.get(row.ticker);
-    const currentPrice = snapshot?.price ?? null;
-    const marketValue = currentPrice != null ? currentPrice * row.quantity : null;
-    const pnlPct =
-      currentPrice != null && row.avgCost > 0
-        ? ((currentPrice - row.avgCost) / row.avgCost) * 100
-        : null;
-
-    return {
-      ticker: row.ticker,
-      assetClass: row.assetClass,
-      quantity: row.quantity,
-      avgCost: row.avgCost,
-      currentPrice,
-      marketValue,
-      pnlPct,
-    };
-  });
-
-  const prompt = `Analyze this portfolio and assess its health:\n${JSON.stringify(portfolioData, null, 2)}`;
   const runId = randomUUID();
   const startedAt = Date.now();
 
-  // Stream Monitor Agent via Mastra with structured output
-  const agent = mastra.getAgent("monitorAgent");
-  const agentStream = await agent.stream(prompt, {
-    structuredOutput: { schema: MonitorOutput },
-  });
-
-  const convertedStream = toAISdkStream(agentStream, { from: "agent" });
-  const reader = convertedStream.getReader();
-
-  // Collect text chunks to reconstruct full output for persistence
-  const textChunks: string[] = [];
+  // Create and start the full portfolio factory workflow
+  const workflow = mastra.getWorkflow("portfolioFactoryWorkflow");
+  const run = await workflow.createRun({ runId });
+  const runOutput = run.stream({ inputData: {} });
 
   const uiMessageStream = createUIMessageStream({
     execute: async ({ writer }) => {
-      // Send runId as a custom data part so the client can display it
       writer.write({
         type: "data-run-id" as const,
         data: { runId },
       } as Parameters<typeof writer.write>[0]);
 
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          // Collect text-delta content for DB persistence
-          if (value?.type === "text-delta" && typeof value.delta === "string") {
-            textChunks.push(value.delta);
+        // Forward workflow stream events to the client as custom data parts.
+        // The client (useAgentRun hook) parses these to update the timeline.
+        const reader = runOutput.fullStream.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            writer.write({
+              type: "data-workflow-event" as const,
+              data: value,
+            } as Parameters<typeof writer.write>[0]);
           }
-          // Type assertion: @mastra/ai-sdk vendors AI SDK v5 types which are
-          // structurally compatible with ai@6.x UIMessageChunk at runtime.
-          writer.write(value as UIMessageChunk);
+        } finally {
+          reader.releaseLock();
         }
-      } finally {
-        reader.releaseLock();
+
+        // Persist result to DB
+        const result = await runOutput.result;
+        const durationMs = Date.now() - startedAt;
+
+        if (result.status === "success" && result.result) {
+          await db.insert(agentRuns).values({
+            runId,
+            agentName: "workflow",
+            input: { holdingsCount: rows.length },
+            output: result.result as Record<string, unknown>,
+            reasoning: JSON.stringify(result.result, null, 2),
+            tokensUsed: null,
+            durationMs,
+          });
+        }
+      } catch (err) {
+        writer.write({
+          type: "error" as const,
+          errorText:
+            err instanceof Error
+              ? err.message
+              : "Workflow execution failed",
+        } as Parameters<typeof writer.write>[0]);
       }
-
-      // Save agent run to DB after streaming completes
-      const durationMs = Date.now() - startedAt;
-      const fullText = textChunks.join("");
-
-      let parsedOutput: Record<string, unknown> = {};
-      try {
-        parsedOutput = JSON.parse(fullText);
-      } catch {
-        parsedOutput = { raw: fullText };
-      }
-
-      await db.insert(agentRuns).values({
-        runId,
-        agentName: "monitor",
-        input: { prompt, portfolioData },
-        output: parsedOutput,
-        reasoning: fullText,
-        tokensUsed: null,
-        durationMs,
-      });
     },
   });
 

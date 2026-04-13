@@ -264,7 +264,7 @@ Code comparison against draft. Fixes applied:
 - Registered on risk agent. No new code needed.
 
 ## Next Task
-**3.4.2** — Wire `/api/agents/run` to use the full workflow instead of Monitor only
+**3.4.3** — All four agent steps stream sequentially into the panel — `<AgentTimeline />` shows full run progression
 
 ---
 
@@ -291,6 +291,18 @@ Code comparison against draft. Fixes applied:
   - `WorkflowOutputSchema` extended with `correlationMatrix: CorrelationMatrixSchema` — both `escalationStep` and `statusUpdateStep` include it via `getStepResult(computeCorrelationStep)`.
   - Bottleneck agent's `getCorrelationMatrix` tool refactored to use shared `computeCorrelationMatrix()` — removes ~50 lines of duplicated logic. `fetchDailyReturns` helper remains in bottleneck.ts for `getVolatilityContribution` tool.
   - Workflow chain: `fetchMarketSnapshot → computeCorrelationStep → monitorStep → branch(escalation | statusUpdate)`
+  - Build passes clean (known Mastra PG non-blocking error only)
+
+- **3.4.2** — Wired `/api/agents/run` to use full workflow instead of Monitor only (done)
+  - Replaced single `monitorAgent.stream()` call with `mastra.getWorkflow("portfolioFactoryWorkflow").createRun().stream()`
+  - Route now runs the complete pipeline: fetchMarket → computeCorrelation → monitor → conditional branch (escalation or status-update)
+  - Workflow events forwarded to client via `data-workflow-event` custom SSE data parts. Each `WorkflowStreamEvent` (`workflow-step-start`, `workflow-step-result`, `workflow-finish`) is sent as-is for the client hook to parse (client update in 3.4.3)
+  - `data-run-id` custom event preserved for run ID badge
+  - DB persistence updated: `agentName: "workflow"`, output = full `WorkflowOutputSchema` (monitor + bottleneck + redesign + risk + correlationMatrix)
+  - Removed imports: `toAISdkStream` (`@mastra/ai-sdk`), `MonitorOutput`, `getBatchPrices`, `UIMessageChunk` — no longer needed since workflow handles data fetching internally
+  - Holdings check kept at route level (immediate 400 before starting workflow)
+  - Gotcha: `workflow.createRun({ runId })` is async — must await before calling `.stream()`
+  - Gotcha: `run.stream({ inputData: {} })` is synchronous — returns `WorkflowRunOutput` immediately. `runOutput.fullStream` is `ReadableStream<WorkflowStreamEvent>`, `runOutput.result` is `Promise<WorkflowResult>` that resolves after stream completes
   - Build passes clean (known Mastra PG non-blocking error only)
 
 ---
