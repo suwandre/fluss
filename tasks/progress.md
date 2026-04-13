@@ -153,6 +153,10 @@ Code comparison against draft. Fixes applied:
 - Removed `"use client"` explicit import since page already had it
 - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 2.3 — Agent Reasoning UI (complete)
+
+- **2.3.4** — Confirmed both `<Collapsible />` and `<ScrollArea />` already installed as prerequisites during 2.3.1 and 2.3.3. No new installs needed. Marked complete.
+
 ## Next Task
-**2.3.4** — Install shadcn components for agent panel (ScrollArea already done, Collapsible already done — may be skippable)
+**2.4.1** — Wire `<AgentReasoningPanel />` to consume the `/api/agents/run` stream
 
