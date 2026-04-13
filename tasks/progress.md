@@ -82,6 +82,11 @@ Code comparison against draft. Fixes applied:
 - Machine node name separator: `·` → `—` (em dash, per draft's `&mdash;`)
 - Gotcha: pre-existing type error in `scripts/run-loop.ts` (`shell: true` — bool not assignable to string in ExecSyncOptions); fixed to pass shell path string
 
+### Phase 1.8.3 — Build validation (done)
+- `bun next build`: compiled successfully, TypeScript clean, all 5 routes generated (1 static, 4 dynamic)
+- `bun next start`: server ready in 143ms on localhost:3000
+- Gotcha: `memcache.go` credential errors in output are from a Kubernetes context in the shell environment — not app-related, safe to ignore
+
 ## Next Task
-**1.8.3** — Validate `bun next build && bun next start` works on target deployment
+**2.1.1** — Install Mastra packages: `@mastra/core`, `@mastra/pg`
 
