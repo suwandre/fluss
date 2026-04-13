@@ -1,7 +1,7 @@
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import * as ss from "simple-statistics";
+
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices, getHistory } from "@/lib/market";
@@ -26,11 +26,6 @@ export const RiskOutput = z.object({
 export type RiskOutput = z.infer<typeof RiskOutput>;
 
 // --- Helpers ---
-
-function assetClassForTicker(ticker: string): AssetClass {
-  if (ticker.includes("-")) return "crypto";
-  return "equity";
-}
 
 // Historical stress scenarios from architecture §5.4
 const STRESS_SCENARIOS = {
