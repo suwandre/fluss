@@ -96,7 +96,7 @@
 ### 2.4 Live data wiring
 
 - [x] **2.4.1** Wire `<AgentReasoningPanel />` to consume the `/api/agents/run` stream (Vercel AI SDK `useChat` or `useAsyncCompletion`) _(A §7)_
-- [ ] **2.4.2** Machine node border colors reflect Monitor Agent's health verdict per holding _(V §10, Phase 2)_
+- [x] **2.4.2** Machine node border colors reflect Monitor Agent's health verdict per holding _(V §10, Phase 2)_
 - [ ] **2.4.3** `<PortfolioSummaryBar />` — wire total value, P&L, health indicator to Monitor output data _(V §4.8)_
 
 ### 2.5 Phase 2 validation

@@ -17,6 +17,7 @@ import { MachineNode } from "./machine-node"
 import { ConveyorEdge } from "./conveyor-edge"
 import { PortfolioOutputNode } from "./portfolio-output-node"
 import { layoutGraph } from "./layout-engine"
+import type { HealthState } from "@/lib/types/visual"
 
 const nodeTypes: NodeTypes = {
   machine: MachineNode,
@@ -96,6 +97,18 @@ const initialEdges = [
   { id: "btc-output", type: "conveyor" as const, source: "btc", target: "output", data: { correlation: 0.78 } },
 ]
 
+/** Map from lowercase ticker → node id */
+const TICKER_TO_NODE_ID: Record<string, string> = {
+  aapl: "aapl",
+  msft: "msft",
+  btc: "btc",
+}
+
+export interface FactoryFloorProps {
+  assetHealth?: Record<string, HealthState> | null
+  globalHealth?: HealthState | null
+}
+
 function useLayoutedGraph() {
   const layoutedNodes = useMemo(() => layoutGraph(initialNodes, initialEdges), [])
   const [nodes, , onNodesChange] = useNodesState(layoutedNodes)
@@ -103,12 +116,35 @@ function useLayoutedGraph() {
   return { nodes, onNodesChange, edges, onEdgesChange }
 }
 
-export function FactoryFloor() {
+export function FactoryFloor({ assetHealth, globalHealth }: FactoryFloorProps) {
   const { nodes, onNodesChange, edges, onEdgesChange } = useLayoutedGraph()
+
+  // Derive nodes with updated health from agent output
+  const nodesWithHealth = useMemo(() => {
+    if (!assetHealth && !globalHealth) return nodes
+
+    return nodes.map((node) => {
+      const data = node.data as Record<string, unknown>
+
+      // Machine nodes: per-ticker health from asset_health map
+      if (node.type === "machine" && assetHealth) {
+        const key = (data.ticker as string).toLowerCase()
+        const health = assetHealth[key]
+        if (health) return { ...node, data: { ...data, health } }
+      }
+
+      // Output node: global health
+      if (node.type === "portfolioOutput" && globalHealth) {
+        return { ...node, data: { ...data, health: globalHealth } }
+      }
+
+      return node
+    }) as typeof nodes
+  }, [nodes, assetHealth, globalHealth])
 
   return (
     <ReactFlow
-      nodes={nodes}
+      nodes={nodesWithHealth}
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}

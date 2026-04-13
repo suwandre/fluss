@@ -170,6 +170,17 @@ Code comparison against draft. Fixes applied:
   - Abort handling: AbortController ref cancels in-flight runs on re-trigger
   - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 2.4.2 — Machine node border colors from Monitor Agent health (done)
+
+- `FactoryFloor` now accepts `assetHealth` (Record<string, HealthState>) and `globalHealth` (HealthState) props
+- `page.tsx` derives `assetHealth` map from `monitorOutput.asset_health` (lowercase ticker keys) via `useMemo`
+- Passes `globalHealth` from `monitorOutput.health_status` to `FactoryFloor`
+- Inside `FactoryFloor`: `nodesWithHealth` useMemo overlays per-ticker health onto machine node data, and global health onto the portfolio output node
+- `MachineNode` already uses `healthBorderMap[data.health]` for border color — no component changes needed, the data just flows in now
+- `as typeof nodes` cast needed because spread + Record<string, unknown> widens the discriminated union type
+- Removed unused `TICKER_TO_NODE_ID` constant (was dead code from initial scaffold — keeping for now as Phase 3 may need it for dynamic node creation)
+- Build passes clean
+
 ## Next Task
-**2.4.2** — Machine node border colors reflect Monitor Agent's health verdict per holding
+**2.4.3** — Wire `<PortfolioSummaryBar />` to Monitor output data
 
