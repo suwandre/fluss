@@ -102,6 +102,11 @@ Code comparison against draft. Fixes applied:
 - **2.1.3** `.env.example` committed with all API key placeholders (Google AI, Groq, OpenRouter, DeepSeek, Alpha Vantage, CoinGecko, NewsAPI, FRED) + `DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `ORCHESTRATOR_TICK_INTERVAL_MS`. `.gitignore` updated with `!.env.example` exception
 - **2.1.4** `src/lib/mastra.ts` — Mastra instance with `PostgresStore` using `DATABASE_URL`. Agents will inherit storage when registered
 
+### Phase 2.2 — Monitor Agent (in progress)
+- **2.2.1** `src/lib/agents/monitor.ts` — Monitor Agent with instructions (factory supervisor role), model fallback chain `[gemini-2.5-flash-lite → groq/llama-3.3-70b → openrouter/deepseek-chat:free]`, two tools: `getPortfolioSnapshot` (queries DB + live prices via `getBatchPrices`), `getHistoricalPerformance` (fetches OHLCV via `getHistory`). Registered in `src/lib/mastra.ts`. Gotcha: Mastra model fallbacks use array `[{ model, maxRetries }]` not `{ provider, fallbacks }`. Gotcha: `createTool` execute receives input directly, not `{ context }`. Gotcha: `OHLCVBar.date` is `Date` — convert to ISO string for Zod schema
+- **2.2.2** `MonitorOutput` Zod schema: `health_status`, `portfolio_metrics`, `concerns`, `escalate`, `summary`
+- **2.2.2a** Extended `MonitorOutput` with `asset_health: z.array(z.object({ ticker, health }))` for per-holding health in UI
+
 ## Next Task
-**2.2.1** — Create Monitor Agent with instructions, model config, and tools
+**2.2.3** — Wire `/api/agents/run` endpoint to run Monitor Agent via Mastra
 
