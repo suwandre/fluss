@@ -264,7 +264,25 @@ Code comparison against draft. Fixes applied:
 - Registered on risk agent. No new code needed.
 
 ## Next Task
-**3.4.1** — Create `src/lib/orchestrator/workflow.ts` — Mastra workflow
+**3.4.1a** — Add correlation matrix step to workflow
+
+---
+
+### Phase 3.4 — Workflow orchestration (in progress)
+
+- **3.4.1** — Created `src/lib/orchestrator/workflow.ts` — Mastra workflow (done)
+  - `portfolioFactoryWorkflow`: 4 steps + conditional branch, registered in `src/lib/mastra.ts`
+  - **fetchMarketSnapshot** step — queries DB holdings, fetches live prices via `getBatchPrices`, builds portfolio context with tickers/totalValue/totalCost
+  - **monitor** step — calls `monitorAgent.generate()` with structured output (`MonitorOutput` schema)
+  - **branch** on `monitorResult.health_status`:
+    - Warning/critical → **escalationPath** step: runs bottleneck → redesign → risk agents sequentially, each with context from prior steps. Builds prompts from `getStepResult(fetchMarketSnapshot)` portfolio data + previous agent outputs. Returns full `WorkflowOutput` (all 4 agent outputs)
+    - Nominal → **statusUpdate** step: returns monitor output with null bottleneck/redesign/risk
+  - Workflow output schema: `{ monitor: MonitorOutput, bottleneck: BottleneckOutput | null, redesign: RedesignOutput | null, risk: RiskOutput | null }`
+  - Registered in `src/lib/mastra.ts` as `workflows: { portfolioFactoryWorkflow }`
+  - Gotcha: Mastra `branch()` takes `Array<[ConditionFunction, Step]>` — only ONE step runs per branch. For multi-step escalation path, wrapped bottleneck → redesign → risk into single `escalationStep` that calls agents via dynamic `import()` (avoids potential circular deps at module load)
+  - Gotcha: `agent.generate()` with `structuredOutput` returns `FullOutput<T>` — structured output is in `result.object`, not `result.structuredOutput`
+  - Gotcha: Mastra `PostgresStore` init error at build time (DB unreachable) is known non-blocking — build still succeeds
+  - Build passes clean
 
 ---
 
