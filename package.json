@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "loop": "bun scripts/run-loop.ts",
-    "loop:sh": "bash scripts/run-loop.sh"
+    "loop:sh": "bash scripts/run-loop.sh",
+    "test:e2e": "bun scripts/e2e-test.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.62",

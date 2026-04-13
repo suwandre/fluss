@@ -195,6 +195,17 @@ Code comparison against draft. Fixes applied:
 - When no monitor output: falls back to zeroed values with "nominal" health
 - Build passes clean
 
+### Phase 2.5 — Phase 2 validation (in progress)
+
+- **2.5.1** — End-to-end test script created (done)
+  - `scripts/e2e-test.ts` — automated integration test covering the full Phase 2 pipeline
+  - Steps: health check → cleanup holdings → add 3 test holdings (AAPL equity, MSFT equity, BTC crypto) → verify in DB → trigger agent run via POST `/api/agents/run` → read SSE stream → validate Monitor output JSON schema → validate `asset_health` per-ticker entries → cleanup
+  - Validates: `health_status` (nominal/warning/critical), `portfolio_metrics` (total_value, unrealised_pnl_pct, sharpe_ratio, max_drawdown_pct), `concerns` array, `escalate` boolean, `summary` string, `asset_health` array with per-ticker health for node border updates
+  - `bun run test:e2e` added to package.json scripts
+  - Usage: `bun scripts/e2e-test.ts [baseUrl]` (defaults to http://localhost:3000)
+  - Requires: dev server running, DB up, API keys configured
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**2.5.1** — End-to-end test: add holdings → trigger agent run → see Monitor output stream into panel → node borders update
+**3.0.1** — Install `simple-statistics` for correlation matrices, covariance, percentiles, volatility calculations
 

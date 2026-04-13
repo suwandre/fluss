@@ -101,7 +101,7 @@
 
 ### 2.5 Phase 2 validation
 
-- [ ] **2.5.1** End-to-end test: add holdings → trigger agent run → see Monitor output stream into panel → node borders update
+- [x] **2.5.1** End-to-end test: add holdings → trigger agent run → see Monitor output stream into panel → node borders update
 
 ---
 
