@@ -107,6 +107,15 @@ Code comparison against draft. Fixes applied:
 - **2.2.2** `MonitorOutput` Zod schema: `health_status`, `portfolio_metrics`, `concerns`, `escalate`, `summary`
 - **2.2.2a** Extended `MonitorOutput` with `asset_health: z.array(z.object({ ticker, health }))` for per-holding health in UI
 
+### Phase 2.2.3 — Agent run API route (done)
+- `POST /api/agents/run` — fetches holdings from DB, builds portfolio context with live prices via `getBatchPrices`, streams Monitor Agent output with structured output (`MonitorOutput` schema)
+- Uses `mastra.getAgent("monitorAgent").stream()` + `toAISdkStream()` from `@mastra/ai-sdk` + `createUIMessageStream`/`createUIMessageStreamResponse` from `ai`
+- Installed `@mastra/ai-sdk@1.3.3` for `toAISdkStream()` interop
+- Returns 400 if no holdings in DB
+- Gotcha: `@mastra/ai-sdk` vendors AI SDK v5 types internally; `ai@6.x` has different `UIMessageChunk` types. Used `value as UIMessageChunk` type assertion — structs are identical at runtime
+- Gotcha: `toAISdkStream()` returns `ReadableStream` which isn't typed as `AsyncIterable` in strict TS. Used `getReader()`/`reader.read()` loop instead of `for await...of`
+- Gotcha: Mastra `PostgresStore` throws `MASTRA_STORAGE_PG_CREATE_TABLE_FAILED` at build time when DB isn't reachable — non-blocking, route still compiles
+
 ## Next Task
-**2.2.3** — Wire `/api/agents/run` endpoint to run Monitor Agent via Mastra
+**2.2.4** — Save agent run to `agent_runs` table on completion
 

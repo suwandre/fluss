@@ -83,7 +83,7 @@
 - [x] **2.2.1** Create `src/lib/agents/monitor.ts` — Monitor Agent with instructions, model config (gemini-2.5-flash-lite + fallback), and tools (`getPortfolioSnapshot`, `getHistoricalPerformance`) _(A §5.1)_
 - [x] **2.2.2** Define `MonitorOutput` Zod schema: `health_status` (global), `portfolio_metrics`, `concerns`, `escalate`, `summary` _(A §5.1)_
 - [x] **2.2.2a** Extend `MonitorOutput` with `asset_health: z.array(z.object({ ticker, health }))` — the architecture schema only has a global health*status, but the UI needs per-holding health to color individual machine node borders *(V §4.1, §10 Phase 2)\_
-- [ ] **2.2.3** Wire `/api/agents/run` to fetch holdings, run Monitor Agent via Mastra, stream output with `createUIMessageStreamResponse` _(A §7, §8 API routes)_
+- [x] **2.2.3** Wire `/api/agents/run` to fetch holdings, run Monitor Agent via Mastra, stream output with `createUIMessageStreamResponse` _(A §7, §8 API routes)_
 - [ ] **2.2.4** Save agent run to `agent_runs` table on completion
 
 ### 2.3 Agent reasoning UI
