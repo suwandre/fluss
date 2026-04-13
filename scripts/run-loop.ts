@@ -169,6 +169,14 @@ function runClaude(
         "--verbose",
         "--output-format",
         "stream-json",
+        // Headless-safe settings: disables worktrunk/claude-hud plugins that
+        // try to run `claude config state marker set` (fails with 0x80070002
+        // on Windows in --print mode). Quoted to handle spaces in repo path.
+        "--settings",
+        `"${repo}\\.claude\\loop-settings.json"`,
+        // Never pause to ask the user a question — the loop is fully autonomous.
+        "--disallowed-tools",
+        "AskUserQuestion,AskFollowupQuestion",
       ],
       {
         stdio: ["pipe", "pipe", "pipe"],
@@ -271,7 +279,7 @@ while (cycle < maxCycles) {
 
   const buildExit = await runClaude(
     "Builder",
-    `Builder role: Before coding, read ~/.claude/skills/web-design-guidelines/SKILL.md, ~/.claude/skills/vercel-react-best-practices/SKILL.md, and ~/.claude/skills/tdd/SKILL.md for standards. Then pick the next unchecked task in tasks/TASKS.md and implement it following those standards. After implementing, use the test-generator agent to write tests if applicable. Then run: git add --all && git commit -m 'type: short description'. Do not stop until the commit is made.`,
+    `Builder role: You are fully autonomous — never ask the user questions, never pause for input, use your best judgment to make all decisions. Before coding, read ~/.claude/skills/web-design-guidelines/SKILL.md, ~/.claude/skills/vercel-react-best-practices/SKILL.md, and ~/.claude/skills/tdd/SKILL.md for standards. Then pick the next unchecked task in tasks/TASKS.md and implement it following those standards. For tasks involving secrets or API keys, create the file with commented-out placeholder values (e.g. SOME_KEY=your-key-here) and commit the template — never block on missing values. After implementing, use the test-generator agent to write tests if applicable. Then run: git add --all && git commit -m 'type: short description'. Do not stop until the commit is made.`,
   );
 
   if (buildExit !== 0) {
