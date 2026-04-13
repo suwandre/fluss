@@ -248,8 +248,16 @@ Code comparison against draft. Fixes applied:
 - Fields: `stress_results` (scenario, simulated_drawdown_pct, recovery_days nullable), `var_95`, `verdict` (approve/approve_with_caveats/reject), `caveats`, `risk_summary` — matches architecture §5.4 exactly.
 - Exported type via `z.infer`. No new code needed.
 
+### 3.3.3 — runHistoricalStressTest tool (done)
+- Already fully implemented in `risk.ts` lines 48-139 as part of 3.3.1.
+- Fetches current holdings + live prices for portfolio weights.
+- 8 built-in scenarios (5 crypto-native, 3 traditional). Auto-selects based on portfolio composition.
+- Computes weighted max-drawdown per position, sums by portfolio weight.
+- Recovery days heuristic: drawdown% × multiplier (3-5x scaled by severity).
+- No new code needed — marking complete.
+
 ## Next Task
-**3.3.3** — Implement `runHistoricalStressTest(holdings, scenario)` tool (already complete — implemented in risk.ts as part of 3.3.1)
+**3.3.4** — Implement `computeVar(holdings, confidenceLevel)` tool
 
 ---
 

@@ -128,7 +128,7 @@
 
 - [x] **3.3.1** Create `src/lib/agents/risk.ts` — Risk Agent with tools (`runHistoricalStressTest`, `computeVar`, `getMacroContext`) _(A §5.4)_
 - [x] **3.3.2** Define `RiskOutput` Zod schema _(A §5.4)_
-- [ ] **3.3.3** Implement `runHistoricalStressTest(holdings, scenario)` tool — fetch historical prices, simulate P&L for crypto and traditional scenarios _(A §5.4)_
+- [x] **3.3.3** Implement `runHistoricalStressTest(holdings, scenario)` tool — fetch historical prices, simulate P&L for crypto and traditional scenarios _(A §5.4)_
 - [ ] **3.3.4** Implement `computeVar(holdings, confidenceLevel)` tool — Value at Risk calculation
 
 ### 3.4 Workflow orchestration
