@@ -143,6 +143,16 @@ Code comparison against draft. Fixes applied:
 - No running agent found → nothing dimmed (all done/queued/error)
 - Build passes clean
 
+### Phase 2.3.3 — AgentReasoningPanel (done)
+- `<AgentReasoningPanel />` at `src/components/agents/agent-reasoning-panel.tsx`
+- Fixed-width right sidebar: `min-w-[340px] max-w-[420px] flex-[3]`, `border-l border-border bg-bg-card`
+- Header: "Agent Reasoning" title (Inter 13px) + optional run ID badge (mono 10px, first 8 chars, `bg-bg-elevated` rounded pill) + collapse toggle placeholder (chevron-right SVG button, visual only — collapsed state deferred per V §6.2)
+- Body: `<ScrollArea className="flex-1">` wrapping `<AgentTimeline />` with `p-4` padding
+- Installed shadcn `<ScrollArea />` as prerequisite (`src/components/ui/scroll-area.tsx` — uses `@base-ui/react/scroll-area`)
+- Wired into `src/app/page.tsx`: replaced placeholder `<aside>` with `<AgentReasoningPanel steps={PLACEHOLDER_STEPS} />` — 4 agent slots (Monitor, Bottleneck, Redesign, Risk) all with `status: "queued"`
+- Removed `"use client"` explicit import since page already had it
+- Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**2.3.3** — `<AgentReasoningPanel />` component
+**2.3.4** — Install shadcn components for agent panel (ScrollArea already done, Collapsible already done — may be skippable)
 
