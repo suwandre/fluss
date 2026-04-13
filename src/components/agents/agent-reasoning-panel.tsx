@@ -1,11 +1,14 @@
 "use client"
- 
+
 import { AgentTimeline, type AgentStepData } from "@/components/agents/agent-timeline"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface AgentReasoningPanelProps {
   steps: AgentStepData[]
   runId?: string | null
+  isRunning?: boolean
+  error?: string | null
+  onRun?: () => void
 }
 
 /**
@@ -14,7 +17,7 @@ interface AgentReasoningPanelProps {
  * Collapse toggle is a visual placeholder only — collapsed ~48px icon-strip
  * state is deferred per V §6.2.
  */
-export function AgentReasoningPanel({ steps, runId }: AgentReasoningPanelProps) {
+export function AgentReasoningPanel({ steps, runId, isRunning, error, onRun }: AgentReasoningPanelProps) {
   return (
     <aside
       className="flex flex-col min-w-[340px] max-w-[420px] flex-[3] border-l border-border bg-bg-card overflow-hidden"
@@ -33,14 +36,33 @@ export function AgentReasoningPanel({ steps, runId }: AgentReasoningPanelProps) 
 
         {/* Collapse toggle placeholder — visual button only, not wired */}
         <button
-          className="ml-auto p-1 text-text-dim hover:text-text transition-colors cursor-pointer"
+          className="p-1 text-text-dim hover:text-text transition-colors cursor-pointer"
           aria-label="Toggle panel (not implemented)"
           title="Collapse panel"
           type="button"
         >
           <ChevronRightIcon />
         </button>
+
+        {/* Run trigger */}
+        {onRun && (
+          <button
+            onClick={onRun}
+            disabled={isRunning}
+            className="ml-auto px-2.5 py-1 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            type="button"
+          >
+            {isRunning ? "Running…" : "▶ Run"}
+          </button>
+        )}
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="px-4 py-2 text-[11px] font-mono text-red bg-bg-elevated border-b border-border">
+          {error}
+        </div>
+      )}
 
       {/* Scrollable body */}
       <ScrollArea className="flex-1">

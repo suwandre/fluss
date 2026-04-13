@@ -3,17 +3,11 @@
 import { FactoryFloor } from "@/components/factory/factory-floor";
 import { PortfolioSummaryBar } from "@/components/layout/portfolio-summary-bar";
 import { AgentReasoningPanel } from "@/components/agents/agent-reasoning-panel";
-import type { AgentStepData } from "@/components/agents/agent-timeline";
-import type { AgentStatus } from "@/lib/types/visual";
-
-const PLACEHOLDER_STEPS: AgentStepData[] = [
-  { name: "Monitor Agent", status: "queued" as AgentStatus },
-  { name: "Bottleneck Agent", status: "queued" as AgentStatus },
-  { name: "Redesign Agent", status: "queued" as AgentStatus },
-  { name: "Risk Agent", status: "queued" as AgentStatus },
-];
+import { useAgentRun } from "@/hooks/use-agent-run";
 
 export default function Home() {
+  const { steps, runId, isRunning, error, startRun } = useAgentRun();
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[--bg-primary]">
       <PortfolioSummaryBar
@@ -30,7 +24,13 @@ export default function Home() {
         <div className="flex-[7] overflow-hidden">
           <FactoryFloor />
         </div>
-        <AgentReasoningPanel steps={PLACEHOLDER_STEPS} />
+        <AgentReasoningPanel
+          steps={steps}
+          runId={runId}
+          isRunning={isRunning}
+          error={error}
+          onRun={startRun}
+        />
       </div>
     </div>
   );

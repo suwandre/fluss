@@ -61,6 +61,12 @@ export async function POST(req: Request) {
 
   const uiMessageStream = createUIMessageStream({
     execute: async ({ writer }) => {
+      // Send runId as a custom data part so the client can display it
+      writer.write({
+        type: "data-run-id" as const,
+        data: { runId },
+      } as Parameters<typeof writer.write>[0]);
+
       try {
         while (true) {
           const { done, value } = await reader.read();

@@ -157,6 +157,19 @@ Code comparison against draft. Fixes applied:
 
 - **2.3.4** — Confirmed both `<Collapsible />` and `<ScrollArea />` already installed as prerequisites during 2.3.1 and 2.3.3. No new installs needed. Marked complete.
 
+### Phase 2.4 — Live Data Wiring (in progress)
+
+- **2.4.1** — Wire `<AgentReasoningPanel />` to consume `/api/agents/run` SSE stream (done)
+  - Created `src/hooks/use-agent-run.ts` — custom hook that POSTs to the endpoint, reads SSE UI message stream, parses text-delta chunks into reasoning, parses final JSON as `MonitorOutput`
+  - Hook exposes: `steps`, `runId`, `isRunning`, `error`, `monitorOutput`, `startRun()`
+  - Modified `src/app/api/agents/run/route.ts` — sends `data-run-id` custom data part at stream start so client can display run ID badge
+  - Updated `src/components/agents/agent-reasoning-panel.tsx` — accepts `isRunning`, `error`, `onRun` props; renders "▶ Run" button in header + error banner
+  - Updated `src/app/page.tsx` — replaced hardcoded `PLACEHOLDER_STEPS` with `useAgentRun()` hook; passes all props to panel
+  - SSE parsing: splits on `\n`, extracts `data: ` prefix, handles `text-delta` / `data-run-id` / `error` event types, skips `[DONE]`
+  - On completion: builds flat `structuredOutput` summary (health, summary, concerns count, escalate) for the AgentStep display
+  - Abort handling: AbortController ref cancels in-flight runs on re-trigger
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**2.4.1** — Wire `<AgentReasoningPanel />` to consume the `/api/agents/run` stream
+**2.4.2** — Machine node border colors reflect Monitor Agent's health verdict per holding
 

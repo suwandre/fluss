@@ -92,7 +92,7 @@ const claudeBin = resolveBin("claude");
 // ── Live context bar ───────────────────────────────────────────────────────────
 // Estimates tokens from accumulated character counts (÷4, ~4 chars/token).
 // Overwrites a single terminal line after each tool call with a progress bar.
-const CTX_WINDOW = 128_000; // GLM 5.1 context window
+const CTX_WINDOW = 2_000_000; // GLM 5.1 (Gemini 1.5 Pro) context window
 const BAR_WIDTH = 20;
 
 class CtxTracker {
