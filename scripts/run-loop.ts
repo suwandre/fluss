@@ -176,6 +176,10 @@ function runClaude(
         // --settings still supplies env vars (auth token, model routing, etc.)
         // since --bare explicitly supports that pathway.
         "--bare",
+        // Each build/reviewer call is a fresh spawn() with no --continue /
+        // --resume, so context never carries over between cycles. This flag
+        // makes it explicit: no session files written to disk at all.
+        "--no-session-persistence",
         "--settings",
         `"${repo}\\.claude\\loop-settings.json"`,
         // Never pause to ask the user a question — the loop is fully autonomous.
