@@ -89,22 +89,76 @@ function resolveBin(name: string): string {
 
 const claudeBin = resolveBin("claude");
 
+// ── Live context bar ───────────────────────────────────────────────────────────
+// Estimates tokens from accumulated character counts (÷4, ~4 chars/token).
+// Overwrites a single terminal line after each tool call with a progress bar.
+const CTX_WINDOW = 128_000; // GLM 5.1 context window
+const BAR_WIDTH = 20;
+
+class CtxTracker {
+  private chars = 0;
+  private toolCalls = 0;
+  private barActive = false; // true when last write was a \r bar (no newline)
+
+  addChars(n: number): void { this.chars += n; }
+  incTool(): void { this.toolCalls++; }
+
+  /** Overwrite current line with a live context bar (no newline). */
+  renderBar(): void {
+    const estTok = Math.round(this.chars / 4);
+    const pct = Math.min(estTok / CTX_WINDOW, 1);
+    const filled = Math.round(pct * BAR_WIDTH);
+    const bar = "\u2588".repeat(filled) + "\u2591".repeat(BAR_WIDTH - filled);
+    const pctStr = (pct * 100).toFixed(1).padStart(4);
+    const label =
+      `  \u22ef est. ~${estTok.toLocaleString()} tok  ` +
+      `${pctStr}% [${bar}]  tools:${this.toolCalls}`;
+    process.stdout.write(`\r\x1b[K${colors.gray(label)}`);
+    this.barActive = true;
+  }
+
+  /** Clear the bar line before printing a normal newline-terminated line. */
+  clearBar(): void {
+    if (this.barActive) {
+      process.stdout.write("\r\x1b[K");
+      this.barActive = false;
+    }
+  }
+
+  /** Replace bar with exact final numbers from the result event. */
+  renderFinal(u: TokenUsage): void {
+    this.clearBar();
+    const pct = Math.min(u.inputTokens / CTX_WINDOW, 1);
+    const filled = Math.round(pct * BAR_WIDTH);
+    const bar = "\u2588".repeat(filled) + "\u2591".repeat(BAR_WIDTH - filled);
+    const pctStr = (pct * 100).toFixed(1).padStart(4);
+    process.stdout.write(
+      `  ${colors.gray(
+        `\uD83D\uDCCA exact: in:${u.inputTokens.toLocaleString()}  ` +
+        `out:${u.outputTokens.toLocaleString()}  ` +
+        `$${u.costUsd.toFixed(4)}  ` +
+        `${pctStr}% [${bar}]`,
+      )}\n`,
+    );
+  }
+}
+
 // ── stream-json event renderer ─────────────────────────────────────────────────
-// Claude Code emits JSONL when --output-format stream-json is used.
-// Each line is one of: system | assistant | result
-// assistant.message.content is an array of blocks: thinking | text | tool_use
 // Returns TokenUsage if this was a `result` event, otherwise null.
 function handleStreamEvent(
   raw: string,
   rolePrefix: string,
   touch: () => void,
+  ctx: CtxTracker,
 ): TokenUsage | null {
   let ev: Record<string, unknown>;
   try {
     ev = JSON.parse(raw);
   } catch {
-    // Not JSON (e.g. plain text fallback) — print as-is.
-    if (raw.trim()) process.stdout.write(`${rolePrefix} ${raw}\n`);
+    if (raw.trim()) {
+      ctx.clearBar();
+      process.stdout.write(`${rolePrefix} ${raw}\n`);
+    }
     return null;
   }
 
@@ -116,24 +170,32 @@ function handleStreamEvent(
       const b = block as Record<string, unknown>;
 
       if (b.type === "thinking" && typeof b.thinking === "string") {
-        // Trim long thinking blocks — show first 300 chars.
+        ctx.addChars(b.thinking.length);
         const snip = b.thinking.slice(0, 300).replace(/\n+/g, " ");
         const ellipsis = b.thinking.length > 300 ? "..." : "";
-        process.stdout.write(`  ${colors.gray("💭 " + snip + ellipsis)}\n`);
+        ctx.clearBar();
+        process.stdout.write(`  ${colors.gray("\uD83D\uDCAD " + snip + ellipsis)}\n`);
         touch();
       } else if (b.type === "text" && typeof b.text === "string") {
+        ctx.addChars(b.text.length);
         for (const line of b.text.split("\n")) {
-          if (line.trim()) process.stdout.write(`${rolePrefix} ${line}\n`);
+          if (line.trim()) {
+            ctx.clearBar();
+            process.stdout.write(`${rolePrefix} ${line}\n`);
+          }
         }
         touch();
       } else if (b.type === "tool_use") {
-        const name = b.name as string;
         const inputStr = JSON.stringify(b.input ?? {});
-        const snippet =
-          inputStr.length > 120 ? `${inputStr.slice(0, 120)}...` : inputStr;
+        ctx.addChars(inputStr.length);
+        ctx.incTool();
+        const name = b.name as string;
+        const snippet = inputStr.length > 120 ? `${inputStr.slice(0, 120)}...` : inputStr;
+        ctx.clearBar();
         process.stdout.write(
-          `  ${colors.yellow("⚙ " + name)} ${colors.gray(snippet)}\n`,
+          `  ${colors.yellow("\u2699 " + name)} ${colors.gray(snippet)}\n`,
         );
+        ctx.renderBar(); // live bar appears immediately after tool line
         touch();
       }
     }
@@ -141,17 +203,16 @@ function handleStreamEvent(
   }
 
   if (type === "result") {
-    const usage = ev.usage as
-      | { input_tokens?: number; output_tokens?: number }
-      | undefined;
+    const usage = ev.usage as { input_tokens?: number; output_tokens?: number } | undefined;
     const costUsd = (ev.cost_usd as number | undefined) ?? 0;
     const inputTokens = usage?.input_tokens ?? 0;
     const outputTokens = usage?.output_tokens ?? 0;
+    const result = { inputTokens, outputTokens, costUsd };
+    ctx.renderFinal(result);
     touch();
-    return { inputTokens, outputTokens, costUsd };
+    return result;
   }
 
-  // "system" and "user" events are informational — skip them.
   return null;
 }
 
@@ -229,6 +290,7 @@ function runClaude(
 
     let jsonBuf = "";
     let callTokens: TokenUsage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+    const ctx = new CtxTracker();
 
     proc.stdout.on("data", (chunk: Buffer) => {
       jsonBuf += chunk.toString();
@@ -236,27 +298,27 @@ function runClaude(
       jsonBuf = lines.pop() ?? "";
       for (const line of lines) {
         if (!line.trim()) continue;
-        const usage = handleStreamEvent(line.trim(), rolePrefix, touch);
+        const usage = handleStreamEvent(line.trim(), rolePrefix, touch, ctx);
         if (usage) callTokens = usage;
       }
     });
 
     proc.stderr.on("data", (chunk: Buffer) => {
       const text = chunk.toString().trim();
-      if (text) process.stdout.write(`${colors.yellow("[stderr]")} ${text}\n`);
+      if (text) {
+        ctx.clearBar();
+        process.stdout.write(`${colors.yellow("[stderr]")} ${text}\n`);
+      }
     });
 
     proc.on("close", (code) => {
       clearInterval(heartbeat);
       if (jsonBuf.trim()) {
-        const usage = handleStreamEvent(jsonBuf.trim(), rolePrefix, touch);
+        const usage = handleStreamEvent(jsonBuf.trim(), rolePrefix, touch, ctx);
         if (usage) callTokens = usage;
       }
-      // Print per-call token summary.
-      process.stdout.write(
-        `  ${colors.gray("📊 this call: " + fmtTokens(callTokens))}\n`,
-      );
-      divider("·", "gray");
+      ctx.clearBar();
+      divider("\u00b7", "gray");
       resolve({ code: code ?? 1, tokens: callTokens });
     });
   });
