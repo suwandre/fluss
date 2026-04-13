@@ -8,8 +8,39 @@ import { useAgentRun } from "@/hooks/use-agent-run";
 import type { HealthState } from "@/lib/types/visual";
 
 export default function Home() {
-  const { steps, runId, isRunning, error, monitorOutput, startRun } =
+  const { steps, runId, isRunning, error, monitorOutput, lastRunAt, startRun } =
     useAgentRun();
+
+  // Derive summary bar values from Monitor output
+  const summaryMetrics = useMemo(() => {
+    if (!monitorOutput?.portfolio_metrics) {
+      return {
+        totalValue: 0,
+        unrealisedPnl: 0,
+        unrealisedPnlPct: 0,
+        sharpeRatio: null as number | null,
+        maxDrawdownPct: 0,
+        health: "nominal" as HealthState,
+      };
+    }
+    const { total_value, unrealised_pnl_pct, sharpe_ratio, max_drawdown_pct } =
+      monitorOutput.portfolio_metrics;
+    // Derive absolute P&L from total_value and unrealised_pnl_pct
+    // PnL% is relative to cost basis: PnL = value * pct / (100 + pct)
+    const unrealisedPnl =
+      unrealised_pnl_pct === 0
+        ? 0
+        : total_value * (unrealised_pnl_pct / 100) / (1 + unrealised_pnl_pct / 100);
+
+    return {
+      totalValue: total_value,
+      unrealisedPnl: Math.round(unrealisedPnl),
+      unrealisedPnlPct: unrealised_pnl_pct,
+      sharpeRatio: sharpe_ratio,
+      maxDrawdownPct: max_drawdown_pct,
+      health: monitorOutput.health_status,
+    };
+  }, [monitorOutput]);
 
   // Build a lowercase-ticker-keyed health map from Monitor's asset_health
   const assetHealth = useMemo<Record<string, HealthState> | null>(() => {
@@ -24,13 +55,13 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[--bg-primary]">
       <PortfolioSummaryBar
-        totalValue={124_350}
-        unrealisedPnl={6_210}
-        unrealisedPnlPct={5.3}
-        sharpeRatio={1.42}
-        maxDrawdownPct={-8.7}
-        lastRunAt={null}
-        health="nominal"
+        totalValue={summaryMetrics.totalValue}
+        unrealisedPnl={summaryMetrics.unrealisedPnl}
+        unrealisedPnlPct={summaryMetrics.unrealisedPnlPct}
+        sharpeRatio={summaryMetrics.sharpeRatio}
+        maxDrawdownPct={summaryMetrics.maxDrawdownPct}
+        lastRunAt={lastRunAt}
+        health={summaryMetrics.health}
         onAddHolding={() => {}}
       />
       <div className="flex flex-1 overflow-hidden">

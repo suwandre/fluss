@@ -181,6 +181,20 @@ Code comparison against draft. Fixes applied:
 - Removed unused `TICKER_TO_NODE_ID` constant (was dead code from initial scaffold — keeping for now as Phase 3 may need it for dynamic node creation)
 - Build passes clean
 
+### Phase 2.4.3 — PortfolioSummaryBar wired to Monitor output (done)
+
+- `useAgentRun` hook: added `lastRunAt: Date | null` state, set to `new Date()` after successful stream completion
+- `page.tsx`: replaced all hardcoded `PortfolioSummaryBar` props with values derived from `monitorOutput` via `useMemo`
+  - `totalValue` ← `portfolio_metrics.total_value`
+  - `unrealisedPnl` ← derived from `total_value` and `unrealised_pnl_pct` (PnL = value × pct / (100 + pct), rounded)
+  - `unrealisedPnlPct` ← `portfolio_metrics.unrealised_pnl_pct`
+  - `sharpeRatio` ← `portfolio_metrics.sharpe_ratio`
+  - `maxDrawdownPct` ← `portfolio_metrics.max_drawdown_pct`
+  - `health` ← `health_status`
+  - `lastRunAt` ← from hook's new `lastRunAt` state
+- When no monitor output: falls back to zeroed values with "nominal" health
+- Build passes clean
+
 ## Next Task
-**2.4.3** — Wire `<PortfolioSummaryBar />` to Monitor output data
+**2.5.1** — End-to-end test: add holdings → trigger agent run → see Monitor output stream into panel → node borders update
 

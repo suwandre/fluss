@@ -17,6 +17,7 @@ export interface UseAgentRunReturn {
   isRunning: boolean;
   error: string | null;
   monitorOutput: MonitorOutput | null;
+  lastRunAt: Date | null;
   startRun: () => Promise<void>;
 }
 
@@ -33,6 +34,7 @@ export function useAgentRun(): UseAgentRunReturn {
   const [monitorOutput, setMonitorOutput] = useState<MonitorOutput | null>(
     null,
   );
+  const [lastRunAt, setLastRunAt] = useState<Date | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const startRun = useCallback(async () => {
@@ -165,6 +167,7 @@ export function useAgentRun(): UseAgentRunReturn {
             : s,
         ),
       );
+      setLastRunAt(new Date());
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       const message =
@@ -182,5 +185,5 @@ export function useAgentRun(): UseAgentRunReturn {
     }
   }, []);
 
-  return { steps, runId, isRunning, error, monitorOutput, startRun };
+  return { steps, runId, isRunning, error, monitorOutput, lastRunAt, startRun };
 }
