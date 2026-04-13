@@ -169,9 +169,13 @@ function runClaude(
         "--verbose",
         "--output-format",
         "stream-json",
-        // Headless-safe settings: disables worktrunk/claude-hud plugins that
-        // try to run `claude config state marker set` (fails with 0x80070002
-        // on Windows in --print mode). Quoted to handle spaces in repo path.
+        // --bare skips ALL plugin sync, hooks, and attribution at startup.
+        // This is the real fix for `config state marker set` (0x80070002):
+        // --settings alone only merges with global settings, so worktrunk is
+        // still loaded. --bare prevents it from loading at all.
+        // --settings still supplies env vars (auth token, model routing, etc.)
+        // since --bare explicitly supports that pathway.
+        "--bare",
         "--settings",
         `"${repo}\\.claude\\loop-settings.json"`,
         // Never pause to ask the user a question — the loop is fully autonomous.
