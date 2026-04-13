@@ -8,6 +8,7 @@ import { RiskOutput } from "@/lib/agents/risk";
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices } from "@/lib/market";
+import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 
 // ── Shared schemas ──────────────────────────────────────────────────
 
@@ -28,11 +29,29 @@ const MarketSnapshotSchema = z.object({
   tickers: z.array(z.string()),
 });
 
+const CorrelationPairSchema = z.object({
+  with: z.string(),
+  correlation: z.number(),
+});
+
+const CorrelationEntrySchema = z.object({
+  ticker: z.string(),
+  correlations: z.array(CorrelationPairSchema),
+});
+
+const CorrelationMatrixSchema = z.array(CorrelationEntrySchema);
+
+/** Market snapshot + correlation matrix — passed between fetch → monitor */
+const SnapshotWithCorrelationSchema = MarketSnapshotSchema.extend({
+  correlationMatrix: CorrelationMatrixSchema,
+});
+
 const WorkflowOutputSchema = z.object({
   monitor: MonitorOutput,
   bottleneck: BottleneckOutput.nullable(),
   redesign: RedesignOutput.nullable(),
   risk: RiskOutput.nullable(),
+  correlationMatrix: CorrelationMatrixSchema,
 });
 
 // ── Step 1: Fetch market snapshot ───────────────────────────────────
@@ -87,12 +106,29 @@ const fetchMarketSnapshot = createStep({
   },
 });
 
-// ── Step 2: Monitor Agent ───────────────────────────────────────────
+// ── Step 2: Compute correlation matrix ────────────────────────────────
+
+const computeCorrelationStep = createStep({
+  id: "compute-correlation-matrix",
+  description:
+    "Compute pairwise Pearson correlation matrix for all portfolio tickers. Frontend uses this to color/weight conveyor edges.",
+  inputSchema: MarketSnapshotSchema,
+  outputSchema: SnapshotWithCorrelationSchema,
+  execute: async ({ inputData }) => {
+    const matrix =
+      inputData.tickers.length >= 2
+        ? await computeCorrelationMatrix(inputData.tickers, 90)
+        : [];
+    return { ...inputData, correlationMatrix: matrix };
+  },
+});
+
+// ── Step 3: Monitor Agent ───────────────────────────────────────────
 
 const monitorStep = createStep({
   id: "monitor",
   description: "Run Monitor Agent to assess portfolio health",
-  inputSchema: MarketSnapshotSchema,
+  inputSchema: SnapshotWithCorrelationSchema,
   outputSchema: MonitorOutput,
   execute: async ({ inputData }) => {
     const prompt = [
@@ -122,7 +158,11 @@ const escalationStep = createStep({
     const marketSnapshot = getStepResult(fetchMarketSnapshot) as z.infer<
       typeof MarketSnapshotSchema
     >;
+    const correlationStepResult = getStepResult(computeCorrelationStep) as z.infer<
+      typeof SnapshotWithCorrelationSchema
+    >;
     const { tickers, portfolioData } = marketSnapshot;
+    const correlationMatrix = correlationStepResult.correlationMatrix;
 
     // ── Bottleneck Agent ──
     const bottleneckPrompt = [
@@ -189,6 +229,7 @@ const escalationStep = createStep({
       bottleneck: bottleneckOutput,
       redesign: redesignOutput,
       risk: riskOutput,
+      correlationMatrix,
     };
   },
 });
@@ -200,12 +241,18 @@ const statusUpdateStep = createStep({
   description: "Brief status update when Monitor reports nominal health",
   inputSchema: MonitorOutput,
   outputSchema: WorkflowOutputSchema,
-  execute: async ({ inputData: monitorResult }) => ({
-    monitor: monitorResult,
-    bottleneck: null,
-    redesign: null,
-    risk: null,
-  }),
+  execute: async ({ inputData: monitorResult, getStepResult }) => {
+    const correlationStepResult = getStepResult(computeCorrelationStep) as z.infer<
+      typeof SnapshotWithCorrelationSchema
+    >;
+    return {
+      monitor: monitorResult,
+      bottleneck: null,
+      redesign: null,
+      risk: null,
+      correlationMatrix: correlationStepResult.correlationMatrix,
+    };
+  },
 });
 
 // ── Workflow definition ─────────────────────────────────────────────
@@ -218,6 +265,7 @@ export const portfolioFactoryWorkflow = createWorkflow({
   outputSchema: WorkflowOutputSchema,
 })
   .then(fetchMarketSnapshot)
+  .then(computeCorrelationStep)
   .then(monitorStep)
   .branch([
     [

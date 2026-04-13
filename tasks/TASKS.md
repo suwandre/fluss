@@ -134,7 +134,7 @@
 ### 3.4 Workflow orchestration
 
 - [x] **3.4.1** Create `src/lib/orchestrator/workflow.ts` — Mastra workflow with all steps (fetchMarket → monitor → conditional branch → bottleneck → redesign → risk) _(A §7, Mastra Workflow)_
-- [ ] **3.4.1a** Add a dedicated workflow step (after fetchMarket) that computes the full correlation matrix and passes it through the workflow context — the Bottleneck Agent's `getCorrelationMatrix` tool computes it internally but doesn't expose it in its output schema; the frontend needs the raw matrix to color/weight conveyor edges
+- [x] **3.4.1a** Add a dedicated workflow step (after fetchMarket) that computes the full correlation matrix and passes it through the workflow context — the Bottleneck Agent's `getCorrelationMatrix` tool computes it internally but doesn't expose it in its output schema; the frontend needs the raw matrix to color/weight conveyor edges
 - [ ] **3.4.2** Wire `/api/agents/run` to use the full workflow instead of Monitor only
 - [ ] **3.4.3** All four agent steps stream sequentially into the panel — `<AgentTimeline />` shows full run progression _(V §10, Phase 3)_
 

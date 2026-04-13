@@ -264,7 +264,7 @@ Code comparison against draft. Fixes applied:
 - Registered on risk agent. No new code needed.
 
 ## Next Task
-**3.4.1a** — Add correlation matrix step to workflow
+**3.4.2** — Wire `/api/agents/run` to use the full workflow instead of Monitor only
 
 ---
 
@@ -283,6 +283,15 @@ Code comparison against draft. Fixes applied:
   - Gotcha: `agent.generate()` with `structuredOutput` returns `FullOutput<T>` — structured output is in `result.object`, not `result.structuredOutput`
   - Gotcha: Mastra `PostgresStore` init error at build time (DB unreachable) is known non-blocking — build still succeeds
   - Build passes clean
+
+- **3.4.1a** — Correlation matrix workflow step (done)
+  - Created `src/lib/orchestrator/compute-correlation.ts` — shared `computeCorrelationMatrix(tickers, days)` function extracted from bottleneck agent's `getCorrelationMatrix` tool. Returns `CorrelationEntry[]` (ticker + pairwise correlation coefficients).
+  - Added `computeCorrelationStep` to workflow: runs after `fetchMarketSnapshot`, computes matrix when ≥2 tickers, passes through market data + matrix as `SnapshotWithCorrelationSchema`.
+  - `monitorStep` inputSchema updated to `SnapshotWithCorrelationSchema` (market data passthrough + matrix available).
+  - `WorkflowOutputSchema` extended with `correlationMatrix: CorrelationMatrixSchema` — both `escalationStep` and `statusUpdateStep` include it via `getStepResult(computeCorrelationStep)`.
+  - Bottleneck agent's `getCorrelationMatrix` tool refactored to use shared `computeCorrelationMatrix()` — removes ~50 lines of duplicated logic. `fetchDailyReturns` helper remains in bottleneck.ts for `getVolatilityContribution` tool.
+  - Workflow chain: `fetchMarketSnapshot → computeCorrelationStep → monitorStep → branch(escalation | statusUpdate)`
+  - Build passes clean (known Mastra PG non-blocking error only)
 
 ---
 

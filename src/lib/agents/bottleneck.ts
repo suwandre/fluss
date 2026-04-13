@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices, getHistory } from "@/lib/market";
 import type { AssetClass } from "@/lib/types/visual";
+import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 
 // --- Output schema ---
 
@@ -80,51 +81,7 @@ const getCorrelationMatrix = createTool({
     ),
   }),
   execute: async (input) => {
-    // Fetch returns for every ticker
-    const returnsByTicker = new Map<string, Map<string, number>>();
-    await Promise.all(
-      input.tickers.map(async (ticker) => {
-        const rows = await fetchDailyReturns(ticker, input.days ?? 90);
-        const dateMap = new Map<string, number>();
-        for (const r of rows) dateMap.set(r.date, r.returnPct);
-        returnsByTicker.set(ticker, dateMap);
-      }),
-    );
-
-    // Collect all dates to align series
-    const allDates = new Set<string>();
-    for (const dm of returnsByTicker.values()) {
-      for (const d of dm.keys()) allDates.add(d);
-    }
-
-    // Build aligned return arrays per ticker
-    const aligned = new Map<string, number[]>();
-    const sortedDates = [...allDates].sort();
-    for (const [ticker, dm] of returnsByTicker) {
-      const arr: number[] = [];
-      for (const d of sortedDates) {
-        const v = dm.get(d);
-        if (v != null) arr.push(v);
-      }
-      aligned.set(ticker, arr);
-    }
-
-    // Pairwise correlations
-    const matrix = input.tickers.map((a) => ({
-      ticker: a,
-      correlations: input.tickers.map((b) => {
-        const arrA = aligned.get(a) ?? [];
-        const arrB = aligned.get(b) ?? [];
-        const minLen = Math.min(arrA.length, arrB.length);
-        if (minLen < 10) return { with: b, correlation: 0 };
-        const corr = ss.sampleCorrelation(
-          arrA.slice(0, minLen),
-          arrB.slice(0, minLen),
-        );
-        return { with: b, correlation: Math.round(corr * 1000) / 1000 };
-      }),
-    }));
-
+    const matrix = await computeCorrelationMatrix(input.tickers, input.days ?? 90);
     return { matrix };
   },
 });
