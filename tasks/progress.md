@@ -231,5 +231,20 @@ Code comparison against draft. Fixes applied:
 - **3.1.4** — `getVolatilityContribution` tool verified complete (already implemented in bottleneck.ts as part of 3.1.1, lines 132-243). Computes: individual ticker volatility (`sampleStandardDeviation` × 100), portfolio volatility (weighted returns → `sampleStandardDeviation` × 100), marginal contribution (β × w × σ_p × 100), weight % from portfolio positions, component VaR % (marginal / portfolio_vol × 100). Handles empty holdings gracefully. Registered on bottleneck agent. Build passes clean.
 
 ## Next Task
-**3.2.1** — Create `src/lib/agents/redesign.ts` — Redesign Agent with tools (`getAlternativeAssets`, `simulateRebalance`, `getRebalanceHistory`)
+**3.2.2** — Define `RedesignOutput` Zod schema _(A §5.3)_
+
+---
+
+### Phase 3.2 — Redesign Agent (in progress)
+
+- **3.2.1** — Created `src/lib/agents/redesign.ts` — Redesign Agent with 3 tools + output schema (done)
+  - `getAlternativeAssets(assetClass, excludeTickers?, maxResults?)` — curated asset universe per class (equity/etf/crypto/bond) with live prices via `getBatchPrices`. Returns ticker, name, assetClass, currentPrice, changePct24h.
+  - `simulateRebalance(proposedChanges, benchmarkDays?)` — fetches current holdings + prices, applies proposed changes (reduce/increase/replace/add/remove with targetWeightPct), normalizes weights to 100%, fetches historical data for proposed tickers, computes annualized volatility (daily vol × √252) and cumulative projected P&L over benchmark period.
+  - `getRebalanceHistory(limit?)` — queries `agent_runs` table where `agentName = "redesign"`, returns past proposals ordered by most recent first.
+  - `RedesignOutput` Zod schema: `proposed_actions` (action, ticker, target_pct, rationale), `expected_improvement` (sharpe_delta, volatility_delta_pct, narrative), `confidence`, `proposal_summary` — per architecture §5.3.
+  - Agent instructions: never propose >30% portfolio value rebalance, simulate before proposing, prefer reducing over-weights, classify confidence by simulation certainty.
+  - Model fallback chain same as other agents: gemini-2.5-flash-lite → groq/llama-3.3-70b → openrouter/deepseek-chat:free.
+  - Registered in `src/lib/mastra.ts` alongside monitorAgent + bottleneckAgent.
+  - Gotcha: `PriceSnapshot.changePct24h` doesn't exist — field is `changePercent1d`.
+  - Build passes clean (known Mastra PG non-blocking error only).
 
