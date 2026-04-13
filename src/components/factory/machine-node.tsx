@@ -58,7 +58,7 @@ function MachineNodeComponent({ data, isConnectable, selected }: NodeProps<Machi
             {data.ticker}
           </div>
           <div className="text-xs text-text-muted mt-0.5">
-            {data.name} · {assetClassLabels[data.assetClass]}
+            {data.name} — {assetClassLabels[data.assetClass]}
           </div>
         </div>
 

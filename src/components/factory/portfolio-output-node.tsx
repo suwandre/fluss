@@ -50,7 +50,7 @@ function PortfolioOutputNodeComponent({ data, isConnectable, selected }: NodePro
         role="group"
         aria-label="Portfolio Output"
         className={cn(
-          "w-[220px] bg-bg-card rounded-lg",
+          "w-[200px] bg-bg-card rounded-lg",
           "border-2 border-accent transition-[background-color] duration-150",
           "hover:bg-bg-elevated",
           selected && "ring-2 ring-accent ring-offset-2 ring-offset-bg-card",

@@ -72,6 +72,7 @@ function runClaude(
       {
         stdio: ["ignore", "pipe", "pipe"],
         cwd: repo,
+        shell: true,
       },
     );
 
@@ -102,7 +103,7 @@ function runClaude(
 
 // ── Guard ────────────────────────────────────────────────────────────────────
 try {
-  execSync("claude --version", { stdio: "ignore" });
+  execSync("claude --version", { stdio: "ignore", shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh" });
 } catch {
   log(
     "ERROR: 'claude' not found. Run: npm install -g @anthropic-ai/claude-code",

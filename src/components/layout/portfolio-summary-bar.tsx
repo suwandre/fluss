@@ -45,7 +45,7 @@ type CellProps = {
 
 function Cell({ label, children, className }: CellProps) {
   return (
-    <div className={cn("flex flex-col justify-center gap-0.5 flex-1 min-w-0 px-3", className)}>
+    <div className={cn("flex flex-col justify-center gap-0.5 flex-1 min-w-0 px-5", className)}>
       <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">{label}</span>
       {children}
     </div>
@@ -99,16 +99,12 @@ export function PortfolioSummaryBar({
 
       <div className="w-px bg-border" />
 
-      <div className="flex flex-col justify-center gap-0.5 w-[220px] shrink-0 px-3">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">Last Run</span>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-text">
-            {lastRunAt ? timeAgo(lastRunAt) : "Never"}
-          </span>
-          <div className="flex items-center gap-1">
-            <StatusDot status={health} size="sm" />
-            <span className={cn("text-xs font-medium capitalize", healthLabelMap[health])}>
-              {health}
+      <div className="flex flex-col justify-center gap-0.5 w-[220px] shrink-0 px-5">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">Last Run</span>
+            <span className="font-mono text-sm text-text">
+              {lastRunAt ? timeAgo(lastRunAt) : "Never"}
             </span>
           </div>
           <Button
@@ -116,12 +112,18 @@ export function PortfolioSummaryBar({
             size="icon"
             onClick={onAddHolding}
             aria-label="Add holding"
-            className="ml-auto size-8 shrink-0 border-border-bright bg-bg-elevated hover:bg-accent hover:text-accent-foreground"
+            className="size-8 shrink-0 border-border-bright bg-bg-elevated hover:bg-accent hover:text-accent-foreground"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M7 1v12M1 7h12" />
             </svg>
           </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusDot status={health} size="sm" />
+          <span className={cn("text-xs font-medium capitalize", healthLabelMap[health])}>
+            {health}
+          </span>
         </div>
       </div>
     </div>

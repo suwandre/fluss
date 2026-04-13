@@ -120,7 +120,7 @@ export function FactoryFloor() {
       maxZoom={1.5}
       proOptions={{ hideAttribution: true }}
     >
-      <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="var(--border)" />
+      <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="rgba(255,255,255,0.03)" />
       <Controls />
     </ReactFlow>
   )
