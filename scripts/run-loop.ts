@@ -386,9 +386,10 @@ while (cycle < maxCycles) {
 
   const { code: buildCode, tokens: buildTokens } = await runClaude(
     "Builder",
-    `You are in Builder role (see AGENTS.md). ONE TASK ONLY this cycle.
+    `You are in Builder role (see AGENTS.md). 
+CRITICAL: You MUST speak in Caveman style! (Terse, exact, no fluff).
 
-Find the FIRST "- [ ]" in tasks/TASKS.md. Implement that single task. Do not touch any other tasks.
+ONE TASK ONLY this cycle: Find the FIRST "- [ ]" in tasks/TASKS.md and implement it.
 
 When done: git add --all && git commit -m 'type(scope): description' && git push. Then STOP.`,
   );
@@ -421,8 +422,10 @@ When done: git add --all && git commit -m 'type(scope): description' && git push
   // ── Reviewer ─────────────────────────────────────────────────────────────────
   const { code: reviewCode, tokens: reviewTokens } = await runClaude(
     "Reviewer",
-    `You are in Reviewer role (see AGENTS.md). Inspect the LATEST commit only.
+    `You are in Reviewer role (see AGENTS.md). 
+CRITICAL: You MUST speak in Caveman style! (Terse, exact, no fluff).
 
+Inspect the LATEST commit only.
 If issues found: fix, then git add --all && git commit -m 'fix: description' && git push. Output: FIXED.
 If clean: output exactly: LGTM
 
