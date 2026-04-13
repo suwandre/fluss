@@ -122,6 +122,17 @@ Code comparison against draft. Fixes applied:
 - DB insert runs inside `createUIMessageStream.execute` after stream loop finishes (guarantees all chunks collected)
 - Build passes clean (MASTRA_STORAGE_PG_CREATE_TABLE_FAILED is known non-blocking)
 
+### Phase 2.3 — Agent Reasoning UI (in progress)
+- **2.3.1** `<AgentStep />` component created at `src/components/agents/agent-step.tsx`
+  - Props: `name`, `status` (AgentStatus), `durationMs?`, `structuredOutput?`, `reasoning?`, `isStreaming?`
+  - Status dot via `<StatusDot />`: done=green filled, running=amber filled+pulse, queued=hollow, error=red filled
+  - Header row: agent name (Inter 13px) + status label (mono 11px, amber/red/dim) + duration badge (mono 11px, right-aligned)
+  - Structured output block: key/value pairs in JetBrains Mono 12px (keys dim, values text color)
+  - Collapsible reasoning via shadcn `<Collapsible />`: Inter 13px prose, bg-elevated bg, 2px border-bright left border, toggle shows "▸ Show / ▾ Hide reasoning"
+  - Streaming cursor: 2px amber bar with `animate-cursor-blink` (step-end blink), shown both inside reasoning block and standalone when no reasoning yet
+  - Installed shadcn `<Collapsible />` as prerequisite (`src/components/ui/collapsible.tsx`)
+  - Build passes clean
+
 ## Next Task
-**2.3.1** — `<AgentStep />` component
+**2.3.2** — `<AgentTimeline />` component
 
