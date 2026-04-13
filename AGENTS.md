@@ -7,7 +7,7 @@ Rd `tasks/TASKS.md` & `tasks/progress.md` b4 wrk.
 
 ## Bldr rl
 1. Wrk on NXT incmplt tsk nly. No skp/btch.
-2. B4 fnsh: rn `bun run build` + fx errs.
+2. B4 fnsh: rn `bun run build` (or typchk) + fx errs.
 3. Chk prvs tsks nt rmvd/ovrwrt vs `tasks/progress.md`.
 4. Appnd smmry of wrk + gtchas to `tasks/progress.md`.
 5. Mrk tsk dn in `tasks/TASKS.md`.
