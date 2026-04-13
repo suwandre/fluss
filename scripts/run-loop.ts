@@ -15,11 +15,11 @@ process.chdir(repo);
 const maxCycles = parseInt(process.argv[2] ?? "999", 10);
 
 const colors = {
-  green:  (s: string) => `\x1b[32m${s}\x1b[0m`,
+  green: (s: string) => `\x1b[32m${s}\x1b[0m`,
   yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
-  red:    (s: string) => `\x1b[31m${s}\x1b[0m`,
-  cyan:   (s: string) => `\x1b[36m${s}\x1b[0m`,
-  gray:   (s: string) => `\x1b[90m${s}\x1b[0m`,
+  red: (s: string) => `\x1b[31m${s}\x1b[0m`,
+  cyan: (s: string) => `\x1b[36m${s}\x1b[0m`,
+  gray: (s: string) => `\x1b[90m${s}\x1b[0m`,
 };
 
 function log(msg: string, color: keyof typeof colors = "green") {
@@ -37,10 +37,18 @@ function hasIncompleteTasks(): boolean {
 }
 
 function runClaude(prompt: string): number {
-  const result = spawnSync("claude", ["-p", prompt], {
-    stdio: "inherit",
-    cwd: repo,
-  });
+  const result = spawnSync(
+    "claude",
+    [
+      "-p",
+      prompt,
+      "--dangerously-skip-permissions", // temp add (care!)
+    ],
+    {
+      stdio: "inherit",
+      cwd: repo,
+    },
+  );
   return result.status ?? 1;
 }
 
@@ -48,7 +56,10 @@ function runClaude(prompt: string): number {
 try {
   execSync("claude --version", { stdio: "ignore" });
 } catch {
-  log("ERROR: 'claude' not found. Run: npm install -g @anthropic-ai/claude-code", "red");
+  log(
+    "ERROR: 'claude' not found. Run: npm install -g @anthropic-ai/claude-code",
+    "red",
+  );
   process.exit(1);
 }
 
@@ -79,7 +90,10 @@ while (cycle < maxCycles) {
 
   const after = git("rev-parse HEAD");
   if (after === before) {
-    log("Builder ran but made no commit. Stopping - check output above.", "yellow");
+    log(
+      "Builder ran but made no commit. Stopping - check output above.",
+      "yellow",
+    );
     break;
   }
 
@@ -90,7 +104,10 @@ while (cycle < maxCycles) {
 
   const reviewExit = runClaude("Reviewer role. Check the latest commit.");
   if (reviewExit !== 0) {
-    log(`Reviewer exited with error (${reviewExit}). Continuing anyway.`, "yellow");
+    log(
+      `Reviewer exited with error (${reviewExit}). Continuing anyway.`,
+      "yellow",
+    );
   }
 
   const reviewMsg = git("log -1 --pretty=%s");
