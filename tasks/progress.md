@@ -228,6 +228,8 @@ Code comparison against draft. Fixes applied:
 
 - **3.1.3** — `getCorrelationMatrix` tool verified complete (already implemented in 3.1.1, lines 61-130 of bottleneck.ts). Fetches daily returns for all tickers, aligns by date, pairwise Pearson correlation via `simple-statistics.sampleCorrelation`, edge-case guard for <10 overlapping points. Build passes clean.
 
+- **3.1.4** — `getVolatilityContribution` tool verified complete (already implemented in bottleneck.ts as part of 3.1.1, lines 132-243). Computes: individual ticker volatility (`sampleStandardDeviation` × 100), portfolio volatility (weighted returns → `sampleStandardDeviation` × 100), marginal contribution (β × w × σ_p × 100), weight % from portfolio positions, component VaR % (marginal / portfolio_vol × 100). Handles empty holdings gracefully. Registered on bottleneck agent. Build passes clean.
+
 ## Next Task
-**3.1.4** — Implement `getVolatilityContribution(ticker)` tool (already implemented in bottleneck.ts as part of 3.1.1)
+**3.2.1** — Create `src/lib/agents/redesign.ts` — Redesign Agent with tools (`getAlternativeAssets`, `simulateRebalance`, `getRebalanceHistory`)
 
