@@ -96,6 +96,12 @@ Code comparison against draft. Fixes applied:
 - Mastra auto-reads `DEEPSEEK_API_KEY` and `OPENROUTER_API_KEY` from environment
 - Build passes clean
 
+### Phase 2.1 — Mastra & AI SDK setup (all done)
+- **2.1.1** `@mastra/core@1.24.1` + `@mastra/pg@1.9.0` installed
+- **2.1.2** `ai@6.0.158`, `@ai-sdk/google@3.0.62`, `@ai-sdk/groq@3.0.35` installed
+- **2.1.3** `.env.example` committed with all API key placeholders (Google AI, Groq, OpenRouter, DeepSeek, Alpha Vantage, CoinGecko, NewsAPI, FRED) + `DATABASE_URL`, `NEXT_PUBLIC_APP_URL`, `ORCHESTRATOR_TICK_INTERVAL_MS`. `.gitignore` updated with `!.env.example` exception
+- **2.1.4** `src/lib/mastra.ts` — Mastra instance with `PostgresStore` using `DATABASE_URL`. Agents will inherit storage when registered
+
 ## Next Task
-**2.1.3** — Set up all API keys in `.env.local`: Google AI Studio, Groq, OpenRouter, DeepSeek, CoinGecko, NewsAPI, Alpha Vantage, FRED
+**2.2.1** — Create Monitor Agent with instructions, model config, and tools
 
