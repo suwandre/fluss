@@ -287,7 +287,22 @@ while (cycle < maxCycles) {
 
   const buildExit = await runClaude(
     "Builder",
-    `Builder role: You are fully autonomous — never ask the user questions, never pause for input, use your best judgment to make all decisions. Before coding, read ~/.claude/skills/web-design-guidelines/SKILL.md, ~/.claude/skills/vercel-react-best-practices/SKILL.md, and ~/.claude/skills/tdd/SKILL.md for standards. Then pick the next unchecked task in tasks/TASKS.md and implement it following those standards. For tasks involving secrets or API keys, create the file with commented-out placeholder values (e.g. SOME_KEY=your-key-here) and commit the template — never block on missing values. After implementing, use the test-generator agent to write tests if applicable. Then run: git add --all && git commit -m 'type: short description'. Do not stop until the commit is made.`,
+    `Builder role — ONE TASK ONLY. You are fully autonomous: never ask questions, use your best judgment.
+
+STEP 1: Open tasks/TASKS.md and find the FIRST line matching "- [ ]". That is the ONE task you must implement. Note its ID (e.g. 2.2.1). Do NOT implement any other tasks.
+
+STEP 2: Before coding, read these skill files for standards:
+  ~/.claude/skills/web-design-guidelines/SKILL.md
+  ~/.claude/skills/vercel-react-best-practices/SKILL.md
+  ~/.claude/skills/tdd/SKILL.md
+
+STEP 3: Implement that single task fully. For tasks involving secrets/API keys, create a template file with placeholder values (e.g. SOME_KEY=your-key-here) — never block on missing values.
+
+STEP 4: Mark ONLY that task done in tasks/TASKS.md (change "- [ ]" to "- [x]" for that line only). Update tasks/progress.md with a brief summary.
+
+STEP 5: Run exactly: git add --all && git commit -m 'type(scope): description of task ID' && git push
+
+STEP 6: STOP. Do not look at or implement any further tasks. Your job is done for this cycle.`,
   );
 
   if (buildExit !== 0) {
@@ -316,7 +331,15 @@ while (cycle < maxCycles) {
   // ── Reviewer ─────────────────────────────────────────────────────────────────
   const reviewExit = await runClaude(
     "Reviewer",
-    `Reviewer role: Use the code-reviewer agent to inspect the latest git commit for bugs, type errors, style issues, and incomplete logic. Then use the ai-slop-remover agent to check for AI slop patterns and unnecessary complexity. If issues are found, fix them and commit with a message starting with fix:. If everything looks good, output exactly: LGTM`,
+    `Reviewer role — inspect the LATEST commit only (run: git log -1 --stat to see what it changed).
+
+STEP 1: Review the latest commit for: bugs, type errors, style issues, incomplete logic, and AI slop (unnecessary complexity, redundant code, poor naming).
+
+STEP 2:
+  - If issues found: fix them, then run git add --all && git commit -m 'fix: <description>' && git push. Then output: FIXED.
+  - If no issues: output exactly: LGTM
+
+STEP 3: STOP. Do not review older commits or implement new tasks.`,
   );
 
   if (reviewExit !== 0) {
