@@ -206,6 +206,10 @@ Code comparison against draft. Fixes applied:
   - Requires: dev server running, DB up, API keys configured
   - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 3.0 — Dependencies
+
+- **3.0.1** — Installed `simple-statistics@7.8.9` via `bun add`. Used for correlation matrices, covariance, percentiles (VaR), and volatility calculations in Phase 3 agent tools. Build passes clean.
+
 ## Next Task
-**3.0.1** — Install `simple-statistics` for correlation matrices, covariance, percentiles, volatility calculations
+**3.1.1** — Create Bottleneck Agent with tools
 

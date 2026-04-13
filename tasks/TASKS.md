@@ -109,7 +109,7 @@
 
 ### 3.0 Dependencies
 
-- [ ] **3.0.1** Install `simple-statistics` (`bun add simple-statistics`) — used for correlation matrices, covariance, percentiles (VaR), and volatility calculations in agent tools
+- [x] **3.0.1** Install `simple-statistics` (`bun add simple-statistics`) — used for correlation matrices, covariance, percentiles (VaR), and volatility calculations in agent tools
 
 ### 3.1 Bottleneck Agent
 
