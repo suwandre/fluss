@@ -204,9 +204,17 @@ function handleStreamEvent(
 
   if (type === "result") {
     const usage = ev.usage as { input_tokens?: number; output_tokens?: number } | undefined;
-    const costUsd = (ev.cost_usd as number | undefined) ?? 0;
     const inputTokens = usage?.input_tokens ?? 0;
     const outputTokens = usage?.output_tokens ?? 0;
+    
+    let costUsd = (ev.cost_usd as number | undefined) ?? 0;
+    
+    // Manually calculate cost if Claude Code returned 0 (e.g. for GLM 5.1 via proxy)
+    // GLM 5.1 exact costs: $1.40 / 1M input, $4.40 / 1M output
+    if (costUsd === 0 && (inputTokens > 0 || outputTokens > 0)) {
+       costUsd = (inputTokens / 1_000_000) * 1.40 + (outputTokens / 1_000_000) * 4.40;
+    }
+
     const result = { inputTokens, outputTokens, costUsd };
     ctx.renderFinal(result);
     touch();
