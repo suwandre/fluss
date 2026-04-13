@@ -49,6 +49,28 @@ function countTasks(): { done: number; total: number } {
   return { done, total };
 }
 
+// ── NEW: Resolve binary path once at startup ──────────────────────────────────
+// Bare "claude" with shell:true on Windows causes cmd.exe to mangle the args
+// array — special chars in the prompt get misinterpreted and flags like -A end
+// up being passed to claude itself. Resolving the full path and passing it
+// directly to spawn avoids this entirely.
+function resolveBin(name: string): string {
+  const cmd = process.platform === "win32" ? `where ${name}` : `which ${name}`;
+  try {
+    const result = execSync(cmd, { encoding: "utf8" })
+      .trim()
+      .split("\n")[0]
+      .trim();
+    if (!result) throw new Error("empty");
+    return result;
+  } catch {
+    log(`ERROR: '${name}' not found in PATH.`, "red");
+    process.exit(1);
+  }
+}
+
+const claudeBin = resolveBin("claude"); // e.g. C:\Users\suwan\AppData\Roaming\npm\claude.cmd
+
 /** Streams Claude output live to the terminal. Resolves with exit code. */
 function runClaude(
   role: "Builder" | "Reviewer",
@@ -62,26 +84,23 @@ function runClaude(
     divider("·", "gray");
 
     const proc = spawn(
-      "claude",
-      [
-        "--dangerously-skip-permissions",
-        "--print", // non-interactive but streams output
-        "--verbose", // show tool calls (Read, Write, Bash, etc.)
-        prompt,
-      ],
+      claudeBin, // ← full resolved path instead of bare "claude"
+      ["--dangerously-skip-permissions", "--print", "--verbose", prompt],
       {
         stdio: ["ignore", "pipe", "pipe"],
         cwd: repo,
-        shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+        shell: true, // still needed to execute .cmd wrappers on Windows
         env: {
           ...process.env,
-          // Ensure Git for Windows comes before Bun in PATH
-          PATH: `C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;${process.env.PATH}`,
+          // Only prepend Git on Windows; leave PATH untouched on Unix
+          PATH:
+            process.platform === "win32"
+              ? `C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;${process.env.PATH}`
+              : process.env.PATH,
         },
       },
     );
 
-    // Stream stdout line-by-line with role prefix
     let buffer = "";
     proc.stdout.on("data", (chunk: Buffer) => {
       buffer += chunk.toString();
@@ -92,7 +111,6 @@ function runClaude(
       }
     });
 
-    // Stream stderr in yellow
     proc.stderr.on("data", (chunk: Buffer) => {
       const text = chunk.toString().trim();
       if (text) process.stdout.write(`${colors.yellow("[stderr]")} ${text}\n`);
@@ -106,9 +124,10 @@ function runClaude(
   });
 }
 
-// ── Guard ────────────────────────────────────────────────────────────────────
+// ── Guard ─────────────────────────────────────────────────────────────────────
+log(`Resolved claude: ${claudeBin}`, "gray"); // visible at startup so you can verify
 try {
-  execSync("claude --version", {
+  execSync(`"${claudeBin}" --version`, {
     stdio: "ignore",
     shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
   });
@@ -120,7 +139,7 @@ try {
   process.exit(1);
 }
 
-// ── Boot ─────────────────────────────────────────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────────────────────
 divider("═");
 log("Builder+Reviewer loop starting (GLM via Claude Code)", "cyan");
 log(`Repo:       ${repo}`, "gray");
@@ -146,13 +165,14 @@ while (cycle < maxCycles) {
   log(`Cycle ${cycle}  |  Tasks: ${done}/${total} done`, "magenta");
   divider("═");
 
-  // ── Builder ────────────────────────────────────────────────────────────────
+  // ── Builder ─────────────────────────────────────────────────────────────────
   const before = git("rev-parse HEAD");
   log(`HEAD before build: ${before.slice(0, 7)}`, "gray");
 
   const buildExit = await runClaude(
     "Builder",
-    "Builder role: pick the next unchecked task in tasks/TASKS.md, implement it, then run `git add -A && git commit -m '<type>: <short description>'`. Do not stop until the commit is made.",
+    // ← git add --all instead of -A; no backticks in commit template
+    "Builder role: pick the next unchecked task in tasks/TASKS.md, implement it, then stage and commit all changes with: git add --all && git commit -m 'type: short description'. Do not stop until the commit is made.",
   );
 
   if (buildExit !== 0) {
@@ -178,10 +198,11 @@ while (cycle < maxCycles) {
   log(`✓ Builder committed [${commitHash}]: ${commitMsg}`, "green");
   console.log("");
 
-  // ── Reviewer ───────────────────────────────────────────────────────────────
+  // ── Reviewer ────────────────────────────────────────────────────────────────
   const reviewExit = await runClaude(
     "Reviewer",
-    "Reviewer role: inspect the latest git commit. Check for bugs, type errors, style issues, and incomplete logic. If you find issues, fix them and commit with a message starting with `fix:`. If everything looks good, output exactly: LGTM",
+    // ← no backticks in the fix: instruction to avoid shell mangling
+    "Reviewer role: inspect the latest git commit. Check for bugs, type errors, style issues, and incomplete logic. If you find issues, fix them and commit with a message starting with fix:. If everything looks good, output exactly: LGTM",
   );
 
   if (reviewExit !== 0) {
