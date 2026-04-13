@@ -93,11 +93,15 @@ function runClaude(
     log(`${role} agent starting — streaming output below...`, roleColor);
     divider("·", "gray");
 
+    // Prompt is piped via stdin to avoid shell mangling on Windows.
+    // When the prompt is passed as a positional arg with shell:true, cmd.exe
+    // reassembles the args into a string and may parse tokens like --all or &&
+    // as flags/separators rather than literal text.
     const proc = spawn(
-      claudeBin, // ← full resolved path instead of bare "claude"
-      ["--dangerously-skip-permissions", "--print", "--verbose", prompt],
+      claudeBin,
+      ["--dangerously-skip-permissions", "--print", "--verbose"],
       {
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "pipe"],
         cwd: repo,
         shell: true, // still needed to execute .cmd wrappers on Windows
         env: {
@@ -110,6 +114,10 @@ function runClaude(
         },
       },
     );
+
+    // Write prompt to stdin then close it so claude knows input is done.
+    proc.stdin.write(prompt, "utf8");
+    proc.stdin.end();
 
     let buffer = "";
     proc.stdout.on("data", (chunk: Buffer) => {
