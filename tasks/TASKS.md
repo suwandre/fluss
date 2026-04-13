@@ -73,7 +73,7 @@
 
 ### 2.1 Mastra & AI SDK setup
 
-- [ ] **2.1.1** Install Mastra packages: `@mastra/core`, `@mastra/pg` _(A §10, Phase 2)_
+- [x] **2.1.1** Install Mastra packages: `@mastra/core`, `@mastra/pg` _(A §10, Phase 2)_
 - [ ] **2.1.2** Install Vercel AI SDK + providers: `ai`, `@ai-sdk/google`, `@ai-sdk/groq`. Also verify Mastra's built-in provider support for DeepSeek and OpenRouter — if needed, install `@ai-sdk/openai` (OpenAI-compatible base) and configure custom base URLs _(A §6)_
 - [ ] **2.1.3** Set up all API keys in `.env.local`: Google AI Studio, Groq, OpenRouter, DeepSeek, CoinGecko (`COINGECKO_API_KEY` — optional, free tier works without key), NewsAPI (`NEWS_API_KEY` — used in Phase 4 RAG), Alpha Vantage (`ALPHA_VANTAGE_API_KEY`), FRED (`FRED_API_KEY`) _(A §12)_
 - [ ] **2.1.4** Create `src/lib/mastra.ts` — Mastra instance with PostgreSQL memory store config

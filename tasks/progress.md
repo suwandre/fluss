@@ -87,6 +87,9 @@ Code comparison against draft. Fixes applied:
 - `bun next start`: server ready in 143ms on localhost:3000
 - Gotcha: `memcache.go` credential errors in output are from a Kubernetes context in the shell environment — not app-related, safe to ignore
 
+### Phase 2.1.1 — Mastra packages installed (done)
+- `@mastra/core@1.24.1` + `@mastra/pg@1.9.0` added to `package.json` via `bun add`
+
 ## Next Task
-**2.1.1** — Install Mastra packages: `@mastra/core`, `@mastra/pg`
+**2.1.2** — Install Vercel AI SDK + providers: `ai`, `@ai-sdk/google`, `@ai-sdk/groq`; verify Mastra provider support for DeepSeek/OpenRouter; install `@ai-sdk/openai` if needed for custom base URLs
 
