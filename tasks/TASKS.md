@@ -122,7 +122,7 @@
 
 - [x] **3.2.1** Create `src/lib/agents/redesign.ts` — Redesign Agent with tools (`getAlternativeAssets`, `simulateRebalance`, `getRebalanceHistory`) _(A §5.3)_
 - [x] **3.2.2** Define `RedesignOutput` Zod schema _(A §5.3)_
-- [ ] **3.2.3** Implement `simulateRebalance(currentHoldings, proposedChanges)` tool — what-if P&L calculation
+- [x] **3.2.3** Implement `simulateRebalance(currentHoldings, proposedChanges)` tool — what-if P&L calculation
 
 ### 3.3 Risk Agent
 

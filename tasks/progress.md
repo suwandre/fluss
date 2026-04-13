@@ -231,7 +231,7 @@ Code comparison against draft. Fixes applied:
 - **3.1.4** — `getVolatilityContribution` tool verified complete (already implemented in bottleneck.ts as part of 3.1.1, lines 132-243). Computes: individual ticker volatility (`sampleStandardDeviation` × 100), portfolio volatility (weighted returns → `sampleStandardDeviation` × 100), marginal contribution (β × w × σ_p × 100), weight % from portfolio positions, component VaR % (marginal / portfolio_vol × 100). Handles empty holdings gracefully. Registered on bottleneck agent. Build passes clean.
 
 ## Next Task
-**3.2.3** — Implement `simulateRebalance(currentHoldings, proposedChanges)` tool — what-if P&L calculation
+**3.3.1** — Create `src/lib/agents/risk.ts` — Risk Agent with tools (`runHistoricalStressTest`, `computeVar`, `getMacroContext`)
 
 ---
 
@@ -249,4 +249,6 @@ Code comparison against draft. Fixes applied:
   - Build passes clean (known Mastra PG non-blocking error only).
 
 - **3.2.2** — `RedesignOutput` Zod schema verified already complete (defined in `redesign.ts` lines 12-28 as part of 3.2.1). Matches architecture §5.3 exactly: `proposed_actions` (action enum, ticker, target_pct, rationale), `expected_improvement` (sharpe_delta nullable, volatility_delta_pct nullable, narrative), `confidence` enum, `proposal_summary`. Exported type via `z.infer`. No new code needed.
+
+- **3.2.3** — `simulateRebalance` tool verified already complete (implemented in `redesign.ts` lines 130-310 as part of 3.2.1). Full what-if P&L simulation: fetches current holdings + live prices, applies proposed changes (reduce/increase/replace/add/remove with targetWeightPct), normalizes weights to 100%, fetches historical data for proposed tickers, computes annualized volatility (daily vol × √252) and cumulative projected P&L over benchmark period. Build passes clean.
 
