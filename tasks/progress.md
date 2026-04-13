@@ -230,8 +230,21 @@ Code comparison against draft. Fixes applied:
 
 - **3.1.4** — `getVolatilityContribution` tool verified complete (already implemented in bottleneck.ts as part of 3.1.1, lines 132-243). Computes: individual ticker volatility (`sampleStandardDeviation` × 100), portfolio volatility (weighted returns → `sampleStandardDeviation` × 100), marginal contribution (β × w × σ_p × 100), weight % from portfolio positions, component VaR % (marginal / portfolio_vol × 100). Handles empty holdings gracefully. Registered on bottleneck agent. Build passes clean.
 
+### Phase 3.3 — Risk Agent (in progress)
+
+- **3.3.1** — Created `src/lib/agents/risk.ts` — Risk Agent with 3 tools + output schema (done)
+  - `runHistoricalStressTest(scenarios?)` — fetches current holdings + live prices for weights, fetches historical prices per scenario period per holding, computes weighted max-drawdown across all positions. 8 built-in scenarios from arch §5.4: 5 crypto-native (BTC Halving Rally, May 2021 Crash, Terra/LUNA, FTX, 2024 BTC ETF Rally) + 3 traditional (COVID Crash, 2022 Rate Hike, 2008 GFC). Auto-selects relevant set based on portfolio composition (crypto-only → crypto scenarios; mixed → both). Recovery days heuristic: drawdown% × multiplier (3-5x scaled by severity).
+  - `computeVar(confidenceLevel?, days?)` — historical VaR via weighted portfolio returns. Fetches daily returns for all holdings, builds weighted portfolio return series, sorts ascending, takes (1-confidence) percentile. Returns VaR as % and dollar amount. Default 95% confidence, 252-day lookback.
+  - `getMacroContext()` — fetches VIX (^VIX), 10Y Treasury (^TNX), short-end proxy (^IRX 13-week T-bill), S&P 500 (^GSPC), BTC (BTC-USD) via `getBatchPrices`. Computes yield curve shape (normal/flat/inverted based on 10Y-2Y spread thresholds). Returns all macro indicators for risk contextualization.
+  - `RiskOutput` Zod schema: `stress_results` (scenario, simulated_drawdown_pct, recovery_days), `var_95`, `verdict` (approve/approve_with_caveats/reject), `caveats`, `risk_summary` — per architecture §5.4.
+  - Agent instructions: run all relevant stress scenarios, report VaR at 95% baseline, cross-reference macro context (high VIX + inverted yield curve = elevated systemic risk). Verdict rules: approve (<15% drawdowns), approve_with_caveats (15-25% OR elevated VIX/flat curve), reject (>25% OR VaR>5% daily OR inverted+high VIX).
+  - Model fallback chain same as other agents: gemini-2.5-flash-lite → groq/llama-3.3-70b → openrouter/deepseek-chat:free.
+  - Registered in `src/lib/mastra.ts` alongside monitorAgent + bottleneckAgent + redesignAgent.
+  - Gotcha: `^IRX` (13-week T-bill) used as proxy for 2Y Treasury since Yahoo's 2Y symbol (`^UST2Y`) is unreliable — arch says "2Y" but free API coverage varies.
+  - Build passes clean (known Mastra PG non-blocking error only).
+
 ## Next Task
-**3.3.1** — Create `src/lib/agents/risk.ts` — Risk Agent with tools (`runHistoricalStressTest`, `computeVar`, `getMacroContext`)
+**3.3.2** — Define `RiskOutput` Zod schema (already complete — defined in risk.ts as part of 3.3.1)
 
 ---
 
