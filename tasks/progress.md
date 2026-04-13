@@ -133,6 +133,16 @@ Code comparison against draft. Fixes applied:
   - Installed shadcn `<Collapsible />` as prerequisite (`src/components/ui/collapsible.tsx`)
   - Build passes clean
 
+### Phase 2.3.2 — AgentTimeline (done)
+- `<AgentTimeline />` at `src/components/agents/agent-timeline.tsx`
+- Accepts `steps: AgentStepData[]` (exported interface with same props as AgentStep)
+- Renders each step via `<AgentStep />`, wrapped in a container
+- Connector line: 1px `border-l border-border-bright` between dots, `ml-[3px]` to align with dot center (AgentStep dot column is 6px wide at `gap-3` offset, center = 3px)
+- Last step: no connector below
+- Dimming: steps after the currently running agent get `opacity-45` with `transition-opacity`
+- No running agent found → nothing dimmed (all done/queued/error)
+- Build passes clean
+
 ## Next Task
-**2.3.2** — `<AgentTimeline />` component
+**2.3.3** — `<AgentReasoningPanel />` component
 

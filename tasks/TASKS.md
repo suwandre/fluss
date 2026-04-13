@@ -89,7 +89,7 @@
 ### 2.3 Agent reasoning UI
 
 - [x] **2.3.1** `<AgentStep />` — individual agent entry: status dot, name, duration badge, structured output block, collapsible reasoning, streaming cursor _(V §4.7)_
-- [ ] **2.3.2** `<AgentTimeline />` — vertical timeline container with 4 agent step slots, connector lines, dimming for post-running steps _(V §4.6)_
+- [x] **2.3.2** `<AgentTimeline />` — vertical timeline container with 4 agent step slots, connector lines, dimming for post-running steps _(V §4.6)_
 - [ ] **2.3.3** `<AgentReasoningPanel />` — right sidebar with `<ScrollArea />`, header with run ID badge, collapse toggle placeholder (visual button only — collapsed ~48px icon-strip state is explicitly deferred per V §6.2) _(V §4.5)_
 - [ ] **2.3.4** Install shadcn components used by agent panel: `<Collapsible />`, `<ScrollArea />`
 
