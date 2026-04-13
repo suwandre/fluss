@@ -72,7 +72,12 @@ function runClaude(
       {
         stdio: ["ignore", "pipe", "pipe"],
         cwd: repo,
-        shell: true,
+        shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+        env: {
+          ...process.env,
+          // Ensure Git for Windows comes before Bun in PATH
+          PATH: `C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;${process.env.PATH}`,
+        },
       },
     );
 
