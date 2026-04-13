@@ -64,7 +64,7 @@
 ### 1.8 Page composition & validation
 
 - [x] **1.8.1** Wire `src/app/page.tsx` — full layout: `<PortfolioSummaryBar />` (fixed top 72px), `<FactoryFloor />` (flex: 7), right sidebar placeholder (flex: 3, min 340px) _(V §6.1)_
-- [ ] **1.8.2** Verify visual output against `draft-v1-glm.html`: node layout, health colors, edge rendering, summary bar _(V §11)_
+- [x] **1.8.2** Verify visual output against `draft-v1-glm.html`: node layout, health colors, edge rendering, summary bar _(V §11)_
 - [ ] **1.8.3** Validate `bun next build && bun next start` works on target deployment _(A §10, Phase 1)_
 
 ---

@@ -73,6 +73,15 @@ This file is updated after every completed task. Builder and reviewer both read 
 ### Phase 1.8 — Page Composition (in progress)
 - **1.8.1** `src/app/page.tsx` wired: `"use client"` required (passes `onAddHolding` callback to summary bar); flex-col `h-screen overflow-hidden` layout; `<PortfolioSummaryBar />` at top (72px), flex row below with `<FactoryFloor />` (flex-[7]) and `<aside>` placeholder (flex-[3], min 340px, max 420px, border-left, bg-card); hardcoded prop values for now. Gotcha: page must be client component because `onAddHolding` is a function prop — can be refactored to a child client wrapper later if RSC is needed.
 
+### Phase 1.8.2 — Visual alignment vs draft-v1-glm.html (done)
+Code comparison against draft. Fixes applied:
+- Summary bar: cell padding `px-3` → `px-5` (matches draft's `padding: 0 20px`)
+- Summary bar Last Run cell: restructured to [label+value left / button right], health on a separate row below (matches draft layout)
+- Output node width: `w-[220px]` → `w-[200px]` per spec
+- Factory floor background dots: `var(--border)` → `rgba(255,255,255,0.03)` per draft
+- Machine node name separator: `·` → `—` (em dash, per draft's `&mdash;`)
+- Gotcha: pre-existing type error in `scripts/run-loop.ts` (`shell: true` — bool not assignable to string in ExecSyncOptions); fixed to pass shell path string
+
 ## Next Task
-**1.8.2** — Verify visual output against `draft-v1-glm.html`: node layout, health colors, edge rendering, summary bar
+**1.8.3** — Validate `bun next build && bun next start` works on target deployment
 
