@@ -108,9 +108,7 @@ function handleStreamEvent(
         // Trim long thinking blocks — show first 300 chars.
         const snip = b.thinking.slice(0, 300).replace(/\n+/g, " ");
         const ellipsis = b.thinking.length > 300 ? "..." : "";
-        process.stdout.write(
-          `  ${colors.gray("💭 " + snip + ellipsis)}\n`,
-        );
+        process.stdout.write(`  ${colors.gray("💭 " + snip + ellipsis)}\n`);
         touch();
       } else if (b.type === "text" && typeof b.text === "string") {
         for (const line of b.text.split("\n")) {
@@ -141,9 +139,7 @@ function handleStreamEvent(
       parts.push(`out:${usage.output_tokens}`);
     if (cost !== undefined) parts.push(`$${cost.toFixed(4)}`);
     if (parts.length) {
-      process.stdout.write(
-        `  ${colors.gray("📊 " + parts.join("  "))}\n`,
-      );
+      process.stdout.write(`  ${colors.gray("📊 " + parts.join("  "))}\n`);
     }
     touch();
   }
@@ -167,7 +163,13 @@ function runClaude(
     // Windows shell mangling of -- tokens and && separators in the text.
     const proc = spawn(
       claudeBin,
-      ["--dangerously-skip-permissions", "--print", "--verbose", "--output-format", "stream-json"],
+      [
+        "--dangerously-skip-permissions",
+        "--print",
+        "--verbose",
+        "--output-format",
+        "stream-json",
+      ],
       {
         stdio: ["pipe", "pipe", "pipe"],
         cwd: repo,
@@ -269,7 +271,7 @@ while (cycle < maxCycles) {
 
   const buildExit = await runClaude(
     "Builder",
-    "Builder role: pick the next unchecked task in tasks/TASKS.md, implement it, then stage and commit all changes with: git add --all && git commit -m 'type: short description'. Do not stop until the commit is made.",
+    `Builder role: Before coding, read ~/.claude/skills/web-design-guidelines/SKILL.md, ~/.claude/skills/vercel-react-best-practices/SKILL.md, and ~/.claude/skills/tdd/SKILL.md for standards. Then pick the next unchecked task in tasks/TASKS.md and implement it following those standards. After implementing, use the test-generator agent to write tests if applicable. Then run: git add --all && git commit -m 'type: short description'. Do not stop until the commit is made.`,
   );
 
   if (buildExit !== 0) {
@@ -298,7 +300,7 @@ while (cycle < maxCycles) {
   // ── Reviewer ─────────────────────────────────────────────────────────────────
   const reviewExit = await runClaude(
     "Reviewer",
-    "Reviewer role: inspect the latest git commit. Check for bugs, type errors, style issues, and incomplete logic. If you find issues, fix them and commit with a message starting with fix:. If everything looks good, output exactly: LGTM",
+    `Reviewer role: Use the code-reviewer agent to inspect the latest git commit for bugs, type errors, style issues, and incomplete logic. Then use the ai-slop-remover agent to check for AI slop patterns and unnecessary complexity. If issues are found, fix them and commit with a message starting with fix:. If everything looks good, output exactly: LGTM`,
   );
 
   if (reviewExit !== 0) {
@@ -311,7 +313,10 @@ while (cycle < maxCycles) {
   const reviewMsg = git("log -1 --pretty=%s");
   if (reviewMsg.startsWith("fix:")) {
     const fixHash = git("log -1 --pretty=%h");
-    log(`⚠ Reviewer found issues -- fixed [${fixHash}]: ${reviewMsg}`, "yellow");
+    log(
+      `⚠ Reviewer found issues -- fixed [${fixHash}]: ${reviewMsg}`,
+      "yellow",
+    );
   } else {
     log("✓ Reviewer: LGTM", "green");
   }
