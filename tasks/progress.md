@@ -256,8 +256,15 @@ Code comparison against draft. Fixes applied:
 - Recovery days heuristic: drawdown% × multiplier (3-5x scaled by severity).
 - No new code needed — marking complete.
 
+### 3.3.4 — computeVar tool (done)
+- Already fully implemented in `risk.ts` lines 141-235 as part of 3.3.1.
+- Historical VaR via weighted portfolio returns: fetches daily returns for all holdings, builds weighted portfolio return series, sorts ascending, takes (1-confidence) percentile.
+- Returns `var_pct`, `var_dollar`, `portfolio_value`, `confidence_level`, `lookback_days`.
+- Guards: empty holdings → zeros, <10 overlapping returns → zeros.
+- Registered on risk agent. No new code needed.
+
 ## Next Task
-**3.3.4** — Implement `computeVar(holdings, confidenceLevel)` tool
+**3.4.1** — Create `src/lib/orchestrator/workflow.ts` — Mastra workflow
 
 ---
 
