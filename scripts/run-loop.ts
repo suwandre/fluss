@@ -49,11 +49,9 @@ function countTasks(): { done: number; total: number } {
   return { done, total };
 }
 
-// ── NEW: Resolve binary path once at startup ──────────────────────────────────
+// ── Resolve binary path once at startup ───────────────────────────────────────
 // Bare "claude" with shell:true on Windows causes cmd.exe to mangle the args
-// array — special chars in the prompt get misinterpreted and flags like -A end
-// up being passed to claude itself. Resolving the full path and passing it
-// directly to spawn avoids this entirely.
+// array. Resolving the full .cmd path avoids this.
 function resolveBin(name: string): string {
   if (process.platform === "win32") {
     const npmGlobal = `${process.env.APPDATA}\\npm\\${name}.cmd`;
@@ -79,7 +77,78 @@ function resolveBin(name: string): string {
   }
 }
 
-const claudeBin = resolveBin("claude"); // e.g. C:\Users\suwan\AppData\Roaming\npm\claude.cmd
+const claudeBin = resolveBin("claude");
+
+// ── stream-json event renderer ─────────────────────────────────────────────────
+// Claude Code emits JSONL when --output-format stream-json is used.
+// Each line is one of: system | assistant | result
+// assistant.message.content is an array of blocks: thinking | text | tool_use
+function handleStreamEvent(
+  raw: string,
+  rolePrefix: string,
+  touch: () => void,
+): void {
+  let ev: Record<string, unknown>;
+  try {
+    ev = JSON.parse(raw);
+  } catch {
+    // Not JSON (e.g. plain text fallback) — print as-is.
+    if (raw.trim()) process.stdout.write(`${rolePrefix} ${raw}\n`);
+    return;
+  }
+
+  const type = ev.type as string | undefined;
+
+  if (type === "assistant") {
+    const msg = ev.message as { content?: unknown[] } | undefined;
+    for (const block of msg?.content ?? []) {
+      const b = block as Record<string, unknown>;
+
+      if (b.type === "thinking" && typeof b.thinking === "string") {
+        // Trim long thinking blocks — show first 300 chars.
+        const snip = b.thinking.slice(0, 300).replace(/\n+/g, " ");
+        const ellipsis = b.thinking.length > 300 ? "..." : "";
+        process.stdout.write(
+          `  ${colors.gray("💭 " + snip + ellipsis)}\n`,
+        );
+        touch();
+      } else if (b.type === "text" && typeof b.text === "string") {
+        for (const line of b.text.split("\n")) {
+          if (line.trim()) process.stdout.write(`${rolePrefix} ${line}\n`);
+        }
+        touch();
+      } else if (b.type === "tool_use") {
+        const name = b.name as string;
+        const inputStr = JSON.stringify(b.input ?? {});
+        const snippet =
+          inputStr.length > 120 ? `${inputStr.slice(0, 120)}...` : inputStr;
+        process.stdout.write(
+          `  ${colors.yellow("⚙ " + name)} ${colors.gray(snippet)}\n`,
+        );
+        touch();
+      }
+    }
+  } else if (type === "result") {
+    // Final event — show token usage and cost.
+    const usage = ev.usage as
+      | { input_tokens?: number; output_tokens?: number }
+      | undefined;
+    const cost = ev.cost_usd as number | undefined;
+    const parts: string[] = [];
+    if (usage?.input_tokens !== undefined)
+      parts.push(`in:${usage.input_tokens}`);
+    if (usage?.output_tokens !== undefined)
+      parts.push(`out:${usage.output_tokens}`);
+    if (cost !== undefined) parts.push(`$${cost.toFixed(4)}`);
+    if (parts.length) {
+      process.stdout.write(
+        `  ${colors.gray("📊 " + parts.join("  "))}\n`,
+      );
+    }
+    touch();
+  }
+  // "system" and "user" events are informational — skip them.
+}
 
 /** Streams Claude output live to the terminal. Resolves with exit code. */
 function runClaude(
@@ -90,23 +159,21 @@ function runClaude(
     const roleColor = role === "Builder" ? "green" : "cyan";
     const rolePrefix = colors[roleColor](`[${role}]`);
 
-    log(`${role} agent starting — streaming output below...`, roleColor);
+    log(`${role} agent starting...`, roleColor);
     divider("·", "gray");
 
-    // Prompt is piped via stdin to avoid shell mangling on Windows.
-    // When the prompt is passed as a positional arg with shell:true, cmd.exe
-    // reassembles the args into a string and may parse tokens like --all or &&
-    // as flags/separators rather than literal text.
+    // --output-format stream-json emits JSONL events in real-time (thinking,
+    // tool calls, text, token counts). Prompt piped via stdin to avoid
+    // Windows shell mangling of -- tokens and && separators in the text.
     const proc = spawn(
       claudeBin,
-      ["--dangerously-skip-permissions", "--print", "--verbose"],
+      ["--dangerously-skip-permissions", "--output-format", "stream-json"],
       {
         stdio: ["pipe", "pipe", "pipe"],
         cwd: repo,
-        shell: true, // still needed to execute .cmd wrappers on Windows
+        shell: true, // required to execute .cmd wrappers on Windows
         env: {
           ...process.env,
-          // Only prepend Git on Windows; leave PATH untouched on Unix
           PATH:
             process.platform === "win32"
               ? `C:\\Program Files\\Git\\cmd;C:\\Program Files\\Git\\bin;${process.env.PATH}`
@@ -115,17 +182,29 @@ function runClaude(
       },
     );
 
-    // Write prompt to stdin then close it so claude knows input is done.
     proc.stdin.write(prompt, "utf8");
     proc.stdin.end();
 
-    let buffer = "";
+    // Heartbeat: print "still working..." if silent for 15 s so the terminal
+    // never looks frozen during long tool calls or API waits.
+    let lastOutputAt = Date.now();
+    const touch = () => {
+      lastOutputAt = Date.now();
+    };
+    const heartbeat = setInterval(() => {
+      if (Date.now() - lastOutputAt > 15_000) {
+        process.stdout.write(colors.gray("  ... still working\n"));
+        lastOutputAt = Date.now();
+      }
+    }, 5_000);
+
+    let jsonBuf = "";
     proc.stdout.on("data", (chunk: Buffer) => {
-      buffer += chunk.toString();
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
+      jsonBuf += chunk.toString();
+      const lines = jsonBuf.split("\n");
+      jsonBuf = lines.pop() ?? "";
       for (const line of lines) {
-        if (line.trim()) process.stdout.write(`${rolePrefix} ${line}\n`);
+        if (line.trim()) handleStreamEvent(line.trim(), rolePrefix, touch);
       }
     });
 
@@ -135,7 +214,8 @@ function runClaude(
     });
 
     proc.on("close", (code) => {
-      if (buffer.trim()) process.stdout.write(`${rolePrefix} ${buffer}\n`);
+      clearInterval(heartbeat);
+      if (jsonBuf.trim()) handleStreamEvent(jsonBuf.trim(), rolePrefix, touch);
       divider("·", "gray");
       resolve(code ?? 1);
     });
@@ -143,7 +223,7 @@ function runClaude(
 }
 
 // ── Guard ─────────────────────────────────────────────────────────────────────
-log(`Resolved claude: ${claudeBin}`, "gray"); // visible at startup so you can verify
+log(`Resolved claude: ${claudeBin}`, "gray");
 try {
   execSync(`"${claudeBin}" --version`, {
     stdio: "ignore",
@@ -183,13 +263,12 @@ while (cycle < maxCycles) {
   log(`Cycle ${cycle}  |  Tasks: ${done}/${total} done`, "magenta");
   divider("═");
 
-  // ── Builder ─────────────────────────────────────────────────────────────────
+  // ── Builder ──────────────────────────────────────────────────────────────────
   const before = git("rev-parse HEAD");
   log(`HEAD before build: ${before.slice(0, 7)}`, "gray");
 
   const buildExit = await runClaude(
     "Builder",
-    // ← git add --all instead of -A; no backticks in commit template
     "Builder role: pick the next unchecked task in tasks/TASKS.md, implement it, then stage and commit all changes with: git add --all && git commit -m 'type: short description'. Do not stop until the commit is made.",
   );
 
@@ -201,7 +280,7 @@ while (cycle < maxCycles) {
   const after = git("rev-parse HEAD");
   if (after === before) {
     log(
-      "Builder ran but made no commit. Stopping — check output above.",
+      "Builder ran but made no commit. Stopping -- check output above.",
       "yellow",
     );
     log(
@@ -216,10 +295,9 @@ while (cycle < maxCycles) {
   log(`✓ Builder committed [${commitHash}]: ${commitMsg}`, "green");
   console.log("");
 
-  // ── Reviewer ────────────────────────────────────────────────────────────────
+  // ── Reviewer ─────────────────────────────────────────────────────────────────
   const reviewExit = await runClaude(
     "Reviewer",
-    // ← no backticks in the fix: instruction to avoid shell mangling
     "Reviewer role: inspect the latest git commit. Check for bugs, type errors, style issues, and incomplete logic. If you find issues, fix them and commit with a message starting with fix:. If everything looks good, output exactly: LGTM",
   );
 
@@ -233,7 +311,7 @@ while (cycle < maxCycles) {
   const reviewMsg = git("log -1 --pretty=%s");
   if (reviewMsg.startsWith("fix:")) {
     const fixHash = git("log -1 --pretty=%h");
-    log(`⚠ Reviewer found issues — fixed [${fixHash}]: ${reviewMsg}`, "yellow");
+    log(`⚠ Reviewer found issues -- fixed [${fixHash}]: ${reviewMsg}`, "yellow");
   } else {
     log("✓ Reviewer: LGTM", "green");
   }
