@@ -114,7 +114,7 @@
 ### 3.1 Bottleneck Agent
 
 - [x] **3.1.1** Create `src/lib/agents/bottleneck.ts` — Bottleneck Agent with tools (`getCorrelationMatrix`, `getVolatilityContribution`, `searchMarketDocuments`) _(A §5.2)_
-- [ ] **3.1.2** Define `BottleneckOutput` Zod schema _(A §5.2)_
+- [x] **3.1.2** Define `BottleneckOutput` Zod schema _(A §5.2)_
 - [ ] **3.1.3** Implement `getCorrelationMatrix(tickers)` tool — compute rolling correlations from historical price data
 - [ ] **3.1.4** Implement `getVolatilityContribution(ticker)` tool — marginal VaR contribution
 

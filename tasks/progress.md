@@ -224,6 +224,8 @@ Code comparison against draft. Fixes applied:
   - Gotcha: `input.days` with `.default(90)` still typed as `number | undefined` — used `?? 90` fallback.
   - Build passes clean (known Mastra PG non-blocking error only).
 
+- **3.1.2** — BottleneckOutput Zod schema already defined in `bottleneck.ts` (lines 12-28) as part of 3.1.1. Matches architecture §5.2 exactly: `primary_bottleneck` (ticker, reason, severity, metric), `secondary_bottlenecks` array, `analysis` string. Exported type via `z.infer`. No new code needed.
+
 ## Next Task
-**3.1.2** — Define BottleneckOutput Zod schema (already defined in bottleneck.ts as part of 3.1.1)
+**3.1.3** — Implement `getCorrelationMatrix(tickers)` tool (already implemented in bottleneck.ts as part of 3.1.1)
 
