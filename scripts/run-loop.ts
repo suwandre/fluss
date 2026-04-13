@@ -167,7 +167,7 @@ function runClaude(
     // Windows shell mangling of -- tokens and && separators in the text.
     const proc = spawn(
       claudeBin,
-      ["--dangerously-skip-permissions", "--output-format", "stream-json"],
+      ["--dangerously-skip-permissions", "--print", "--verbose", "--output-format", "stream-json"],
       {
         stdio: ["pipe", "pipe", "pipe"],
         cwd: repo,
