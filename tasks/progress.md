@@ -210,6 +210,20 @@ Code comparison against draft. Fixes applied:
 
 - **3.0.1** — Installed `simple-statistics@7.8.9` via `bun add`. Used for correlation matrices, covariance, percentiles (VaR), and volatility calculations in Phase 3 agent tools. Build passes clean.
 
+### Phase 3.1 — Bottleneck Agent (in progress)
+
+- **3.1.1** — Created `src/lib/agents/bottleneck.ts` — Bottleneck Agent with 3 tools + output schema (done)
+  - `getCorrelationMatrix(tickers, days)` — fetches historical returns for all tickers, aligns dates, computes pairwise Pearson correlation via `simple-statistics.sampleCorrelation`. Returns matrix of `{ ticker, correlations: [{ with, correlation }] }`. Requires ≥10 overlapping data points.
+  - `getVolatilityContribution(ticker, days)` — fetches portfolio holdings from DB + live prices for weights, computes daily returns for all holdings + target, builds weighted portfolio returns, then calculates: individual volatility, portfolio volatility, marginal contribution (β × w × σ_p), and component VaR %.
+  - `searchMarketDocuments(query, tickers?)` — stub returning empty results; full RAG with pgvector + NewsAPI in Phase 4.5.4.
+  - `BottleneckOutput` Zod schema: `primary_bottleneck` (ticker, reason, severity, metric), `secondary_bottlenecks` array, `analysis` string — per architecture §5.2.
+  - Agent instructions: diagnoses via correlation matrices, volatility contribution, market news. Severity thresholds: high (corr >0.85 or VaR >40%), medium (corr 0.6-0.85 or VaR 20-40%), low (else).
+  - Model fallback chain same as Monitor: gemini-2.5-flash-lite → groq/llama-3.3-70b → openrouter/deepseek-chat:free.
+  - Registered in `src/lib/mastra.ts` alongside monitorAgent.
+  - Helper `fetchDailyReturns(ticker, days, fallbackAssetClass?)` shared between correlation + volatility tools.
+  - Gotcha: `input.days` with `.default(90)` still typed as `number | undefined` — used `?? 90` fallback.
+  - Build passes clean (known Mastra PG non-blocking error only).
+
 ## Next Task
-**3.1.1** — Create Bottleneck Agent with tools
+**3.1.2** — Define BottleneckOutput Zod schema (already defined in bottleneck.ts as part of 3.1.1)
 
