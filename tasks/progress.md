@@ -70,6 +70,9 @@ This file is updated after every completed task. Builder and reviewer both read 
 
 ---
 
+### Phase 1.8 — Page Composition (in progress)
+- **1.8.1** `src/app/page.tsx` wired: `"use client"` required (passes `onAddHolding` callback to summary bar); flex-col `h-screen overflow-hidden` layout; `<PortfolioSummaryBar />` at top (72px), flex row below with `<FactoryFloor />` (flex-[7]) and `<aside>` placeholder (flex-[3], min 340px, max 420px, border-left, bg-card); hardcoded prop values for now. Gotcha: page must be client component because `onAddHolding` is a function prop — can be refactored to a child client wrapper later if RSC is needed.
+
 ## Next Task
-**1.8.1** — Wire `src/app/page.tsx`: full layout with `<PortfolioSummaryBar />` (fixed top 72px), `<FactoryFloor />` (flex: 7), right sidebar placeholder (flex: 3, min 340px)
+**1.8.2** — Verify visual output against `draft-v1-glm.html`: node layout, health colors, edge rendering, summary bar
 
