@@ -90,6 +90,12 @@ Code comparison against draft. Fixes applied:
 ### Phase 2.1.1 — Mastra packages installed (done)
 - `@mastra/core@1.24.1` + `@mastra/pg@1.9.0` added to `package.json` via `bun add`
 
+### Phase 2.1.2 — Vercel AI SDK + providers installed (done)
+- `ai@6.0.158`, `@ai-sdk/google@3.0.62`, `@ai-sdk/groq@3.0.35` installed via `bun add`
+- Verified Mastra's built-in model router handles DeepSeek and OpenRouter natively via model strings (`'deepseek/deepseek-chat'`, `'openrouter/qwen/qwen3.6-plus'`) — no `@ai-sdk/openai` needed
+- Mastra auto-reads `DEEPSEEK_API_KEY` and `OPENROUTER_API_KEY` from environment
+- Build passes clean
+
 ## Next Task
-**2.1.2** — Install Vercel AI SDK + providers: `ai`, `@ai-sdk/google`, `@ai-sdk/groq`; verify Mastra provider support for DeepSeek/OpenRouter; install `@ai-sdk/openai` if needed for custom base URLs
+**2.1.3** — Set up all API keys in `.env.local`: Google AI Studio, Groq, OpenRouter, DeepSeek, CoinGecko, NewsAPI, Alpha Vantage, FRED
 
