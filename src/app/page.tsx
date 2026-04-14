@@ -1,16 +1,23 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { FactoryFloor } from "@/components/factory/factory-floor";
 import { PortfolioSummaryBar } from "@/components/layout/portfolio-summary-bar";
 import { AgentReasoningPanel } from "@/components/agents/agent-reasoning-panel";
+import { HoldingsInput, type NewHolding } from "@/components/holdings/holdings-input";
 import { useAgentRun } from "@/hooks/use-agent-run";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
 
 export default function Home() {
+  const [holdingsInputOpen, setHoldingsInputOpen] = useState(false);
   const { steps, runId, isRunning, error, monitorOutput, workflowOutput, lastRunAt, startRun } =
     useAgentRun();
+
+  const handleAddHolding = (holding: NewHolding) => {
+    // Task 4.1.5 will wire this to POST /api/portfolio/holdings
+    console.log("New holding submitted:", holding);
+  };
 
   // Derive summary bar values from Monitor output
   const summaryMetrics = useMemo(() => {
@@ -61,6 +68,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[--bg-primary]">
+      <HoldingsInput open={holdingsInputOpen} onOpenChange={setHoldingsInputOpen} onSubmit={handleAddHolding} />
       <PortfolioSummaryBar
         totalValue={summaryMetrics.totalValue}
         unrealisedPnl={summaryMetrics.unrealisedPnl}
@@ -69,7 +77,7 @@ export default function Home() {
         maxDrawdownPct={summaryMetrics.maxDrawdownPct}
         lastRunAt={lastRunAt}
         health={summaryMetrics.health}
-        onAddHolding={() => {}}
+        onAddHolding={() => setHoldingsInputOpen(true)}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-[7] overflow-hidden">

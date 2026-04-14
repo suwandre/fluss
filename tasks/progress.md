@@ -417,8 +417,15 @@ Code comparison against draft. Fixes applied:
   - Ticker validation on blur (task 4.1.3) not yet implemented — placeholder for next task
   - Build passes clean (known Mastra PG non-blocking error only)
 
+### 4.1.4 — Wire "+" button to open HoldingsInput modal (done)
+- Added `useState(false)` for `holdingsInputOpen` in `page.tsx`
+- `<HoldingsInput>` rendered at top of page JSX with `open={holdingsInputOpen}`, `onOpenChange={setHoldingsInputOpen}`, `onSubmit={handleAddHolding}`
+- `PortfolioSummaryBar.onAddHolding` wired to `() => setHoldingsInputOpen(true)` (was `() => {}`)
+- `handleAddHolding` callback logs to console — placeholder for task 4.1.5 (POST /api/portfolio/holdings wiring)
+- Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**4.1.4** — Wire "+" button in `<PortfolioSummaryBar />` to open `<HoldingsInput />`
+**4.1.5** — Wire form submit to `POST /api/portfolio/holdings` and refresh factory floor
 
 ---
 

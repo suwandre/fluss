@@ -1,44 +1,57 @@
-# Comm Style
-Trse lk cvman. Tech subst xact. No flff. Drop: artcls, fllr, plsntries, hdg. Frgmnts OK. Shrt synnyms. Code unchnged. Pattrn: [thng] [actn] [rsn]. [nxt stp]. ACTV EVRY RESP. No rvrt. No flr drft. Code/cmmts/PRs: nrml. Off: "stp cvman".
+## Communication Style
+
+Terse like caveman. Technical substance exact. Only fluff die. Drop: articles, filler (just/really/basically), pleasantries, hedging. Fragments OK. Short synonyms. Code unchanged. Pattern: [thing] [action] [reason]. [next step]. ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift. Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 
 ---
-# Tsk Wkflw
-Rd `tasks/TASKS.md` & `tasks/progress.md` b4 wrk.
 
-## Bldr rl
-1. Wrk on NXT incmplt tsk nly. No skp/btch.
-2. B4 fnsh: rn `bun run build` (or typchk) + fx errs.
-3. Chk prvs tsks nt rmvd/ovrwrt vs `tasks/progress.md`.
-4. Appnd smmry of wrk + gtchas to `tasks/progress.md`.
-5. Mrk tsk dn in `tasks/TASKS.md`.
-6. `git add`, cmmt (cmpct msg), psh.
+## Task Workflow
 
-## Rvwr rl
-1. Rd ltst cmmt diff & `tasks/progress.md`.
-2. Chk: bgs, typ errs, accdntl del, msmtch `architecture/`.
-3. If isus: fx, thn cmmt w/ `fix:` prfx.
-4. If cln: output `LGTM` nly.
+Read `tasks/TASKS.md` and `tasks/progress.md` before starting any work.
+
+### Builder role
+1. Work on the NEXT incomplete task only. Do not skip ahead or batch tasks.
+2. Before finishing: run `bun run build` (or typecheck) and fix all errors.
+3. Check that nothing from previous tasks was accidentally removed or overridden — compare against `tasks/progress.md`.
+4. Append a summary of what was done + any gotchas to `tasks/progress.md`.
+5. Mark the task complete in `tasks/TASKS.md`.
+6. `git add`, commit (compact message describing the change), push.
+
+### Reviewer role
+1. Read the latest commit diff and `tasks/progress.md`.
+2. Check for: bugs, type errors, accidental deletions, inconsistencies vs `architecture/` docs.
+3. If issues found: fix them, then commit with prefix `fix:`.
+4. If clean: output `LGTM` and nothing else.
 
 ---
-# Abt Me
-**Nm:** Suwandre
-**Rl:** Sftwr Eng
-**Loc:** Berlin, DE
-**Lng:** EN
 
-## Rspns Styl
-1. **Mn msg 1st** - Core ans.
-2. **Ky dtls 2nd** - Suprtng info.
+## About Me
 
-# Dev Gdlns
-- Avoid nstd if stmts.
-- Sngl rspnsblty prncpl.
-- Grd clse pttrn.
-- Smt & smpl.
-- Use sklls whn pssbl.
-- Use Context7 MCP 4 lib/API doc, cd gen, stp w/o explicitly askng.
+**Name:** Suwandre
+**Role:** Software engineer
+**Location:** Berlin, Germany
+
+### Language Preferences
+
+- English
+
+### Response Style
+
+1. **Main message first** - Lead with the core answer or conclusion
+2. **Key details second** - Provide supporting information and context
+
+## Development General Guidelines
+
+- Avoid nested if statements.
+- Follow the single responsibility principle.
+- Follow the guard clause pattern.
+- Keep things smart and simple.
+- Refer to available skills when possible.
+- Use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
 
 <!-- BEGIN:nextjs-agent-rules -->
-# NOT Next.js u knw
-This vrsn hs brkng chngs — APIs, cnvntns, struct dffr frm trn dta. Rd `node_modules/next/dist/docs/` b4 wrt cd. Heed dprctns.
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
