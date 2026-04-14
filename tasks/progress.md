@@ -393,8 +393,19 @@ Code comparison against draft. Fixes applied:
   - Gotcha: Step results for bottleneck/redesign/risk contain full `WorkflowOutputSchema` — agent-specific output is at `output[stepId]` (e.g., `output.bottleneck`), same structure as frontend `useAgentRun` hook
   - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 4.1 — Holdings Input Modal (in progress)
+
+- **4.1.1** — Install shadcn components: `<Dialog />`, `<Input />`, `<Select />`, `<Button />` (done)
+  - `bunx shadcn@latest add dialog input select` — all 3 installed
+  - `Dialog` → `src/components/ui/dialog.tsx` (base-ui `@base-ui/react/dialog`)
+  - `Input` → `src/components/ui/input.tsx` (base-ui `@base-ui/react/input`)
+  - `Select` → `src/components/ui/select.tsx` (base-ui `@base-ui/react/select`)
+  - `Button` already existed from earlier phase — skipped
+  - shadcn v4 uses `@base-ui/react` primitives (not Radix)
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**4.1.1** — Install shadcn components: `<Dialog />`, `<Input />`, `<Select />`, `<Button />`
+**4.1.2** — `<HoldingsInput />` modal form
 
 ---
 
