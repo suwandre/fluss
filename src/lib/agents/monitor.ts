@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices, getHistory } from "@/lib/market";
 import type { AssetClass } from "@/lib/types/visual";
+import { memory } from "@/lib/memory";
 
 export const MonitorOutput = z.object({
   health_status: z.enum(["nominal", "warning", "critical"]),
@@ -148,4 +149,5 @@ Be direct and specific. If something looks wrong, name it precisely.`,
     { model: "openrouter/deepseek/deepseek-chat:free", maxRetries: 1 },
   ],
   tools: { getPortfolioSnapshot, getHistoricalPerformance },
+  memory,
 });

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { holdings, agentRuns } from "@/lib/db/schema";
 import { getBatchPrices, getHistory } from "@/lib/market";
 import type { AssetClass } from "@/lib/types/visual";
+import { memory } from "@/lib/memory";
 
 // --- Output schema ---
 
@@ -379,4 +380,5 @@ Summarize the expected improvement in plain language with numbers.`,
     { model: "openrouter/deepseek/deepseek-chat:free", maxRetries: 1 },
   ],
   tools: { getAlternativeAssets, simulateRebalance, getRebalanceHistory },
+  memory,
 });

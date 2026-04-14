@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { mastra } from "@/lib/mastra";
 import { db } from "@/lib/db";
 import { agentRuns, holdings } from "@/lib/db/schema";
+import { setMemoryContext } from "@/lib/orchestrator/workflow";
 
 export async function POST(req: Request) {
   // Quick check — workflow's fetchMarketSnapshot step also checks, but this
@@ -18,6 +19,11 @@ export async function POST(req: Request) {
 
   const runId = randomUUID();
   const startedAt = Date.now();
+
+  // Set memory context so each agent step can persist conversation history.
+  // Using the same threadId for all agents within a run allows cross-agent
+  // memory continuity. The resourceId groups all factory runs together.
+  setMemoryContext(runId, "portfolio-factory");
 
   // Create and start the full portfolio factory workflow
   const workflow = mastra.getWorkflow("portfolioFactoryWorkflow");

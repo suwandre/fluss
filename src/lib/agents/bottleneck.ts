@@ -7,6 +7,7 @@ import { holdings } from "@/lib/db/schema";
 import { getBatchPrices, getHistory } from "@/lib/market";
 import type { AssetClass } from "@/lib/types/visual";
 import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
+import { memory } from "@/lib/memory";
 
 // --- Output schema ---
 
@@ -249,4 +250,5 @@ Be precise with numbers. Always report the correlation coefficient or volatility
     { model: "openrouter/deepseek/deepseek-chat:free", maxRetries: 1 },
   ],
   tools: { getCorrelationMatrix, getVolatilityContribution, searchMarketDocuments },
+  memory,
 });

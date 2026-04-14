@@ -350,8 +350,23 @@ Code comparison against draft. Fixes applied:
   - Cross-edges NOT included in dagre layout computation — they're visual overlays on existing node positions
   - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 3.6 — Agent Memory (in progress)
+
+- **3.6.1** — Configure Mastra memory for each agent (done)
+  - Installed `@mastra/memory@1.15.0` — concrete `Memory` class extending `MastraMemory` with PG-backed storage
+  - Created `src/lib/memory.ts` — shared `Memory` instance with `PostgresStore` backend (same `DATABASE_URL`)
+  - Memory config: `lastMessages: 20`, `semanticRecall: false`, `workingMemory: { enabled: true, template: ... }` with structured template for tracking recurring bottlenecks, risk thresholds, and recent observations
+  - Added `memory` import + prop to all 4 agents: `monitorAgent`, `bottleneckAgent`, `redesignAgent`, `riskAgent`
+  - Added `setMemoryContext()` / `getMemoryContext()` module-level functions in `workflow.ts` — route sets threadId (runId) + resourceId ("portfolio-factory") before starting workflow
+  - Updated API route (`/api/agents/run`) to call `setMemoryContext(runId, "portfolio-factory")` before `workflow.createRun()`
+  - Updated all 4 agent `.generate()` calls in workflow steps to pass `{ memory: { thread, resource } }` when memory context is set — this tells Mastra Memory to persist and retrieve conversation history
+  - Same threadId for all agents within a run enables cross-agent memory continuity; resourceId groups all factory runs
+  - Gotcha: `Memory` constructor config (`MemoryConstructorConfig`) doesn't accept `name` prop — only `storage`, `options`, `vector`, `embedder`, `processors`. `name` is on `MastraMemory`'s base constructor but not exposed through `Memory`'s config type
+  - Gotcha: Workflow step execute context doesn't include memory/thread info — used module-level `_memoryContext` variable set by route before run, read by each step's agent.generate() call. This avoids polluting every schema with threadId/resourceId fields
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**3.6.1** — Configure Mastra memory for each agent
+**3.6.2** — Verify agents can reference previous run context in their reasoning
 
 ---
 

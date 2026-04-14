@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices, getHistory } from "@/lib/market";
 import type { AssetClass } from "@/lib/types/visual";
+import { memory } from "@/lib/memory";
 
 // --- Output schema ---
 
@@ -323,4 +324,5 @@ Always list specific caveats tied to numbers. Your risk_summary should be 2-3 se
     { model: "openrouter/deepseek/deepseek-chat:free", maxRetries: 1 },
   ],
   tools: { runHistoricalStressTest, computeVar, getMacroContext },
+  memory,
 });
