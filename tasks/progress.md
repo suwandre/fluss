@@ -263,9 +263,6 @@ Code comparison against draft. Fixes applied:
 - Guards: empty holdings → zeros, <10 overlapping returns → zeros.
 - Registered on risk agent. No new code needed.
 
-## Next Task
-**3.4.3** — All four agent steps stream sequentially into the panel — `<AgentTimeline />` shows full run progression
-
 ---
 
 ### Phase 3.4 — Workflow orchestration (in progress)
@@ -304,6 +301,29 @@ Code comparison against draft. Fixes applied:
   - Gotcha: `workflow.createRun({ runId })` is async — must await before calling `.stream()`
   - Gotcha: `run.stream({ inputData: {} })` is synchronous — returns `WorkflowRunOutput` immediately. `runOutput.fullStream` is `ReadableStream<WorkflowStreamEvent>`, `runOutput.result` is `Promise<WorkflowResult>` that resolves after stream completes
   - Build passes clean (known Mastra PG non-blocking error only)
+
+- **3.4.3** — All four agent steps stream sequentially into the panel (done)
+  - **Workflow restructured**: replaced `escalationStep` + `statusUpdateStep` + `.branch()` with 3 separate conditional steps (`bottleneckStep`, `redesignStep`, `riskStep`). Each step is its own Mastra workflow step so the stream emits `workflow-step-start`/`workflow-step-result` per agent — this is what drives the timeline.
+  - New workflow chain: `fetchMarketSnapshot → computeCorrelationStep → monitorStep → bottleneckStep → redesignStep → riskStep`
+  - Each conditional step checks whether it should run: `bottleneckStep` checks `monitorResult.health_status !== "nominal"`, `redesignStep` checks `inputData.bottleneck !== null`, `riskStep` checks `inputData.redesign !== null`. Skipped steps return pass-through data with null agent output.
+  - **`useAgentRun` hook rewritten** to parse `data-workflow-event` SSE events instead of `text-delta` chunks:
+    - `STEP_ID_TO_INDEX` maps workflow step IDs (`monitor`, `bottleneck`, `redesign`, `risk`) to timeline indices (0-3)
+    - `workflow-step-start` → marks corresponding timeline slot as running (only if escalation active for non-monitor steps)
+    - `workflow-step-result` → marks slot as done with `structuredOutput` + `durationMs`
+    - `buildStructuredOutput()` extracts flat key/value summaries per agent type from step output
+    - `escalationActive` flag set when Monitor result has non-nominal health — controls whether Bottleneck/Redesign/Risk step-starts update the timeline
+    - Nominal path: Monitor → done, other 3 stay queued
+    - Escalation path: all 4 agents progress sequentially
+  - Hook now exposes `workflowOutput: Record<string, unknown> | null` (full `WorkflowOutputSchema` from last step result)
+  - Monitor marked as running immediately on "Run" click for fast feedback (before `workflow-step-start` arrives)
+  - Step start times tracked in closure for per-agent duration calculation
+  - Gotcha: Mastra `branch()` can only run ONE step per branch — that's why we restructured to separate conditional steps
+  - Gotcha: `workflow-step-start` event has step ID in `payload.id`, not top-level `id` (which is step call ID)
+  - Gotcha: For non-monitor steps, `workflow-step-result.output` is `WorkflowOutputSchema` — agent-specific output is at `output[stepId]` (e.g., `output.bottleneck`)
+  - Build passes clean (known Mastra PG non-blocking error only)
+
+## Next Task
+**3.5.1** — Enable edge flow animation on `<ConveyorEdge />`
 
 ---
 

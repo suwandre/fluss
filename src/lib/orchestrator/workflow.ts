@@ -146,12 +146,12 @@ const monitorStep = createStep({
   },
 });
 
-// ── Step 3a: Escalation path (bottleneck → redesign → risk) ─────────
+// ── Step 4: Bottleneck Agent ─────────────────────────────────────────
 
-const escalationStep = createStep({
-  id: "escalation-path",
+const bottleneckStep = createStep({
+  id: "bottleneck",
   description:
-    "Run Bottleneck → Redesign → Risk agents sequentially when Monitor escalates",
+    "Run Bottleneck Agent to diagnose portfolio issues (skipped if nominal)",
   inputSchema: MonitorOutput,
   outputSchema: WorkflowOutputSchema,
   execute: async ({ inputData: monitorResult, getStepResult }) => {
@@ -161,10 +161,21 @@ const escalationStep = createStep({
     const correlationStepResult = getStepResult(computeCorrelationStep) as z.infer<
       typeof SnapshotWithCorrelationSchema
     >;
-    const { tickers, portfolioData } = marketSnapshot;
     const correlationMatrix = correlationStepResult.correlationMatrix;
 
-    // ── Bottleneck Agent ──
+    // Nominal path — skip bottleneck
+    if (monitorResult.health_status === "nominal") {
+      return {
+        monitor: monitorResult,
+        bottleneck: null,
+        redesign: null,
+        risk: null,
+        correlationMatrix,
+      };
+    }
+
+    const { tickers, portfolioData } = marketSnapshot;
+
     const bottleneckPrompt = [
       "The Monitor Agent has flagged a concern with this portfolio.",
       `Health status: ${monitorResult.health_status}`,
@@ -184,14 +195,39 @@ const escalationStep = createStep({
     const bottleneckResult = await bottleneckAgent.generate(bottleneckPrompt, {
       structuredOutput: { schema: BottleneckOutput },
     });
-    const bottleneckOutput = bottleneckResult.object;
 
-    // ── Redesign Agent ──
+    return {
+      monitor: monitorResult,
+      bottleneck: bottleneckResult.object,
+      redesign: null,
+      risk: null,
+      correlationMatrix,
+    };
+  },
+});
+
+// ── Step 5: Redesign Agent ────────────────────────────────────────────
+
+const redesignStep = createStep({
+  id: "redesign",
+  description:
+    "Run Redesign Agent to propose portfolio changes (skipped if no bottleneck)",
+  inputSchema: WorkflowOutputSchema,
+  outputSchema: WorkflowOutputSchema,
+  execute: async ({ inputData, getStepResult }) => {
+    // Skip if nominal path (no bottleneck output)
+    if (!inputData.bottleneck) return inputData;
+
+    const marketSnapshot = getStepResult(fetchMarketSnapshot) as z.infer<
+      typeof MarketSnapshotSchema
+    >;
+    const { portfolioData } = marketSnapshot;
+
     const redesignPrompt = [
       "The Bottleneck Agent has diagnosed a problem.",
-      `Primary bottleneck: ${bottleneckOutput.primary_bottleneck.ticker} — ${bottleneckOutput.primary_bottleneck.reason}`,
-      `Severity: ${bottleneckOutput.primary_bottleneck.severity}`,
-      `Analysis: ${bottleneckOutput.analysis}`,
+      `Primary bottleneck: ${inputData.bottleneck.primary_bottleneck.ticker} — ${inputData.bottleneck.primary_bottleneck.reason}`,
+      `Severity: ${inputData.bottleneck.primary_bottleneck.severity}`,
+      `Analysis: ${inputData.bottleneck.analysis}`,
       "",
       "Original portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
@@ -203,14 +239,33 @@ const escalationStep = createStep({
     const redesignResult = await redesignAgent.generate(redesignPrompt, {
       structuredOutput: { schema: RedesignOutput },
     });
-    const redesignOutput = redesignResult.object;
 
-    // ── Risk Agent ──
+    return { ...inputData, redesign: redesignResult.object };
+  },
+});
+
+// ── Step 6: Risk Agent ────────────────────────────────────────────────
+
+const riskStep = createStep({
+  id: "risk",
+  description:
+    "Run Risk Agent to stress-test proposed changes (skipped if no redesign)",
+  inputSchema: WorkflowOutputSchema,
+  outputSchema: WorkflowOutputSchema,
+  execute: async ({ inputData, getStepResult }) => {
+    // Skip if nominal path (no redesign output)
+    if (!inputData.redesign) return inputData;
+
+    const marketSnapshot = getStepResult(fetchMarketSnapshot) as z.infer<
+      typeof MarketSnapshotSchema
+    >;
+    const { portfolioData } = marketSnapshot;
+
     const riskPrompt = [
       "The Redesign Agent has proposed changes. Stress-test them.",
-      `Proposed actions: ${redesignOutput.proposed_actions.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ")}`,
-      `Confidence: ${redesignOutput.confidence}`,
-      `Expected improvement: ${redesignOutput.expected_improvement.narrative}`,
+      `Proposed actions: ${inputData.redesign.proposed_actions.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ")}`,
+      `Confidence: ${inputData.redesign.confidence}`,
+      `Expected improvement: ${inputData.redesign.expected_improvement.narrative}`,
       "",
       "Current portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
@@ -222,36 +277,8 @@ const escalationStep = createStep({
     const riskResult = await riskAgent.generate(riskPrompt, {
       structuredOutput: { schema: RiskOutput },
     });
-    const riskOutput = riskResult.object;
 
-    return {
-      monitor: monitorResult,
-      bottleneck: bottleneckOutput,
-      redesign: redesignOutput,
-      risk: riskOutput,
-      correlationMatrix,
-    };
-  },
-});
-
-// ── Step 3b: Status update (nominal path) ───────────────────────────
-
-const statusUpdateStep = createStep({
-  id: "status-update",
-  description: "Brief status update when Monitor reports nominal health",
-  inputSchema: MonitorOutput,
-  outputSchema: WorkflowOutputSchema,
-  execute: async ({ inputData: monitorResult, getStepResult }) => {
-    const correlationStepResult = getStepResult(computeCorrelationStep) as z.infer<
-      typeof SnapshotWithCorrelationSchema
-    >;
-    return {
-      monitor: monitorResult,
-      bottleneck: null,
-      redesign: null,
-      risk: null,
-      correlationMatrix: correlationStepResult.correlationMatrix,
-    };
+    return { ...inputData, risk: riskResult.object };
   },
 });
 
@@ -267,16 +294,7 @@ export const portfolioFactoryWorkflow = createWorkflow({
   .then(fetchMarketSnapshot)
   .then(computeCorrelationStep)
   .then(monitorStep)
-  .branch([
-    [
-      // Warning / critical path — run full escalation
-      async ({ inputData }) => inputData.health_status !== "nominal",
-      escalationStep,
-    ],
-    [
-      // Nominal path — brief status update only
-      async () => true,
-      statusUpdateStep,
-    ],
-  ])
+  .then(bottleneckStep)
+  .then(redesignStep)
+  .then(riskStep)
   .commit();
