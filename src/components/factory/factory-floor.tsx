@@ -163,24 +163,61 @@ export function FactoryFloor({ assetHealth, globalHealth, correlationMatrix }: F
     }) as typeof nodes
   }, [nodes, assetHealth, globalHealth])
 
-  // Derive edges with correlation data from computed matrix
+  // Derive conveyor edges (machine → output) with correlation data
   const edgesWithCorrelation = useMemo(() => {
     if (!correlationMatrix || correlationMatrix.length === 0) return edges
     const corrMap = avgAbsCorrelation(correlationMatrix)
 
     return edges.map((edge) => {
       const data = edge.data as Record<string, unknown> | undefined
-      const sourceTicker = edge.source // node IDs are lowercase tickers
+      const sourceTicker = edge.source
       const correlation = corrMap[sourceTicker]
       if (correlation === undefined) return edge
       return { ...edge, data: { ...data, correlation } }
     }) as typeof edges
   }, [edges, correlationMatrix])
 
+  // Generate cross-correlation edges (machine ↔ machine) at 50% opacity
+  const crossEdges = useMemo(() => {
+    if (!correlationMatrix || correlationMatrix.length === 0) return []
+    const machineIds = new Set(nodesWithHealth.filter((n) => n.type === "machine").map((n) => n.id))
+
+    const result: typeof edges = []
+    const seen = new Set<string>()
+
+    for (const entry of correlationMatrix) {
+      const sourceTicker = entry.ticker.toLowerCase()
+      if (!machineIds.has(sourceTicker)) continue
+
+      for (const pair of entry.correlations) {
+        const targetTicker = pair.with.toLowerCase()
+        if (!machineIds.has(targetTicker)) continue
+        if (sourceTicker === targetTicker) continue
+        if (pair.correlation === 0) continue
+
+        // Deduplicate: each pair only once (alphabetical key)
+        const key = [sourceTicker, targetTicker].sort().join("---")
+        if (seen.has(key)) continue
+        seen.add(key)
+
+        result.push({
+          id: `cross-${key}`,
+          type: "conveyor" as const,
+          source: sourceTicker,
+          target: targetTicker,
+          data: { correlation: Math.abs(pair.correlation), isCrossCorrelation: true },
+        } as (typeof edges)[number])
+      }
+    }
+    return result
+  }, [correlationMatrix, nodesWithHealth])
+
+  const allEdges = useMemo(() => [...edgesWithCorrelation, ...crossEdges], [edgesWithCorrelation, crossEdges])
+
   return (
     <ReactFlow
       nodes={nodesWithHealth}
-      edges={edgesWithCorrelation}
+      edges={allEdges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}

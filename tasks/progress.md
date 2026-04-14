@@ -341,8 +341,17 @@ Code comparison against draft. Fixes applied:
   - Data flow: workflow computes `computeCorrelationMatrix` → `WorkflowOutputSchema.correlationMatrix` → SSE `data-workflow-event` → `useAgentRun.workflowOutput` → `page.tsx` → `FactoryFloor` → `edgesWithCorrelation` → `ConveyorEdge` renders color/width
   - Build passes clean (known Mastra PG non-blocking error only)
 
+- **3.5.3** — Render cross-correlation edges between machine nodes at 50% opacity (done)
+  - Added `crossEdges` useMemo in `FactoryFloor`: generates machine↔machine edges from `correlationMatrix` pairwise data
+  - Each pair appears once (deduped via alphabetical key `source---target`)
+  - Edges use `isCrossCorrelation: true` data prop — `ConveyorEdge` already applies `opacity-50` when true
+  - Cross-edges use absolute pairwise correlation value (not avgAbsCorrelation, which is for machine→output edges)
+  - `allEdges` merges conveyor edges + cross-edges; passed to `<ReactFlow>` instead of `edgesWithCorrelation` alone
+  - Cross-edges NOT included in dagre layout computation — they're visual overlays on existing node positions
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**3.5.3** — Render cross-correlation edges between machine nodes
+**3.6.1** — Configure Mastra memory for each agent
 
 ---
 
