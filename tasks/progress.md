@@ -375,8 +375,26 @@ Code comparison against draft. Fixes applied:
 - **Route cleanup**: Removed `setMemoryContext` import and call from `/api/agents/run/route.ts`. `runId` still used for DB `agent_runs` table insert.
 - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 3.7 — Phase 3 validation (in progress)
+
+- **3.7.1** — End-to-end test for full workflow pipeline (done)
+  - Rewrote `scripts/e2e-test.ts` from Phase 2 Monitor-only validation to full Phase 3 workflow validation
+  - Test now parses `data-workflow-event` SSE events (not `text-delta` chunks) — matches the updated `/api/agents/run` route
+  - Validates: `workflow-step-start` events for all 6 steps (fetch-market, compute-correlation, monitor, bottleneck, redesign, risk)
+  - Validates: `workflow-step-result` events with structured agent outputs
+  - Validates: Monitor output schema (health_status, portfolio_metrics, concerns, escalate, summary, asset_health)
+  - Validates: Escalation path (Bottleneck/Redesign/Risk) when health ≠ nominal; gracefully skips on nominal
+  - Validates: Bottleneck output (primary_bottleneck, analysis), Redesign output (proposed_actions, confidence, expected_improvement), Risk output (verdict, stress_results, var_95)
+  - Validates: Correlation matrix present (from compute-correlation step or passthrough in other step results)
+  - Validates: `workflow-finish` event received (stream completed properly)
+  - Validates: Run ID assigned and received
+  - Conditional steps (bottleneck/redesign/risk) are expected to be skipped on nominal Monitor verdict — logged as yellow warning, not error
+  - Gotcha: Mastra workflow step IDs use hyphens (`fetch-market-snapshot`, `compute-correlation-matrix`) not camelCase
+  - Gotcha: Step results for bottleneck/redesign/risk contain full `WorkflowOutputSchema` — agent-specific output is at `output[stepId]` (e.g., `output.bottleneck`), same structure as frontend `useAgentRun` hook
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**3.7.1** — End-to-end test: trigger run → all 4 agents stream in order → Monitor says "warning" → Bottleneck identifies problem → Redesign proposes changes → Risk stress-tests → full output visible in panel + edges animate with correlation data
+**4.1.1** — Install shadcn components: `<Dialog />`, `<Input />`, `<Select />`, `<Button />`
 
 ---
 

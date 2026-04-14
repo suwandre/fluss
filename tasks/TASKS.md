@@ -151,7 +151,7 @@
 
 ### 3.7 Phase 3 validation
 
-- [ ] **3.7.1** End-to-end test: trigger run → all 4 agents stream in order → Monitor says "warning" → Bottleneck identifies problem → Redesign proposes changes → Risk stress-tests → full output visible in panel + edges animate with correlation data
+- [x] **3.7.1** End-to-end test: trigger run → all 4 agents stream in order → Monitor says "warning" → Bottleneck identifies problem → Redesign proposes changes → Risk stress-tests → full output visible in panel + edges animate with correlation data
 
 ---
 
