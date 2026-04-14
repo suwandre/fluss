@@ -404,8 +404,21 @@ Code comparison against draft. Fixes applied:
   - shadcn v4 uses `@base-ui/react` primitives (not Radix)
   - Build passes clean (known Mastra PG non-blocking error only)
 
+- **4.1.2** — `<HoldingsInput />` modal form (done)
+  - Created `src/components/holdings/holdings-input.tsx`
+  - Props: `open`, `onOpenChange`, `onSubmit: (holding: NewHolding) => void`
+  - `NewHolding` type: `{ ticker, quantity, avgCost, assetClass }` — matches spec V §4.12 and `AssetClass` from `visual.ts`
+  - Form fields: Ticker Symbol (monospace Input), Quantity (number Input), Avg Cost (number Input), Asset Class (Select with Equity/ETF/Crypto/Bond/FX)
+  - Uses shadcn Dialog, Input, Select, Button components
+  - Validation: ticker non-empty, quantity & avgCost positive numbers; submit button disabled until valid
+  - Form resets on close (cancel or after submit); dialog closes on submit
+  - Labels use `text-xs font-medium uppercase tracking-wider text-text-muted` matching summary bar style
+  - Asset class options from `ASSET_CLASSES` constant (single source of truth from `visual.ts`)
+  - Ticker validation on blur (task 4.1.3) not yet implemented — placeholder for next task
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**4.1.2** — `<HoldingsInput />` modal form
+**4.1.3** — Wire ticker validation on blur
 
 ---
 
