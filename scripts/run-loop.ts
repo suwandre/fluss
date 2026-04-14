@@ -221,7 +221,8 @@ function handleStreamEvent(
     // Manually calculate cost if Claude Code returned 0 (e.g. for GLM 5.1 via proxy)
     // GLM 5.1 exact costs: $1.40 / 1M input, $4.40 / 1M output
     if (costUsd === 0 && (inputTokens > 0 || outputTokens > 0)) {
-      costUsd = (inputTokens / 200_000) * 1.4 + (outputTokens / 131_072) * 4.4;
+      costUsd =
+        (inputTokens / 1_000_000) * 1.4 + (outputTokens / 1_000_000) * 4.4;
     }
 
     const result = { inputTokens, outputTokens, costUsd };

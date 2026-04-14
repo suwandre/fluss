@@ -418,7 +418,21 @@ Code comparison against draft. Fixes applied:
   - Build passes clean (known Mastra PG non-blocking error only)
 
 ## Next Task
-**4.1.3** — Wire ticker validation on blur
+**4.1.4** — Wire "+" button in `<PortfolioSummaryBar />` to open `<HoldingsInput />`
+
+---
+
+### 4.1.3 — Ticker validation on blur (done)
+- Added `TickerValidation` state type: `idle | loading | success(price, changePct) | error(message)`
+- `validateTicker(ticker)` callback: fetches `/api/market/snapshot/:ticker?assetClass=...` on blur, uses `AbortController` to cancel in-flight requests on re-trigger
+- On success: shows green price preview with `currencyDisplay()` and `pnlPercent()` for 24h change
+- On error: shows red error message from API response
+- On loading: shows "Validating…" muted text
+- Typing clears validation state (resets to `idle` on change)
+- Input border turns green (`border-[--green]`) on success, red (`border-[--red]`) on error
+- Reset form clears validation state and aborts in-flight request
+- Gotcha: shadcn `Input` uses Tailwind border classes — custom `border-[--green]`/`border-[--red]` override default border color without `!important` needed
+- Build passes clean (known Mastra PG non-blocking error only)
 
 ---
 

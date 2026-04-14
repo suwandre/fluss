@@ -161,7 +161,7 @@
 
 - [x] **4.1.1** Install shadcn components: `<Dialog />`, `<Input />`, `<Select />`, `<Button />` _(V §9)_
 - [x] **4.1.2** `<HoldingsInput />` modal — form with Ticker, Quantity, Avg Cost, Asset Class fields _(V §4.12)_
-- [ ] **4.1.3** Wire ticker validation on blur: call `/api/market/snapshot/:ticker`, show live price preview (green success / red error) _(V §4.12)_
+- [x] **4.1.3** Wire ticker validation on blur: call `/api/market/snapshot/:ticker`, show live price preview (green success / red error) _(V §4.12)_
 - [ ] **4.1.4** Wire "+" button in `<PortfolioSummaryBar />` to open `<HoldingsInput />` _(V §4.8)_
 - [ ] **4.1.5** Wire form submit to `POST /api/portfolio/holdings` and refresh factory floor
 

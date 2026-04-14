@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ASSET_CLASSES, type AssetClass } from "@/lib/types/visual";
+import { currencyDisplay, pnlPercent } from "@/lib/format";
 
 export interface NewHolding {
   ticker: string;
@@ -27,6 +28,8 @@ export interface NewHolding {
   avgCost: number;
   assetClass: AssetClass;
 }
+
+type TickerValidation = { status: "idle" } | { status: "loading" } | { status: "success"; price: number; changePct: number | null } | { status: "error"; message: string };
 
 interface HoldingsInputProps {
   open: boolean;
@@ -48,6 +51,8 @@ export function HoldingsInput({ open, onOpenChange, onSubmit }: HoldingsInputPro
   const [avgCost, setAvgCost] = useState("");
   const [assetClass, setAssetClass] = useState<AssetClass>("equity");
   const [submitting, setSubmitting] = useState(false);
+  const [tickerValidation, setTickerValidation] = useState<TickerValidation>({ status: "idle" });
+  const abortRef = useRef<AbortController | null>(null);
 
   const resetForm = useCallback(() => {
     setTicker("");
@@ -55,7 +60,48 @@ export function HoldingsInput({ open, onOpenChange, onSubmit }: HoldingsInputPro
     setAvgCost("");
     setAssetClass("equity");
     setSubmitting(false);
+    setTickerValidation({ status: "idle" });
+    abortRef.current?.abort();
   }, []);
+
+  const validateTicker = useCallback(async (tickerValue: string) => {
+    const trimmed = tickerValue.trim();
+    if (!trimmed) {
+      setTickerValidation({ status: "idle" });
+      return;
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setTickerValidation({ status: "loading" });
+
+    const upperTicker = trimmed.toUpperCase();
+    const url = `/api/market/snapshot/${encodeURIComponent(upperTicker)}?assetClass=${assetClass}`;
+
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: "Not found" }));
+        setTickerValidation({ status: "error", message: body.error ?? `Ticker "${upperTicker}" not found` });
+        return;
+      }
+
+      const data = await res.json();
+      if (data.price == null) {
+        setTickerValidation({ status: "error", message: `No price data for "${upperTicker}"` });
+        return;
+      }
+
+      setTickerValidation({ status: "success", price: data.price, changePct: data.changePercent1d ?? null });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setTickerValidation({ status: "error", message: "Failed to validate ticker" });
+    }
+  }, [assetClass]);
 
   const handleSubmit = () => {
     if (!ticker.trim() || !quantity || !avgCost) return;
@@ -105,9 +151,27 @@ export function HoldingsInput({ open, onOpenChange, onSubmit }: HoldingsInputPro
               id="holding-ticker"
               placeholder="e.g. AAPL, BTC"
               value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              className="font-mono"
+              onChange={(e) => {
+                setTicker(e.target.value);
+                if (tickerValidation.status !== "idle") setTickerValidation({ status: "idle" });
+              }}
+              onBlur={() => validateTicker(ticker)}
+              className={`font-mono ${
+                tickerValidation.status === "success" ? "border-[--green]" : tickerValidation.status === "error" ? "border-[--red]" : ""
+              }`}
             />
+            {tickerValidation.status === "loading" && (
+              <span className="text-xs text-text-muted">Validating…</span>
+            )}
+            {tickerValidation.status === "success" && (
+              <span className="text-xs text-[--green]">
+                {currencyDisplay(tickerValidation.price)}
+                {tickerValidation.changePct != null && ` (${pnlPercent(tickerValidation.changePct)})`}
+              </span>
+            )}
+            {tickerValidation.status === "error" && (
+              <span className="text-xs text-[--red]">{tickerValidation.message}</span>
+            )}
           </div>
 
           <div className="flex gap-4">
