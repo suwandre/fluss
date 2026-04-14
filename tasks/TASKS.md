@@ -141,7 +141,7 @@
 ### 3.5 React Flow live wiring
 
 - [x] **3.5.1** Enable edge flow animation on `<ConveyorEdge />` (`stroke-dashoffset` animation, 1.2s cycle) _(V §5.1, §10 Phase 3)_
-- [ ] **3.5.2** Wire correlation colors to computed correlation matrix — edge stroke color (teal/amber/red) and stroke width (1.5/2.5/3.5px) _(V §2.2, §4.2)_
+- [x] **3.5.2** Wire correlation colors to computed correlation matrix — edge stroke color (teal/amber/red) and stroke width (1.5/2.5/3.5px) _(V §2.2, §4.2)_
 - [ ] **3.5.3** Render cross-correlation edges (between two machine nodes, not to output) at 50% opacity _(V §4.2)_
 
 ### 3.6 Agent memory

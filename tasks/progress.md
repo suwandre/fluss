@@ -332,8 +332,17 @@ Code comparison against draft. Fixes applied:
   - One-line change; no new keyframes or config needed
   - Build passes clean (known Mastra PG non-blocking error only)
 
+- **3.5.2** — Wire correlation colors to computed correlation matrix (done)
+  - `FactoryFloor` accepts new `correlationMatrix?: CorrelationEntry[] | null` prop
+  - `avgAbsCorrelation(matrix)` helper computes average absolute correlation per ticker (excludes self-corr of 1.0) — used for machine→output conveyor edges
+  - `edgesWithCorrelation` useMemo overlays computed correlation onto existing edges via `corrMap[sourceTicker]`
+  - `page.tsx` extracts `correlationMatrix` from `workflowOutput` via `useMemo` and passes it to `FactoryFloor`
+  - `ConveyorEdge` already has tier→color (teal/amber/red) and tier→width (1.5/2.5/3.5px) mapping — no changes needed there
+  - Data flow: workflow computes `computeCorrelationMatrix` → `WorkflowOutputSchema.correlationMatrix` → SSE `data-workflow-event` → `useAgentRun.workflowOutput` → `page.tsx` → `FactoryFloor` → `edgesWithCorrelation` → `ConveyorEdge` renders color/width
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**3.5.2** — Wire correlation colors to computed correlation matrix
+**3.5.3** — Render cross-correlation edges between machine nodes
 
 ---
 

@@ -6,9 +6,10 @@ import { PortfolioSummaryBar } from "@/components/layout/portfolio-summary-bar";
 import { AgentReasoningPanel } from "@/components/agents/agent-reasoning-panel";
 import { useAgentRun } from "@/hooks/use-agent-run";
 import type { HealthState } from "@/lib/types/visual";
+import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
 
 export default function Home() {
-  const { steps, runId, isRunning, error, monitorOutput, lastRunAt, startRun } =
+  const { steps, runId, isRunning, error, monitorOutput, workflowOutput, lastRunAt, startRun } =
     useAgentRun();
 
   // Derive summary bar values from Monitor output
@@ -52,6 +53,12 @@ export default function Home() {
     return map;
   }, [monitorOutput]);
 
+  // Extract correlation matrix from workflow output
+  const correlationMatrix = useMemo<CorrelationEntry[] | null>(() => {
+    if (!workflowOutput?.correlationMatrix) return null;
+    return workflowOutput.correlationMatrix as CorrelationEntry[];
+  }, [workflowOutput]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[--bg-primary]">
       <PortfolioSummaryBar
@@ -69,6 +76,7 @@ export default function Home() {
           <FactoryFloor
             assetHealth={assetHealth}
             globalHealth={monitorOutput?.health_status ?? null}
+            correlationMatrix={correlationMatrix}
           />
         </div>
         <AgentReasoningPanel

@@ -18,6 +18,7 @@ import { ConveyorEdge } from "./conveyor-edge"
 import { PortfolioOutputNode } from "./portfolio-output-node"
 import { layoutGraph } from "./layout-engine"
 import type { HealthState } from "@/lib/types/visual"
+import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation"
 
 const nodeTypes: NodeTypes = {
   machine: MachineNode,
@@ -107,6 +108,26 @@ const TICKER_TO_NODE_ID: Record<string, string> = {
 export interface FactoryFloorProps {
   assetHealth?: Record<string, HealthState> | null
   globalHealth?: HealthState | null
+  correlationMatrix?: CorrelationEntry[] | null
+}
+
+/**
+ * Compute the average absolute correlation of each ticker with all other tickers.
+ * Used to color/width the conveyor edges (machine → output).
+ * Self-correlation (1.0) is excluded.
+ */
+function avgAbsCorrelation(matrix: CorrelationEntry[]): Record<string, number> {
+  const result: Record<string, number> = {}
+  for (const entry of matrix) {
+    const others = entry.correlations.filter((c) => c.with !== entry.ticker)
+    if (others.length === 0) {
+      result[entry.ticker.toLowerCase()] = 0
+      continue
+    }
+    const avg = others.reduce((sum, c) => sum + Math.abs(c.correlation), 0) / others.length
+    result[entry.ticker.toLowerCase()] = Math.round(avg * 1000) / 1000
+  }
+  return result
 }
 
 function useLayoutedGraph() {
@@ -116,7 +137,7 @@ function useLayoutedGraph() {
   return { nodes, onNodesChange, edges, onEdgesChange }
 }
 
-export function FactoryFloor({ assetHealth, globalHealth }: FactoryFloorProps) {
+export function FactoryFloor({ assetHealth, globalHealth, correlationMatrix }: FactoryFloorProps) {
   const { nodes, onNodesChange, edges, onEdgesChange } = useLayoutedGraph()
 
   // Derive nodes with updated health from agent output
@@ -142,10 +163,24 @@ export function FactoryFloor({ assetHealth, globalHealth }: FactoryFloorProps) {
     }) as typeof nodes
   }, [nodes, assetHealth, globalHealth])
 
+  // Derive edges with correlation data from computed matrix
+  const edgesWithCorrelation = useMemo(() => {
+    if (!correlationMatrix || correlationMatrix.length === 0) return edges
+    const corrMap = avgAbsCorrelation(correlationMatrix)
+
+    return edges.map((edge) => {
+      const data = edge.data as Record<string, unknown> | undefined
+      const sourceTicker = edge.source // node IDs are lowercase tickers
+      const correlation = corrMap[sourceTicker]
+      if (correlation === undefined) return edge
+      return { ...edge, data: { ...data, correlation } }
+    }) as typeof edges
+  }, [edges, correlationMatrix])
+
   return (
     <ReactFlow
       nodes={nodesWithHealth}
-      edges={edges}
+      edges={edgesWithCorrelation}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
