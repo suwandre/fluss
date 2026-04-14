@@ -92,7 +92,7 @@ const claudeBin = resolveBin("claude");
 // ── Live context bar ───────────────────────────────────────────────────────────
 // Estimates tokens from accumulated character counts (÷4, ~4 chars/token).
 // Overwrites a single terminal line after each tool call with a progress bar.
-const CTX_WINDOW = 2_000_000; // GLM 5.1 (Gemini 1.5 Pro) context window
+const CTX_WINDOW = 202_000; // GLM 5.1 context window
 const BAR_WIDTH = 20;
 
 class CtxTracker {
@@ -100,8 +100,12 @@ class CtxTracker {
   private toolCalls = 0;
   private barActive = false; // true when last write was a \r bar (no newline)
 
-  addChars(n: number): void { this.chars += n; }
-  incTool(): void { this.toolCalls++; }
+  addChars(n: number): void {
+    this.chars += n;
+  }
+  incTool(): void {
+    this.toolCalls++;
+  }
 
   /** Overwrite current line with a live context bar (no newline). */
   renderBar(): void {
@@ -135,9 +139,9 @@ class CtxTracker {
     process.stdout.write(
       `  ${colors.gray(
         `\uD83D\uDCCA exact: in:${u.inputTokens.toLocaleString()}  ` +
-        `out:${u.outputTokens.toLocaleString()}  ` +
-        `$${u.costUsd.toFixed(4)}  ` +
-        `${pctStr}% [${bar}]`,
+          `out:${u.outputTokens.toLocaleString()}  ` +
+          `$${u.costUsd.toFixed(4)}  ` +
+          `${pctStr}% [${bar}]`,
       )}\n`,
     );
   }
@@ -174,7 +178,9 @@ function handleStreamEvent(
         const snip = b.thinking.slice(0, 300).replace(/\n+/g, " ");
         const ellipsis = b.thinking.length > 300 ? "..." : "";
         ctx.clearBar();
-        process.stdout.write(`  ${colors.gray("\uD83D\uDCAD " + snip + ellipsis)}\n`);
+        process.stdout.write(
+          `  ${colors.gray("\uD83D\uDCAD " + snip + ellipsis)}\n`,
+        );
         touch();
       } else if (b.type === "text" && typeof b.text === "string") {
         ctx.addChars(b.text.length);
@@ -190,7 +196,8 @@ function handleStreamEvent(
         ctx.addChars(inputStr.length);
         ctx.incTool();
         const name = b.name as string;
-        const snippet = inputStr.length > 120 ? `${inputStr.slice(0, 120)}...` : inputStr;
+        const snippet =
+          inputStr.length > 120 ? `${inputStr.slice(0, 120)}...` : inputStr;
         ctx.clearBar();
         process.stdout.write(
           `  ${colors.yellow("\u2699 " + name)} ${colors.gray(snippet)}\n`,
@@ -203,16 +210,18 @@ function handleStreamEvent(
   }
 
   if (type === "result") {
-    const usage = ev.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+    const usage = ev.usage as
+      | { input_tokens?: number; output_tokens?: number }
+      | undefined;
     const inputTokens = usage?.input_tokens ?? 0;
     const outputTokens = usage?.output_tokens ?? 0;
-    
+
     let costUsd = (ev.cost_usd as number | undefined) ?? 0;
-    
+
     // Manually calculate cost if Claude Code returned 0 (e.g. for GLM 5.1 via proxy)
     // GLM 5.1 exact costs: $1.40 / 1M input, $4.40 / 1M output
     if (costUsd === 0 && (inputTokens > 0 || outputTokens > 0)) {
-       costUsd = (inputTokens / 1_000_000) * 1.40 + (outputTokens / 1_000_000) * 4.40;
+      costUsd = (inputTokens / 200_000) * 1.4 + (outputTokens / 131_072) * 4.4;
     }
 
     const result = { inputTokens, outputTokens, costUsd };
@@ -297,7 +306,11 @@ function runClaude(
     }, 5_000);
 
     let jsonBuf = "";
-    let callTokens: TokenUsage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+    let callTokens: TokenUsage = {
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+    };
     const ctx = new CtxTracker();
 
     proc.stdout.on("data", (chunk: Buffer) => {
@@ -359,7 +372,11 @@ divider("═");
 console.log("");
 
 let cycle = 0;
-const sessionTokens: TokenUsage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+const sessionTokens: TokenUsage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  costUsd: 0,
+};
 
 function addTokens(acc: TokenUsage, t: TokenUsage): void {
   acc.inputTokens += t.inputTokens;

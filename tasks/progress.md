@@ -322,8 +322,18 @@ Code comparison against draft. Fixes applied:
   - Gotcha: For non-monitor steps, `workflow-step-result.output` is `WorkflowOutputSchema` — agent-specific output is at `output[stepId]` (e.g., `output.bottleneck`)
   - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 3.5 — React Flow live wiring (in progress)
+
+- **3.5.1** — Enable edge flow animation on `<ConveyorEdge />` (done)
+  - Added `animate-edge-flow` class to the edge `<path>` element
+  - Uses existing `edge-flow` keyframes (stroke-dashoffset 24→0) + `--animate-edge-flow` theme token (1.2s linear infinite) already registered in `globals.css`
+  - Dashes now visually flow along edges, matching V §5.1 "flowing material" metaphor
+  - `prefers-reduced-motion` in `globals.css` already suppresses this animation globally
+  - One-line change; no new keyframes or config needed
+  - Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**3.5.1** — Enable edge flow animation on `<ConveyorEdge />`
+**3.5.2** — Wire correlation colors to computed correlation matrix
 
 ---
 

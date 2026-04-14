@@ -82,7 +82,7 @@ function ConveyorEdgeComponent({
         strokeDasharray="8 4"
         markerEnd={`url(#${markerId})`}
         className={cn(
-          "transition-colors duration-150",
+          "animate-edge-flow transition-colors duration-150",
           isCross && !selected && "opacity-50",
           selected && "opacity-100",
         )}
