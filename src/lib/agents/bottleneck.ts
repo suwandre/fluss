@@ -243,6 +243,10 @@ When you identify a bottleneck:
 - Also note any secondary bottlenecks that are worth watching
 - Provide a clear analysis in plain language
 
+When prior run context is available, compare current bottlenecks to previously
+identified patterns. Note if a bottleneck is recurring, worsening, or improving
+since the last assessment.
+
 Be precise with numbers. Always report the correlation coefficient or volatility percentage.`,
   model: [
     { model: "google/gemini-2.5-flash-lite", maxRetries: 2 },

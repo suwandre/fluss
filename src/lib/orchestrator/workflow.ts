@@ -11,19 +11,12 @@ import { getBatchPrices } from "@/lib/market";
 import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 
 // ── Memory context ──────────────────────────────────────────────────
-// Set by the API route before starting a workflow run. Each agent step
-// reads this to pass threadId/resourceId to agent.generate() so
-// Mastra Memory persists conversation history across runs.
-
-let _memoryContext: { threadId: string; resourceId: string } | null = null;
-
-export function setMemoryContext(threadId: string, resourceId: string) {
-  _memoryContext = { threadId, resourceId };
-}
-
-export function getMemoryContext() {
-  return _memoryContext;
-}
+// Fixed thread/resource IDs so agents reference previous run context.
+// Using a constant threadId ensures cross-run memory continuity —
+// Mastra Memory retrieves the last 20 messages from the same thread,
+// so each run builds on prior observations and working memory state.
+const MEMORY_THREAD_ID = "portfolio-factory-thread";
+const MEMORY_RESOURCE_ID = "portfolio-factory";
 
 // ── Shared schemas ──────────────────────────────────────────────────
 
@@ -153,10 +146,9 @@ const monitorStep = createStep({
       `Total cost basis: $${inputData.totalCost.toFixed(2)}`,
     ].join("\n");
 
-    const mem = getMemoryContext();
     const result = await monitorAgent.generate(prompt, {
       structuredOutput: { schema: MonitorOutput },
-      ...(mem ? { memory: { thread: mem.threadId, resource: mem.resourceId } } : {}),
+      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
     });
 
     return result.object;
@@ -209,10 +201,9 @@ const bottleneckStep = createStep({
     const bottleneckAgent = (
       await import("@/lib/agents/bottleneck")
     ).bottleneckAgent;
-    const mem = getMemoryContext();
     const bottleneckResult = await bottleneckAgent.generate(bottleneckPrompt, {
       structuredOutput: { schema: BottleneckOutput },
-      ...(mem ? { memory: { thread: mem.threadId, resource: mem.resourceId } } : {}),
+      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
     });
 
     return {
@@ -255,10 +246,9 @@ const redesignStep = createStep({
     ].join("\n");
 
     const redesignAgent = (await import("@/lib/agents/redesign")).redesignAgent;
-    const mem = getMemoryContext();
     const redesignResult = await redesignAgent.generate(redesignPrompt, {
       structuredOutput: { schema: RedesignOutput },
-      ...(mem ? { memory: { thread: mem.threadId, resource: mem.resourceId } } : {}),
+      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
     });
 
     return { ...inputData, redesign: redesignResult.object };
@@ -295,10 +285,9 @@ const riskStep = createStep({
     ].join("\n");
 
     const riskAgent = (await import("@/lib/agents/risk")).riskAgent;
-    const mem = getMemoryContext();
     const riskResult = await riskAgent.generate(riskPrompt, {
       structuredOutput: { schema: RiskOutput },
-      ...(mem ? { memory: { thread: mem.threadId, resource: mem.resourceId } } : {}),
+      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
     });
 
     return { ...inputData, risk: riskResult.object };

@@ -365,8 +365,18 @@ Code comparison against draft. Fixes applied:
   - Gotcha: Workflow step execute context doesn't include memory/thread info — used module-level `_memoryContext` variable set by route before run, read by each step's agent.generate() call. This avoids polluting every schema with threadId/resourceId fields
   - Build passes clean (known Mastra PG non-blocking error only)
 
+### Phase 3.6.2 — Verify agents reference previous run context (done)
+
+- **Problem**: Memory context used per-run UUID as threadId (`setMemoryContext(runId, ...)`). Each run created a fresh thread → agents could never reference prior context.
+- **Fix**: Replaced module-level `_memoryContext` / `setMemoryContext()` / `getMemoryContext()` with fixed constants: `MEMORY_THREAD_ID = "portfolio-factory-thread"` and `MEMORY_RESOURCE_ID = "portfolio-factory"`. All 4 agent steps now pass these constants directly to `.generate({ memory: { thread, resource } })`.
+- **Race condition eliminated**: Old approach used mutable module state that could be clobbered by concurrent requests. Constant threadId is immutable and safe.
+- **Agent instructions updated**: All 4 agents (Monitor, Bottleneck, Redesign, Risk) now include explicit instructions to reference prior run context when available — compare current metrics to previous observations, note recurring/worsening/improving patterns, avoid repeating past proposals.
+- **How it works**: Mastra Memory with `lastMessages: 20` retrieves the last 20 messages from the persistent thread. Each run appends new messages. Working memory (`recurring_bottlenecks`, `risk_thresholds`, `last_monitor_verdict`, `last_bottleneck_ticker`) persists across runs in the same thread. Agents see both conversation history and structured working memory.
+- **Route cleanup**: Removed `setMemoryContext` import and call from `/api/agents/run/route.ts`. `runId` still used for DB `agent_runs` table insert.
+- Build passes clean (known Mastra PG non-blocking error only)
+
 ## Next Task
-**3.6.2** — Verify agents can reference previous run context in their reasoning
+**3.7.1** — End-to-end test: trigger run → all 4 agents stream in order → Monitor says "warning" → Bottleneck identifies problem → Redesign proposes changes → Risk stress-tests → full output visible in panel + edges animate with correlation data
 
 ---
 

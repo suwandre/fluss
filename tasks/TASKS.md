@@ -147,7 +147,7 @@
 ### 3.6 Agent memory
 
 - [x] **3.6.1** Configure Mastra memory (conversation + working memory via `@mastra/pg`) for each agent _(A §7, Mastra Workflow note)_
-- [ ] **3.6.2** Verify agents can reference previous run context in their reasoning
+- [x] **3.6.2** Verify agents can reference previous run context in their reasoning
 
 ### 3.7 Phase 3 validation
 

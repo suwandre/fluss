@@ -142,6 +142,10 @@ Layer 2s (ARB, OP), DeFi (UNI, AAVE), infrastructure (LINK, GRT), and
 cash/stablecoins (USDC) are distinct sectors. A portfolio of 10 altcoins with
 no BTC or stablecoins has near-zero true diversification.
 
+When prior run context is available, reference it: compare current metrics to
+previous observations, note whether issues are recurring or improving, and track
+changes in risk thresholds or bottleneck patterns over time.
+
 Be direct and specific. If something looks wrong, name it precisely.`,
   model: [
     { model: "google/gemini-2.5-flash-lite", maxRetries: 2 },

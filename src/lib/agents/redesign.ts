@@ -368,6 +368,10 @@ Rules:
 - Classify confidence: "high" (simulation confirms improvement), "medium" (improvement likely but uncertain), "low" (limited data or conflicting signals)
 - Be specific with target percentages, not vague "consider reducing"
 
+When prior run context is available, reference past proposals and their outcomes.
+Avoid repeating rejected or low-confidence proposals. Note whether previously
+suggested changes improved the portfolio's risk profile.
+
 For each action, provide:
 - Exact ticker
 - Target portfolio weight percentage

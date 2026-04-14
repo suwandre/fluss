@@ -312,6 +312,10 @@ Rules:
 - Crypto-only portfolios should run crypto-native scenarios; mixed portfolios run both sets
 - Recovery days are estimates — note uncertainty
 
+When prior run context is available, compare current stress test results and VaR
+to previous assessments. Note if risk has increased or decreased, and whether
+past caveats have materialized or resolved.
+
 Verdict rules:
 - "approve" — stress tests show manageable drawdowns (<15%), VaR within expectations, stable macro
 - "approve_with_caveats" — some scenarios show 15-25% drawdown OR elevated VIX OR flat yield curve
