@@ -186,7 +186,7 @@
 - [x] **4.5.1** Install `node-cron` (`bun add node-cron`) for the auto-tick scheduler
 - [x] **4.5.2** Set up cron job to re-run orchestrator every 15 minutes (`ORCHESTRATOR_TICK_INTERVAL_MS`) _(A §10, Phase 4)_
 - [x] **4.5.3** pgvector setup — enable `vector` extension, add `market_documents` table to Drizzle schema, generate and run migration _(A §4)_
-- [ ] **4.5.4** News RAG integration for Bottleneck Agent — ingest headlines via NewsAPI, store embeddings, wire `searchMarketDocuments` tool _(A §10, Phase 4)_
+- [x] **4.5.4** News RAG integration for Bottleneck Agent — ingest headlines via NewsAPI, store embeddings, wire `searchMarketDocuments` tool _(A §10, Phase 4)_
 
 ### 4.6 Polish & final validation
 

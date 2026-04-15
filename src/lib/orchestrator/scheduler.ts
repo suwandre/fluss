@@ -3,6 +3,7 @@ import { mastra } from "@/lib/mastra";
 import { db } from "@/lib/db";
 import { holdings, agentRuns } from "@/lib/db/schema";
 import { randomUUID } from "crypto";
+import { ingestNewsHeadlines } from "@/lib/market/news-rag";
 
 // ── Config ──────────────────────────────────────────────────────────
 const TICK_INTERVAL_MS = parseInt(
@@ -23,7 +24,7 @@ let scheduledTask: ScheduledTask | null = null;
 let isRunning = false;
 
 /**
- * Execute one orchestrator tick: fetch holdings, run the workflow, persist result.
+ * Execute one orchestrator tick: ingest news, fetch holdings, run the workflow, persist result.
  * Skipped if a previous tick is still in progress (prevents overlap).
  */
 async function tick(): Promise<void> {
@@ -48,6 +49,17 @@ async function tick(): Promise<void> {
 	);
 
 	try {
+		// Ingest latest news headlines for portfolio tickers (RAG context)
+		const tickers = rows.map((r) => r.ticker);
+		try {
+			await ingestNewsHeadlines(tickers);
+		} catch (err) {
+			console.error(
+				"[scheduler] News ingestion failed (non-fatal):",
+				err instanceof Error ? err.message : err,
+			);
+		}
+
 		const workflow = mastra.getWorkflow("portfolioFactoryWorkflow");
 		const run = await workflow.createRun({ runId });
 		const result = await run.start({ inputData: {} });
