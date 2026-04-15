@@ -1,6 +1,6 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useEffect, useState } from "react"
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react"
 import { cn } from "@/lib/utils"
 import type { AssetClass, VolatilityLabel } from "@/lib/types/visual"
@@ -10,6 +10,12 @@ import { MetricDisplay } from "@/components/ui/metric-display"
 import { VolatilityBar } from "@/components/ui/volatility-bar"
 import { pnlPercent } from "@/lib/format"
 import { healthBorderMap, healthLabelMap, pnlVariant, HANDLE_CLASSNAME } from "./shared"
+
+const healthPulseMap: Record<HealthState, string> = {
+  nominal: "animate-pulse-green",
+  warning: "animate-pulse-amber",
+  critical: "animate-pulse-red",
+}
 
 type MachineNodeData = {
   ticker: string
@@ -38,6 +44,17 @@ function volatilityToFilled(vol: number): number {
 }
 
 function MachineNodeComponent({ data, isConnectable, selected }: NodeProps<MachineNode>) {
+  const [pulse, setPulse] = useState(false)
+  const [prevHealth, setPrevHealth] = useState(data.health)
+
+  useEffect(() => {
+    if (prevHealth !== data.health) {
+      setPulse(true)
+      setPrevHealth(data.health)
+      const id = setTimeout(() => setPulse(false), 800)
+      return () => clearTimeout(id)
+    }
+  }, [data.health, prevHealth])
   return (
     <>
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} className={HANDLE_CLASSNAME} />
@@ -51,6 +68,7 @@ function MachineNodeComponent({ data, isConnectable, selected }: NodeProps<Machi
           "hover:bg-bg-elevated",
           selected && "ring-2 ring-accent ring-offset-2 ring-offset-bg-card",
           healthBorderMap[data.health],
+          pulse && healthPulseMap[data.health],
         )}
       >
         <div className="px-3.5 pt-2.5 pb-2">
@@ -58,7 +76,7 @@ function MachineNodeComponent({ data, isConnectable, selected }: NodeProps<Machi
             {data.ticker}
           </div>
           <div className="text-xs text-text-muted mt-0.5">
-            {data.name} — {assetClassLabels[data.assetClass]}
+            {data.name} · {assetClassLabels[data.assetClass]}
           </div>
         </div>
 

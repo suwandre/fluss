@@ -163,7 +163,7 @@ export function RunHistoryPanel({
 							</div>
 
 							{/* Run ID badge */}
-							<span className="shrink-0 text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded select-none mt-0.5">
+							<span className="shrink-0 text-[11px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded select-none mt-0.5">
 								{run.runId.slice(0, 8)}
 							</span>
 						</button>

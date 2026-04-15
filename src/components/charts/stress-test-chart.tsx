@@ -3,11 +3,11 @@
 import {
 	BarChart,
 	Bar,
-	XAxis,
 	YAxis,
 	Tooltip,
 	ResponsiveContainer,
 	Cell,
+	LabelList,
 } from "recharts";
 
 interface StressResult {
@@ -52,7 +52,7 @@ function CustomTooltip({
 				style={{
 					color:
 						item.simulated_drawdown_pct > 15 ? "var(--red)" : "var(--text)",
-				}}
+			}}
 			>
 				Drawdown: {item.simulated_drawdown_pct.toFixed(1)}%
 			</div>
@@ -68,6 +68,7 @@ function CustomTooltip({
 /**
  * Horizontal Recharts BarChart consuming RiskOutput.stress_results.
  * Dark theme, --bg-elevated bars, --red for drawdown > 15% (V §4.13).
+ * X-axis hidden — value labels on bars replace it.
  */
 export function StressTestChart({ data }: StressTestChartProps) {
 	if (!data.length) return null;
@@ -79,27 +80,15 @@ export function StressTestChart({ data }: StressTestChartProps) {
 
 	return (
 		<div className="w-full" data-slot="stress-test-chart">
-			<h3 className="text-[12px] font-mono text-text-muted mb-2 uppercase tracking-wider">
+			<h3 className="text-[11px] font-mono text-text-muted mb-2 uppercase tracking-wider">
 				Stress Test Results
 			</h3>
-			<ResponsiveContainer width="100%" height={sorted.length * 36 + 20}>
+			<ResponsiveContainer width="100%" height={sorted.length * 40 + 24}>
 				<BarChart
 					data={sorted}
 					layout="vertical"
-					margin={{ top: 0, right: 40, bottom: 0, left: 0 }}
+					margin={{ top: 8, right: 60, bottom: 8, left: 0 }}
 				>
-					<XAxis
-						type="number"
-						tick={{
-							fill: "var(--text-dim)",
-							fontSize: 11,
-							fontFamily: "var(--font-mono)",
-						}}
-						axisLine={{ stroke: "var(--border)" }}
-						tickLine={false}
-						tickFormatter={(v: number) => `${v}%`}
-						domain={[0, "auto"]}
-					/>
 					<YAxis
 						type="category"
 						dataKey="scenario"
@@ -124,6 +113,16 @@ export function StressTestChart({ data }: StressTestChartProps) {
 						{sorted.map((entry, i) => (
 							<Cell key={i} fill={barFill(entry.simulated_drawdown_pct)} />
 						))}
+						<LabelList
+							dataKey="simulated_drawdown_pct"
+							position="right"
+							formatter={(v) => `-${Number(v).toFixed(1)}%`}
+							style={{
+								fill: "var(--text)",
+								fontSize: 11,
+								fontFamily: "var(--font-mono)",
+							}}
+						/>
 					</Bar>
 				</BarChart>
 			</ResponsiveContainer>
