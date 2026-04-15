@@ -28,7 +28,7 @@
 
 - [x] **1.3.1** Define Drizzle schema in `src/lib/db/schema.ts`: `holdings`, `market_snapshots`, `agent_runs` tables _(A §4)_
 - [x] **1.3.2** Create `drizzle.config.ts` pointing to `DATABASE_URL`
-- [x] **1.3.3** Generate initial migration (`bunx drizzle-kit generate`)
+- [x] **1.3.3** Generate initial migration (`bunx drizzle-kit generate`)\_
 - [x] **1.3.4** Set up PostgreSQL (local dev via Docker or Supabase/Railway free tier)
 - [x] **1.3.5** Run migrations (`bunx drizzle-kit push` or `migrate`)
 
@@ -184,7 +184,7 @@
 ### 4.5 Auto-tick & background
 
 - [x] **4.5.1** Install `node-cron` (`bun add node-cron`) for the auto-tick scheduler
-- [ ] **4.5.2** Set up cron job to re-run orchestrator every 15 minutes (`ORCHESTRATOR_TICK_INTERVAL_MS`) _(A §10, Phase 4)_
+- [x] **4.5.2** Set up cron job to re-run orchestrator every 15 minutes (`ORCHESTRATOR_TICK_INTERVAL_MS`) _(A §10, Phase 4)_
 - [ ] **4.5.3** pgvector setup — enable `vector` extension, add `market_documents` table to Drizzle schema, generate and run migration _(A §4)_
 - [ ] **4.5.4** News RAG integration for Bottleneck Agent — ingest headlines via NewsAPI, store embeddings, wire `searchMarketDocuments` tool _(A §10, Phase 4)_
 

@@ -54,14 +54,29 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.5.1 (4/16/2026)
+## Task 4.5.1 (4/16/2026, 12:02:14 AM)
 
 **Description:** Install `node-cron` (`bun add node-cron`) for the auto-tick scheduler
 
 **Summary:**
-Installed node-cron@4.2.1 via `bun add node-cron`. Package added to dependencies in package.json. Build passes (compiled successfully, TypeScript clean).
+Installed node-cron@4.2.1 via bun add. Build passes.
 
 **Gotchas:**
-None. Simple dependency install.
+WARNING: No code changes made.
+
+---
+
+## Task 4.5.2 (4/16/2026, 12:15:00 AM)
+
+**Description:** Set up cron job to re-run orchestrator every 15 minutes (`ORCHESTRATOR_TICK_INTERVAL_MS`) _(A §10, Phase 4)_
+
+**Summary:**
+Created `src/lib/orchestrator/scheduler.ts` — node-cron based scheduler that reads `ORCHESTRATOR_TICK_INTERVAL_MS` (default 900000ms = 15min), converts to cron expression, and runs the portfolio factory workflow on each tick. Includes overlap guard (skips if previous tick still running) and empty-portfolio guard. Persists results to `agent_runs` with `trigger: "cron"`. Created `src/instrumentation.ts` — Next.js instrumentation hook that dynamically imports and starts the scheduler in Node.js runtime + production mode only (avoids Edge Runtime issues and dev hot-reload duplicates). Build passes.
+
+**Gotchas:**
+
+- Dynamic import in instrumentation.ts required to avoid Edge Runtime analyzing node-cron/crypto modules.
+- `node-cron` v4 `schedule()` options don't include `scheduled` field — removed it (tasks auto-start on schedule).
+- Scheduler only activates in `NODE_ENV=production` + `NEXT_RUNTIME=nodejs` to prevent duplicate schedulers during dev.
 
 ---
