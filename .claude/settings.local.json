@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(\"./node_modules/.bin/tsc.exe\" --noEmit)",
+      "Bash(bun --bun run index.ts --dry-run)",
+      "Bash(bun build:*)",
+      "Bash(node -e \"const ai = require\\('./node_modules/ai/dist/index.js'\\); console.log\\(Object.keys\\(ai\\).filter\\(k => k.toLowerCase\\(\\).includes\\('json'\\) || k.toLowerCase\\(\\).includes\\('schema'\\) || k.toLowerCase\\(\\).includes\\('mcp'\\)\\)\\)\")",
+      "Bash(node -e \"const { zodSchema } = require\\('./node_modules/ai/dist/index.js'\\); console.log\\(typeof zodSchema\\)\")",
+      "Bash(node -e \"const { zodSchema } = require\\('./node_modules/ai/dist/index.js'\\); console.log\\(zodSchema.toString\\(\\).substring\\(0, 200\\)\\)\")",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}

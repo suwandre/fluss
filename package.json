@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "loop": "bun scripts/run-loop.ts",
+    "loop:v2": "bun scripts/loop-v2/index.ts",
     "loop:sh": "bash scripts/run-loop.sh",
     "test:e2e": "bun scripts/e2e-test.ts"
   },
