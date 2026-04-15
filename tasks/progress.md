@@ -66,7 +66,7 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.5.2 (4/16/2026, 12:08:10 AM)
+## Task 4.5.2 (4/16/2026, 12:08:14 AM)
 
 **Description:** Set up cron job to re-run orchestrator every 15 minutes (`ORCHESTRATOR_TICK_INTERVAL_MS`) _(A §10, Phase 4)_
 
@@ -114,26 +114,34 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.6.2 (4/16/2026, 12:20:00 AM)
+## Task 4.6.2 (4/16/2026, 12:19:16 AM)
 
 **Description:** Audit color consistency — every health indicator uses `--green` / `--amber` / `--red` exactly _(V §2.1)_
 
 **Summary:**
-Audited all health-related color usage across 13 components. All health indicators consistently use Tailwind utility classes (text-green/bg-green/border-green, text-amber/bg-amber/border-amber, text-red/bg-red/border-red) which resolve to CSS custom properties (--green, --amber, --red). No hardcoded hex values found for health colors. Specific findings:
-
-- StatusDot: bg-green/bg-amber/bg-red + shadow with --green-glow/--amber-glow/--red-glow ✅
-- shared.ts healthBorderMap/healthLabelMap: border-green/border-amber/border-red, text-green/text-amber/text-red ✅
-- MachineNode/PortfolioOutputNode: use shared.ts maps ✅
-- PortfolioSummaryBar: healthLabelMap + pnlColorMap (text-green/text-red) ✅
-- AgentStep: text-amber for running, text-red for error ✅
-- RunHistoryPanel: text-red/text-amber/text-green for verdict ✅
-- MetricDisplay: text-green/text-red for positive/negative ✅
-- StressTestChart: var(--red) for >15% drawdown ✅
-- ConveyorEdge: var(--teal)/var(--amber)/var(--red) for correlation (not health) ✅
-- Animations: var(--green-glow)/var(--amber-glow)/var(--red-glow) ✅
-  No code changes needed. Build passes.
+Audited color consistency across 13 components. All health indicators use --green/--amber/--red via Tailwind utility classes (text-green, bg-green, border-green, etc.) resolving to CSS custom properties. No hardcoded hex values found. No code changes needed.
 
 **Gotchas:**
-None. All health indicators already use correct tokens.
+WARNING: No code changes made.
+
+---
+
+## Task 4.6.3 (4/16/2026, 12:25:00 AM)
+
+**Description:** Audit typography — Inter for prose, JetBrains Mono for metrics, correct sizes and weights _(V §3.2)_
+
+**Summary:**
+Audited typography across all 13 components against V §3.2 Usage Matrix. Fixed 5 issues:
+
+1. PortfolioSummaryBar: Last Run timestamp changed from text-sm (14px) to text-xs (12px) — spec says timestamps are JetBrains Mono 400 12px
+2. AgentReasoningPanel: title changed from font-medium (500) to font-semibold (600) — spec says panel title is Inter 600 13px
+3. StressTestChart: Y-axis fontFamily changed from var(--font-mono) to var(--font-sans) — V §4.13 says scenario names use Inter 11px
+4. RunHistoryPanel: timestamps changed from text-[11px] to text-xs (12px) — spec says timestamps are JetBrains Mono 400 12px
+5. globals.css: added text-sm (14px) to body — spec says app body text is Inter 400 14px
+
+All other typography was already correct: MachineNode ticker (JetBrains Mono 600 15px), MetricDisplay values (JetBrains Mono 500 13px), summary bar values (JetBrains Mono 500 18px), agent reasoning prose (Inter 400 13px), structured output keys/vals (JetBrains Mono 400 12px), duration badges (JetBrains Mono 400 11px), labels (Inter 500 11-12px). Build passes.
+
+**Gotchas:**
+VolatilityBar label uses font-mono per V §4.11 (component-specific spec overrides general "Labels" row in §3.2). PortfolioOutputNode title uses JetBrains Mono 600 15px consistent with MachineNode ticker style.
 
 ---

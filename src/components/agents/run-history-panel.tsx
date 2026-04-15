@@ -79,7 +79,7 @@ export function RunHistoryPanel({
 
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center py-8 text-[12px] text-text-dim font-mono">
+			<div className="flex items-center justify-center py-8 text-xs text-text-dim font-mono">
 				Loading history…
 			</div>
 		);
@@ -87,7 +87,7 @@ export function RunHistoryPanel({
 
 	if (error) {
 		return (
-			<div className="px-4 py-3 text-[12px] font-mono text-red bg-bg-elevated rounded">
+			<div className="px-4 py-3 text-xs font-mono text-red bg-bg-elevated rounded">
 				{error}
 			</div>
 		);
@@ -95,7 +95,7 @@ export function RunHistoryPanel({
 
 	if (runs.length === 0) {
 		return (
-			<div className="flex items-center justify-center py-8 text-[12px] text-text-dim font-mono">
+			<div className="flex items-center justify-center py-8 text-xs text-text-dim font-mono">
 				No runs yet
 			</div>
 		);
@@ -129,7 +129,7 @@ export function RunHistoryPanel({
 								{/* Row 1: verdict + duration */}
 								<div className="flex items-center gap-2">
 									<span
-										className={`text-[12px] font-medium ${
+										className={`text-xs font-medium ${
 											health === "critical"
 												? "text-red"
 												: health === "warning"
@@ -146,10 +146,10 @@ export function RunHistoryPanel({
 
 								{/* Row 2: timestamp + relative time */}
 								<div className="flex items-center gap-2 mt-0.5">
-									<span className="text-[11px] font-mono text-text-dim">
+									<span className="text-xs font-mono text-text-dim">
 										{formatTimestamp(run.createdAt)}
 									</span>
-									<span className="text-[10px] font-mono text-text-muted">
+									<span className="text-xs font-mono text-text-muted">
 										{timeAgo(new Date(run.createdAt))}
 									</span>
 								</div>

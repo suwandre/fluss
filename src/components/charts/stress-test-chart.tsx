@@ -105,8 +105,8 @@ export function StressTestChart({ data }: StressTestChartProps) {
 						dataKey="scenario"
 						tick={{
 							fill: "var(--text-muted)",
-							fontSize: 10,
-							fontFamily: "var(--font-mono)",
+							fontSize: 11,
+							fontFamily: "var(--font-sans)",
 						}}
 						axisLine={false}
 						tickLine={false}

@@ -67,7 +67,7 @@ export function AgentReasoningPanel({
 		>
 			{/* Header */}
 			<div className="flex items-center gap-2 px-4 h-10 border-b border-border shrink-0">
-				<h2 className="text-[13px] font-medium text-text leading-tight">
+				<h2 className="text-[13px] font-semibold text-text leading-tight">
 					Agent Reasoning
 				</h2>
 				{runId && tab === "current" && (
