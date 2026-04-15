@@ -26,7 +26,7 @@ const execAsync = promisify(exec);
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1";
 const MODEL_NAME = process.env.OLLAMA_MODEL || "glm-5.1:cloud";
 const MAX_RETRIES = Number(process.env.MAX_RETRIES ?? 3);
-const BUILDER_MAX_STEPS = Number(process.env.BUILDER_MAX_STEPS ?? 15);
+const BUILDER_MAX_STEPS = Number(process.env.BUILDER_MAX_STEPS ?? 100);
 const REVIEWER_MAX_STEPS = Number(process.env.REVIEWER_MAX_STEPS ?? 5);
 const SLOP_MAX_STEPS = Number(process.env.SLOP_MAX_STEPS ?? 10);
 const DIFF_MAX_CHARS = Number(process.env.DIFF_MAX_CHARS ?? 8000);
@@ -36,7 +36,7 @@ const ollamaProvider = createOpenAI({
 	apiKey: "ollama",
 });
 
-const model = ollamaProvider(MODEL_NAME);
+const model = ollamaProvider.chat(MODEL_NAME);
 
 function truncateDiff(diff: string): string {
 	if (diff.length <= DIFF_MAX_CHARS) return diff;

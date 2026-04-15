@@ -1,100 +1,165 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { FactoryFloor } from "@/components/factory/factory-floor";
 import { PortfolioSummaryBar } from "@/components/layout/portfolio-summary-bar";
 import { AgentReasoningPanel } from "@/components/agents/agent-reasoning-panel";
-import { HoldingsInput, type NewHolding } from "@/components/holdings/holdings-input";
+import {
+	HoldingsInput,
+	type NewHolding,
+} from "@/components/holdings/holdings-input";
 import { useAgentRun } from "@/hooks/use-agent-run";
+import { useHoldings } from "@/hooks/use-holdings";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
 
+interface StressResult {
+	scenario: string;
+	simulated_drawdown_pct: number;
+	recovery_days: number | null;
+}
+
 export default function Home() {
-  const [holdingsInputOpen, setHoldingsInputOpen] = useState(false);
-  const { steps, runId, isRunning, error, monitorOutput, workflowOutput, lastRunAt, startRun } =
-    useAgentRun();
+	const [holdingsInputOpen, setHoldingsInputOpen] = useState(false);
+	const {
+		steps,
+		runId,
+		isRunning,
+		error,
+		monitorOutput,
+		workflowOutput,
+		lastRunAt,
+		startRun,
+	} = useAgentRun();
+	const {
+		machineNodes,
+		portfolioOutput,
+		refetch: refetchHoldings,
+	} = useHoldings();
 
-  const handleAddHolding = (holding: NewHolding) => {
-    // Task 4.1.5 will wire this to POST /api/portfolio/holdings
-    console.log("New holding submitted:", holding);
-  };
+	const handleAddHolding = useCallback(
+		async (holding: NewHolding) => {
+			try {
+				const res = await fetch("/api/portfolio/holdings", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						ticker: holding.ticker,
+						quantity: String(holding.quantity),
+						avgCost: String(holding.avgCost),
+						assetClass: holding.assetClass,
+					}),
+				});
 
-  // Derive summary bar values from Monitor output
-  const summaryMetrics = useMemo(() => {
-    if (!monitorOutput?.portfolio_metrics) {
-      return {
-        totalValue: 0,
-        unrealisedPnl: 0,
-        unrealisedPnlPct: 0,
-        sharpeRatio: null as number | null,
-        maxDrawdownPct: 0,
-        health: "nominal" as HealthState,
-      };
-    }
-    const { total_value, unrealised_pnl_pct, sharpe_ratio, max_drawdown_pct } =
-      monitorOutput.portfolio_metrics;
-    // Derive absolute P&L from total_value and unrealised_pnl_pct
-    // PnL% is relative to cost basis: PnL = value * pct / (100 + pct)
-    const unrealisedPnl =
-      unrealised_pnl_pct === 0
-        ? 0
-        : total_value * (unrealised_pnl_pct / 100) / (1 + unrealised_pnl_pct / 100);
+				if (!res.ok) {
+					const body = await res
+						.json()
+						.catch(() => ({ error: "Failed to add holding" }));
+					console.error("Failed to add holding:", body);
+					return;
+				}
 
-    return {
-      totalValue: total_value,
-      unrealisedPnl: Math.round(unrealisedPnl),
-      unrealisedPnlPct: unrealised_pnl_pct,
-      sharpeRatio: sharpe_ratio,
-      maxDrawdownPct: max_drawdown_pct,
-      health: monitorOutput.health_status,
-    };
-  }, [monitorOutput]);
+				// Refresh factory floor with updated holdings
+				await refetchHoldings();
+			} catch (err) {
+				console.error("Failed to add holding:", err);
+			}
+		},
+		[refetchHoldings],
+	);
 
-  // Build a lowercase-ticker-keyed health map from Monitor's asset_health
-  const assetHealth = useMemo<Record<string, HealthState> | null>(() => {
-    if (!monitorOutput?.asset_health?.length) return null;
-    const map: Record<string, HealthState> = {};
-    for (const entry of monitorOutput.asset_health) {
-      map[entry.ticker.toLowerCase()] = entry.health;
-    }
-    return map;
-  }, [monitorOutput]);
+	// Derive summary bar values from Monitor output
+	const summaryMetrics = useMemo(() => {
+		if (!monitorOutput?.portfolio_metrics) {
+			return {
+				totalValue: 0,
+				unrealisedPnl: 0,
+				unrealisedPnlPct: 0,
+				sharpeRatio: null as number | null,
+				maxDrawdownPct: 0,
+				health: "nominal" as HealthState,
+			};
+		}
+		const { total_value, unrealised_pnl_pct, sharpe_ratio, max_drawdown_pct } =
+			monitorOutput.portfolio_metrics;
+		// Derive absolute P&L from total_value and unrealised_pnl_pct
+		// PnL% is relative to cost basis: PnL = value * pct / (100 + pct)
+		const unrealisedPnl =
+			unrealised_pnl_pct === 0
+				? 0
+				: (total_value * (unrealised_pnl_pct / 100)) /
+					(1 + unrealised_pnl_pct / 100);
 
-  // Extract correlation matrix from workflow output
-  const correlationMatrix = useMemo<CorrelationEntry[] | null>(() => {
-    if (!workflowOutput?.correlationMatrix) return null;
-    return workflowOutput.correlationMatrix as CorrelationEntry[];
-  }, [workflowOutput]);
+		return {
+			totalValue: total_value,
+			unrealisedPnl: Math.round(unrealisedPnl),
+			unrealisedPnlPct: unrealised_pnl_pct,
+			sharpeRatio: sharpe_ratio,
+			maxDrawdownPct: max_drawdown_pct,
+			health: monitorOutput.health_status,
+		};
+	}, [monitorOutput]);
 
-  return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[--bg-primary]">
-      <HoldingsInput open={holdingsInputOpen} onOpenChange={setHoldingsInputOpen} onSubmit={handleAddHolding} />
-      <PortfolioSummaryBar
-        totalValue={summaryMetrics.totalValue}
-        unrealisedPnl={summaryMetrics.unrealisedPnl}
-        unrealisedPnlPct={summaryMetrics.unrealisedPnlPct}
-        sharpeRatio={summaryMetrics.sharpeRatio}
-        maxDrawdownPct={summaryMetrics.maxDrawdownPct}
-        lastRunAt={lastRunAt}
-        health={summaryMetrics.health}
-        onAddHolding={() => setHoldingsInputOpen(true)}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-[7] overflow-hidden">
-          <FactoryFloor
-            assetHealth={assetHealth}
-            globalHealth={monitorOutput?.health_status ?? null}
-            correlationMatrix={correlationMatrix}
-          />
-        </div>
-        <AgentReasoningPanel
-          steps={steps}
-          runId={runId}
-          isRunning={isRunning}
-          error={error}
-          onRun={startRun}
-        />
-      </div>
-    </div>
-  );
+	// Build a lowercase-ticker-keyed health map from Monitor's asset_health
+	const assetHealth = useMemo<Record<string, HealthState> | null>(() => {
+		if (!monitorOutput?.asset_health?.length) return null;
+		const map: Record<string, HealthState> = {};
+		for (const entry of monitorOutput.asset_health) {
+			map[entry.ticker.toLowerCase()] = entry.health;
+		}
+		return map;
+	}, [monitorOutput]);
+
+	// Extract correlation matrix from workflow output
+	const correlationMatrix = useMemo<CorrelationEntry[] | null>(() => {
+		if (!workflowOutput?.correlationMatrix) return null;
+		return workflowOutput.correlationMatrix as CorrelationEntry[];
+	}, [workflowOutput]);
+
+	// Extract stress results from Risk Agent output in workflow output
+	const stressResults = useMemo<StressResult[] | null>(() => {
+		if (!workflowOutput?.risk) return null;
+		const risk = workflowOutput.risk as Record<string, unknown>;
+		if (!Array.isArray(risk.stress_results)) return null;
+		return risk.stress_results as StressResult[];
+	}, [workflowOutput]);
+
+	return (
+		<div className="flex flex-col h-screen overflow-hidden bg-[--bg-primary]">
+			<HoldingsInput
+				open={holdingsInputOpen}
+				onOpenChange={setHoldingsInputOpen}
+				onSubmit={handleAddHolding}
+			/>
+			<PortfolioSummaryBar
+				totalValue={summaryMetrics.totalValue}
+				unrealisedPnl={summaryMetrics.unrealisedPnl}
+				unrealisedPnlPct={summaryMetrics.unrealisedPnlPct}
+				sharpeRatio={summaryMetrics.sharpeRatio}
+				maxDrawdownPct={summaryMetrics.maxDrawdownPct}
+				lastRunAt={lastRunAt}
+				health={summaryMetrics.health}
+				onAddHolding={() => setHoldingsInputOpen(true)}
+			/>
+			<div className="flex flex-1 overflow-hidden">
+				<div className="flex-[7] overflow-hidden">
+					<FactoryFloor
+						machineNodes={machineNodes}
+						portfolioOutput={portfolioOutput}
+						assetHealth={assetHealth}
+						globalHealth={monitorOutput?.health_status ?? null}
+						correlationMatrix={correlationMatrix}
+					/>
+				</div>
+				<AgentReasoningPanel
+					steps={steps}
+					runId={runId}
+					isRunning={isRunning}
+					error={error}
+					onRun={startRun}
+					stressResults={stressResults}
+				/>
+			</div>
+		</div>
+	);
 }

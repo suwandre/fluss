@@ -4,13 +4,13 @@ import { dirname, resolve } from "path";
 export type TaskStatus = "incomplete" | "in_progress" | "complete" | "failed";
 
 export interface Task {
-	id: number;
+	id: string;
 	description: string;
 	status: TaskStatus;
 }
 
 export interface ProgressEntry {
-	taskId: number;
+	taskId: string;
 	summary: string;
 	gotchas?: string;
 	timestamp: string;
@@ -33,15 +33,43 @@ function ensureDirectories() {
 }
 
 export function loadState(): State {
-	if (existsSync(STATE_FILE)) {
-		const data = readFileSync(STATE_FILE, "utf-8");
-		return JSON.parse(data);
+	const state: State = { tasks: [], progress: [] };
+	
+	// Load tasks from TASKS.md
+	if (existsSync(TASKS_MD)) {
+		const content = readFileSync(TASKS_MD, "utf-8");
+		const lines = content.split("\n");
+		for (const line of lines) {
+			const match = line.match(/^- \[( |x|!)\] \*\*([^]+?)\*\* (.*)$/);
+			if (match) {
+				const checkbox = match[1] || " ";
+				state.tasks.push({
+					id: match[2] || "",
+					description: match[3] || "",
+					status: checkbox === "x" ? "complete" : checkbox === "!" ? "failed" : "incomplete"
+				});
+			}
+		}
 	}
-	return { tasks: [], progress: [] };
+
+	// Load progress from tasks.json if it exists (for logs)
+	if (existsSync(STATE_FILE)) {
+		try {
+			const data = JSON.parse(readFileSync(STATE_FILE, "utf-8"));
+			if (data && data.progress) {
+				state.progress = data.progress;
+			}
+		} catch (_ignore) {
+			// ignore
+		}
+	}
+	
+	return state;
 }
 
 export function saveState(state: State) {
-	writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), "utf-8");
+	// Save progress back to tasks.json safely
+	writeFileSync(STATE_FILE, JSON.stringify({ progress: state.progress }, null, 2), "utf-8");
 	syncMarkdownFiles(state);
 }
 
@@ -52,7 +80,7 @@ export function getNextTask(): Task | undefined {
 	);
 }
 
-export function markTaskFailed(taskId: number, reason: string) {
+export function markTaskFailed(taskId: string, reason: string) {
 	const state = loadState();
 	const task = state.tasks.find((t) => t.id === taskId);
 	if (task) {
@@ -66,7 +94,7 @@ export function markTaskFailed(taskId: number, reason: string) {
 	}
 }
 
-export function markTaskInProgress(taskId: number) {
+export function markTaskInProgress(taskId: string) {
 	const state = loadState();
 	const task = state.tasks.find((t) => t.id === taskId);
 	if (task) {
@@ -76,7 +104,7 @@ export function markTaskInProgress(taskId: number) {
 }
 
 export function markTaskComplete(
-	taskId: number,
+	taskId: string,
 	summary: string,
 	gotchas?: string,
 ) {
@@ -100,14 +128,24 @@ export function markTaskComplete(
 function syncMarkdownFiles(state: State) {
 	ensureDirectories();
 
-	// Sync TASKS.md
-	let tasksMdContent = "# Tasks\n\n";
-	for (const task of state.tasks) {
-		const checkbox =
-			task.status === "complete" ? "[x]" : task.status === "failed" ? "[!]" : "[ ]";
-		tasksMdContent += `- ${checkbox} **Task ${task.id}:** ${task.description}\n`;
+	// Sync TASKS.md by just updating checkboxes to preserve formatting
+	if (existsSync(TASKS_MD)) {
+		let content = readFileSync(TASKS_MD, "utf-8");
+		const lines = content.split("\n");
+		
+		for (let i = 0; i < lines.length; i++) {
+			const match = lines[i].match(/^- \[( |x|!)\] \*\*([^]+?)\*\*(.*)$/);
+			if (match) {
+				const id = match[2];
+				const task = state.tasks.find(t => t.id === id);
+				if (task) {
+					const char = task.status === "complete" ? "x" : task.status === "failed" ? "!" : " ";
+					lines[i] = `- [${char}] **${id}**${match[3]}`;
+				}
+			}
+		}
+		writeFileSync(TASKS_MD, lines.join("\n"), "utf-8");
 	}
-	writeFileSync(TASKS_MD, tasksMdContent, "utf-8");
 
 	// Sync progress.md
 	let progressMdContent = "# Progress Log\n\n";

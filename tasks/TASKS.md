@@ -163,13 +163,13 @@
 - [x] **4.1.2** `<HoldingsInput />` modal — form with Ticker, Quantity, Avg Cost, Asset Class fields _(V §4.12)_
 - [x] **4.1.3** Wire ticker validation on blur: call `/api/market/snapshot/:ticker`, show live price preview (green success / red error) _(V §4.12)_
 - [x] **4.1.4** Wire "+" button in `<PortfolioSummaryBar />` to open `<HoldingsInput />` _(V §4.8)_
-- [ ] **4.1.5** Wire form submit to `POST /api/portfolio/holdings` and refresh factory floor
+- [x] **4.1.5** Wire form submit to `POST /api/portfolio/holdings` and refresh factory floor
 
 ### 4.2 Stress test chart
 
-- [ ] **4.2.1** `<StressTestChart />` — horizontal Recharts `BarChart` consuming `RiskOutput.stress_results`, dark theme, `--bg-elevated` bars, `--red` for drawdown > 15% _(V §4.13)_
-- [ ] **4.2.2** Custom Recharts tooltip styled with `--bg-card`, `--border`, `--text` _(V §4.13)_
-- [ ] **4.2.3** Integrate `<StressTestChart />` into the agent panel (shown after Risk Agent completes)
+- [x] **4.2.1** `<StressTestChart />` — horizontal Recharts `BarChart` consuming `RiskOutput.stress_results`, dark theme, `--bg-elevated` bars, `--red` for drawdown > 15% _(V §4.13)_
+- [x] **4.2.2** Custom Recharts tooltip styled with `--bg-card`, `--border`, `--text` _(V §4.13)_
+- [x] **4.2.3** Integrate `<StressTestChart />` into the agent panel (shown after Risk Agent completes)
 
 ### 4.3 Portfolio summary bar — live metrics
 

@@ -14,7 +14,7 @@ interface MCPServerConfig {
 
 // sequential-thinking: forces step-by-step reasoning — critical for local models
 // context7: live library docs — useful when builder works with external packages
-// qmd: project knowledge base — builder can query past learnings/gotchas
+// playwright: browser automation for UI tasks
 const MCP_SERVERS: MCPServerConfig[] = [
 	{
 		name: "sequential-thinking",
@@ -25,11 +25,6 @@ const MCP_SERVERS: MCPServerConfig[] = [
 		name: "context7",
 		command: "npx",
 		args: ["-y", "@upstash/context7-mcp@latest"],
-	},
-	{
-		name: "qmd",
-		command: process.platform === "win32" ? "npx.cmd" : "qmd",
-		args: process.platform === "win32" ? ["-y", "@tobilu/qmd", "mcp"] : ["mcp"],
 	},
 	{
 		name: "playwright",

@@ -44,6 +44,14 @@ ${retrySection}
 4. Call finish_task EXACTLY ONCE when complete.
 5. Keep reasoning brief. No yapping.
 
+# STEP BUDGET (critical):
+- You have ~25 steps total. Budget carefully.
+- Steps 1-5: read/explore files.
+- Steps 6-20: write/edit code.
+- Steps 21-23: run typecheck, fix errors.
+- Step 24: call finish_task.
+- Do NOT call sequentialthinking more than once. Think inline instead.
+
 # CAVEMAN EXAMPLES:
 
 User: Build a React button component.
