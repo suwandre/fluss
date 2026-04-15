@@ -66,17 +66,29 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.5.2 (4/16/2026, 12:15:00 AM)
+## Task 4.5.2 (4/16/2026, 12:08:10 AM)
 
 **Description:** Set up cron job to re-run orchestrator every 15 minutes (`ORCHESTRATOR_TICK_INTERVAL_MS`) _(A §10, Phase 4)_
 
 **Summary:**
-Created `src/lib/orchestrator/scheduler.ts` — node-cron based scheduler that reads `ORCHESTRATOR_TICK_INTERVAL_MS` (default 900000ms = 15min), converts to cron expression, and runs the portfolio factory workflow on each tick. Includes overlap guard (skips if previous tick still running) and empty-portfolio guard. Persists results to `agent_runs` with `trigger: "cron"`. Created `src/instrumentation.ts` — Next.js instrumentation hook that dynamically imports and starts the scheduler in Node.js runtime + production mode only (avoids Edge Runtime issues and dev hot-reload duplicates). Build passes.
+Created cron scheduler (src/lib/orchestrator/scheduler.ts) using node-cron. Reads ORCHESTRATOR_TICK_INTERVAL_MS (default 900000ms=15min), converts to cron expression, runs portfolio factory workflow on each tick. Overlap guard + empty-portfolio guard. Persists results with trigger:"cron". Wired via src/instrumentation.ts — dynamic import avoids Edge Runtime, production-only start avoids dev duplicates. Build passes.
+
+**Gotchas:**
+WARNING: No code changes made.
+
+---
+
+## Task 4.5.3 (4/16/2026, 12:20 AM)
+
+**Description:** pgvector setup — enable `vector` extension, add `market_documents` table to Drizzle schema, generate and run migration _(A §4)_
+
+**Summary:**
+Added `market_documents` table to Drizzle schema (src/lib/db/schema.ts) with columns: id (uuid PK), ticker (text nullable), source (text not null), content (text not null), embedding (vector(1536)), published_at (timestamptz nullable), created_at (timestamptz default now). Added ivfflat index on embedding with vector_cosine_ops. Generated migration drizzle/0001_cool_tana_nile.sql which includes `CREATE EXTENSION IF NOT EXISTS vector;` before the table DDL (extension must exist before vector type is used). Removed orphaned 0002 custom migration and snapshot. Build passes.
 
 **Gotchas:**
 
-- Dynamic import in instrumentation.ts required to avoid Edge Runtime analyzing node-cron/crypto modules.
-- `node-cron` v4 `schedule()` options don't include `scheduled` field — removed it (tasks auto-start on schedule).
-- Scheduler only activates in `NODE_ENV=production` + `NEXT_RUNTIME=nodejs` to prevent duplicate schedulers during dev.
+- Drizzle doesn't auto-create the pgvector extension — must be in migration SQL manually.
+- Extension CREATE must run BEFORE any table using vector type — merged into same migration file, before the CREATE TABLE statement.
+- ivfflat index requires the extension to be loaded; HNSW is an alternative if ivfflat causes issues with empty tables (ivfflat needs data to build index).
 
 ---
