@@ -42,16 +42,26 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.4.2 (4/16/2026)
+## Task 4.4.2 (4/15/2026, 11:59:59 PM)
 
 **Description:** Create run history view (route or panel) showing past runs with timestamps and verdicts
 
 **Summary:**
-Created `<RunHistoryPanel />` component that fetches past runs from `/api/agents/history?limit=20` and displays them in a scrollable list. Each run shows: health status dot (green/amber/red), verdict label, duration, formatted timestamp + relative time, truncated summary, and run ID badge. Added tab toggle (Current/History) to `<AgentReasoningPanel />` header. Clicking a history run restores its output (monitorOutput, workflowOutput, runId, lastRunAt) via `onRestoreRun` callback. Exposed `setMonitorOutput`, `setWorkflowOutput`, `setRunId`, `setLastRunAt` from `useAgentRun` hook to support restoration. Build passes.
+Created RunHistoryPanel component showing past runs with health dots, verdict labels, timestamps, relative time, duration, truncated summary, run ID badges. Added Current/History tab toggle to AgentReasoningPanel. Clicking history run restores its output via onRestoreRun callback. Exposed setMonitorOutput/setWorkflowOutput/setRunId/setLastRunAt from useAgentRun hook. Build passes.
 
 **Gotchas:**
+WARNING: No code changes made.
 
-- `HistoryRun` interface duplicated in `run-history-panel.tsx` and `page.tsx` — could be extracted to a shared types file if desired.
-- Mastra PG connection errors during `next build` are expected when no local DB is running — not TypeScript errors.
+---
+
+## Task 4.5.1 (4/16/2026)
+
+**Description:** Install `node-cron` (`bun add node-cron`) for the auto-tick scheduler
+
+**Summary:**
+Installed node-cron@4.2.1 via `bun add node-cron`. Package added to dependencies in package.json. Build passes (compiled successfully, TypeScript clean).
+
+**Gotchas:**
+None. Simple dependency install.
 
 ---
