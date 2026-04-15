@@ -173,12 +173,12 @@
 
 ### 4.3 Portfolio summary bar — live metrics
 
-- [ ] **4.3.1** Wire `<PortfolioSummaryBar />` to live data: total value, unrealized P&L, Sharpe ratio, max drawdown from Monitor output _(V §4.8)_
-- [ ] **4.3.2** Wire "Last Run" timestamp and health indicator from most recent agent run _(V §4.8)_
+- [x] **4.3.1** Wire `<PortfolioSummaryBar />` to live data: total value, unrealized P&L, Sharpe ratio, max drawdown from Monitor output _(V §4.8)_
+- [x] **4.3.2** Wire "Last Run" timestamp and health indicator from most recent agent run _(V §4.8)_
 
 ### 4.4 Agent run history
 
-- [ ] **4.4.1** `GET /api/agents/history` — fetch past agent run results with pagination _(A §10, Phase 4)_
+- [x] **4.4.1** `GET /api/agents/history` — fetch past agent run results with pagination _(A §10, Phase 4)_
 - [ ] **4.4.2** Create run history view (route or panel) showing past runs with timestamps and verdicts
 
 ### 4.5 Auto-tick & background

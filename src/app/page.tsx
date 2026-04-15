@@ -32,6 +32,7 @@ export default function Home() {
 		startRun,
 	} = useAgentRun();
 	const {
+		holdings: holdingsList,
 		machineNodes,
 		portfolioOutput,
 		refetch: refetchHoldings,
@@ -68,37 +69,61 @@ export default function Home() {
 		[refetchHoldings],
 	);
 
-	// Derive summary bar values from Monitor output
+	// Compute baseline metrics from live holdings data (available immediately)
+	const holdingsMetrics = useMemo(() => {
+		const totalValue = holdingsList.reduce((sum, h) => {
+			const price = h.currentPrice ?? h.avgCost;
+			return sum + price * h.quantity;
+		}, 0);
+		const totalCost = holdingsList.reduce(
+			(sum, h) => sum + h.avgCost * h.quantity,
+			0,
+		);
+		const unrealisedPnl = totalValue - totalCost;
+		const unrealisedPnlPct =
+			totalCost > 0 ? (unrealisedPnl / totalCost) * 100 : 0;
+		return { totalValue, unrealisedPnl, unrealisedPnlPct };
+	}, [holdingsList]);
+
+	// Derive summary bar values — prefer Monitor output (has Sharpe, max drawdown),
+	// fall back to live holdings data for total value and P&L
 	const summaryMetrics = useMemo(() => {
-		if (!monitorOutput?.portfolio_metrics) {
+		if (monitorOutput?.portfolio_metrics) {
+			const {
+				total_value,
+				unrealised_pnl_pct,
+				sharpe_ratio,
+				max_drawdown_pct,
+			} = monitorOutput.portfolio_metrics;
+			// Derive absolute P&L from total_value and unrealised_pnl_pct
+			// PnL% is relative to cost basis: PnL = value * pct / (100 + pct)
+			const unrealisedPnl =
+				unrealised_pnl_pct === 0
+					? 0
+					: (total_value * (unrealised_pnl_pct / 100)) /
+						(1 + unrealised_pnl_pct / 100);
+
 			return {
-				totalValue: 0,
-				unrealisedPnl: 0,
-				unrealisedPnlPct: 0,
-				sharpeRatio: null as number | null,
-				maxDrawdownPct: 0,
-				health: "nominal" as HealthState,
+				totalValue: total_value,
+				unrealisedPnl: Math.round(unrealisedPnl),
+				unrealisedPnlPct: unrealised_pnl_pct,
+				sharpeRatio: sharpe_ratio,
+				maxDrawdownPct: max_drawdown_pct,
+				health: monitorOutput.health_status,
 			};
 		}
-		const { total_value, unrealised_pnl_pct, sharpe_ratio, max_drawdown_pct } =
-			monitorOutput.portfolio_metrics;
-		// Derive absolute P&L from total_value and unrealised_pnl_pct
-		// PnL% is relative to cost basis: PnL = value * pct / (100 + pct)
-		const unrealisedPnl =
-			unrealised_pnl_pct === 0
-				? 0
-				: (total_value * (unrealised_pnl_pct / 100)) /
-					(1 + unrealised_pnl_pct / 100);
 
+		// No Monitor run yet — use live holdings data for value/P&L,
+		// Sharpe and max drawdown unavailable until first run
 		return {
-			totalValue: total_value,
-			unrealisedPnl: Math.round(unrealisedPnl),
-			unrealisedPnlPct: unrealised_pnl_pct,
-			sharpeRatio: sharpe_ratio,
-			maxDrawdownPct: max_drawdown_pct,
-			health: monitorOutput.health_status,
+			totalValue: holdingsMetrics.totalValue,
+			unrealisedPnl: Math.round(holdingsMetrics.unrealisedPnl),
+			unrealisedPnlPct: holdingsMetrics.unrealisedPnlPct,
+			sharpeRatio: null as number | null,
+			maxDrawdownPct: 0,
+			health: "nominal" as HealthState,
 		};
-	}, [monitorOutput]);
+	}, [monitorOutput, holdingsMetrics]);
 
 	// Build a lowercase-ticker-keyed health map from Monitor's asset_health
 	const assetHealth = useMemo<Record<string, HealthState> | null>(() => {
