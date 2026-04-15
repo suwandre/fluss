@@ -26,6 +26,13 @@ const STATUS_LABEL_MAP: Record<AgentStatus, string> = {
 	error: "Error",
 };
 
+const BADGE_STYLES: Record<AgentStatus, string> = {
+	done: "bg-[rgba(34,197,94,0.12)] text-green",
+	running: "bg-[rgba(245,158,11,0.12)] text-amber",
+	queued: "bg-[rgba(82,82,91,0.2)] text-text-dim",
+	error: "bg-[rgba(239,68,68,0.12)] text-red",
+};
+
 function formatDuration(ms: number): string {
 	if (ms < 1000) return `${ms}ms`;
 	return `${(ms / 1000).toFixed(1)}s`;
@@ -59,32 +66,27 @@ export function AgentStep({
 
 	return (
 		<div data-slot="agent-step" className="flex gap-3">
-			{/* Status dot */}
-			<div className="flex flex-col items-center pt-1.5">
+			{/* Status dot — 12px to match draft */}
+			<div className="flex flex-col items-center pt-1">
 				<StatusDot
 					status={dotStatus}
-					size="sm"
+					size="md"
 					variant={dotVariant}
 					animate={dotAnimate}
+					className="size-3"
 				/>
 			</div>
 
 			{/* Content */}
 			<div className="min-w-0 flex-1">
-				{/* Header row: name · status · duration */}
+				{/* Header row: name · status badge · duration */}
 				<div className="flex items-center gap-2">
-					<span className="font-medium text-[13px] text-text leading-tight truncate">
+					<span className="font-semibold text-[13px] text-text leading-tight truncate">
 						{name}
 					</span>
 
 					<span
-						className={`text-[11px] font-mono ${
-							status === "running"
-								? "text-amber"
-								: status === "error"
-									? "text-red"
-									: "text-text-dim"
-						}`}
+						className={`text-[11px] font-mono font-medium px-2 py-px rounded-full ${BADGE_STYLES[status]}`}
 					>
 						{status === "running" && isStreaming
 							? "Streaming…"
@@ -121,7 +123,9 @@ export function AgentStep({
 						</CollapsibleTrigger>
 
 						<CollapsibleContent>
-							<div className="mt-1.5 rounded bg-bg-elevated border-l-2 border-border-bright pl-3 pr-2 py-2 text-[13px] text-text leading-relaxed font-sans">
+							<div
+								className={`mt-1.5 rounded bg-bg-elevated border-l-2 pl-3 pr-2 py-2 text-[13px] text-text leading-relaxed font-sans ${isStreaming ? "border-amber" : "border-border-bright"}`}
+							>
 								{reasoning}
 								{isStreaming && (
 									<span

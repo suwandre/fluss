@@ -67,11 +67,11 @@ export function AgentReasoningPanel({
 		>
 			{/* Header */}
 			<div className="flex items-center gap-2 px-4 h-10 border-b border-border shrink-0">
-				<h2 className="text-[13px] font-semibold text-text leading-tight">
+				<h2 className="text-[13px] font-semibold text-text leading-tight uppercase tracking-[0.04em]">
 					Agent Reasoning
 				</h2>
 				{runId && tab === "current" && (
-					<span className="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded select-none">
+					<span className="text-[11px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded select-none">
 						{runId.slice(0, 8)}
 					</span>
 				)}

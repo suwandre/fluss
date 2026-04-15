@@ -66,14 +66,19 @@ function ConveyorEdgeComponent({
 			<defs>
 				<marker
 					id={markerId}
-					viewBox="0 0 10 10"
-					refX="10"
-					refY="5"
-					markerWidth="6"
+					viewBox="0 0 8 6"
+					refX="8"
+					refY="3"
+					markerWidth="8"
 					markerHeight="6"
 					orient="auto"
 				>
-					<path d="M 0 0 L 10 5 L 0 10 z" fill={strokeColor} />
+					<path
+						d="M0,0 L8,3 L0,6"
+						fill="none"
+						stroke={strokeColor}
+						strokeWidth="1"
+					/>
 				</marker>
 			</defs>
 			<path

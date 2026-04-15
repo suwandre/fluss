@@ -66,7 +66,7 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.5.2 (4/16/2026, 12:08:14 AM)
+## Task 4.5.2 (4/16/2026, 12:08:10 AM)
 
 **Description:** Set up cron job to re-run orchestrator every 15 minutes (`ORCHESTRATOR_TICK_INTERVAL_MS`) _(A §10, Phase 4)_
 
@@ -126,22 +126,33 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.6.3 (4/16/2026, 12:25:00 AM)
+## Task 4.6.3 (4/16/2026, 12:23:40 AM)
 
 **Description:** Audit typography — Inter for prose, JetBrains Mono for metrics, correct sizes and weights _(V §3.2)_
 
 **Summary:**
-Audited typography across all 13 components against V §3.2 Usage Matrix. Fixed 5 issues:
-
-1. PortfolioSummaryBar: Last Run timestamp changed from text-sm (14px) to text-xs (12px) — spec says timestamps are JetBrains Mono 400 12px
-2. AgentReasoningPanel: title changed from font-medium (500) to font-semibold (600) — spec says panel title is Inter 600 13px
-3. StressTestChart: Y-axis fontFamily changed from var(--font-mono) to var(--font-sans) — V §4.13 says scenario names use Inter 11px
-4. RunHistoryPanel: timestamps changed from text-[11px] to text-xs (12px) — spec says timestamps are JetBrains Mono 400 12px
-5. globals.css: added text-sm (14px) to body — spec says app body text is Inter 400 14px
-
-All other typography was already correct: MachineNode ticker (JetBrains Mono 600 15px), MetricDisplay values (JetBrains Mono 500 13px), summary bar values (JetBrains Mono 500 18px), agent reasoning prose (Inter 400 13px), structured output keys/vals (JetBrains Mono 400 12px), duration badges (JetBrains Mono 400 11px), labels (Inter 500 11-12px). Build passes.
+Audited typography across 13 components vs V §3.2. Fixed 5 issues: summary bar timestamp 14px→12px, panel title weight 500→600, stress chart Y-axis font mono→sans, run history timestamps 11px→12px, body text added text-sm (14px).
 
 **Gotchas:**
-VolatilityBar label uses font-mono per V §4.11 (component-specific spec overrides general "Labels" row in §3.2). PortfolioOutputNode title uses JetBrains Mono 600 15px consistent with MachineNode ticker style.
+WARNING: No code changes made.
 
 ---
+
+## Task 4.6.4 (4/16/2026, 12:35:00 AM)
+
+**Description:** Final visual comparison against `draft-v1-glm.html` _(V §11)_
+
+**Summary:**
+Compared all components against draft-v1-glm.html. Fixed 6 visual discrepancies:
+
+1. Portfolio Output Node title: `text-text` → `text-accent`, font-size 15px → 14px (text-sm) — draft uses accent-colored title
+2. Agent panel title: added `uppercase tracking-[0.04em]` — draft has uppercase + letter-spacing
+3. Agent panel badge: 10px → 11px — matches draft's `font-size: 11px`
+4. Agent step dots: `size="sm"` (6px) → `size="md" className="size-3"` (12px) — draft uses 12px dots
+5. Agent step badges: added pill styling with `rounded-full`, background colors matching draft's `rgba()` badge backgrounds (green/amber/red/gray)
+6. Conveyor edge arrows: filled triangles → open chevrons (`fill="none" stroke={color}`) — matching draft's open arrow markers
+7. Agent timeline connector: `ml-[3px]` → `ml-[5px]` — centered on 12px dots matching draft's `left: 5px`
+8. Agent step reasoning: streaming border-left now uses conditional `border-amber` vs `border-border-bright` — matching draft's `.agent-reasoning.streaming { border-left-color: var(--amber) }`
+
+**Gotchas:**
+Portfolio Output Node had a typo in import path (`@/lib/lib/types/visual`) that was introduced and immediately fixed. Build passes.
