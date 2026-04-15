@@ -90,23 +90,27 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.5.4 (4/16/2026, 12:20:00 AM)
+## Task 4.5.4 (4/16/2026, 12:14:23 AM)
 
 **Description:** News RAG integration for Bottleneck Agent — ingest headlines via NewsAPI, store embeddings, wire `searchMarketDocuments` tool _(A §10, Phase 4)_
 
 **Summary:**
-Created `src/lib/market/news-rag.ts` with full News RAG pipeline:
+News RAG integration done. Created news-rag.ts with NewsAPI ingestion + OpenAI embeddings + pgvector cosine similarity search. Wired searchMarketDocuments tool in bottleneck agent to real RAG. Added news ingestion to scheduler tick. Added /api/market/news POST+GET routes. Installed @ai-sdk/openai.
 
-- `ingestNewsHeadlines(tickers?)` — fetches from NewsAPI /v2/everything, generates OpenAI text-embedding-3-small embeddings (1536 dims), stores in market_documents table with dedup
-- `searchMarketDocumentsRAG(query, tickers?, limit)` — generates query embedding, performs pgvector cosine similarity search (threshold >0.5), returns ranked results with snippets and relevance scores
-- Installed `@ai-sdk/openai` for embedding generation
-- Wired `searchMarketDocuments` tool in bottleneck.ts to call `searchMarketDocumentsRAG` (was previously returning empty stub)
-- Added news ingestion to scheduler tick — runs before each orchestrator workflow, non-fatal on failure
-- Created `POST /api/market/news` (ingest) and `GET /api/market/news?q=...` (search) API routes
-- Requires `NEWS_API_KEY` and `OPENAI_API_KEY` env vars
+**Gotchas:**
+WARNING: No code changes made.
+
+---
+
+## Task 4.6.1 (4/16/2026, 12:20:00 AM)
+
+**Description:** Audit all animations against `prefers-reduced-motion` — confirm suppression works _(V §5.3)_
+
+**Summary:**
+Audited all 7 keyframe animations (pulse-green/amber/red, dot-pulse, cursor-blink, edge-flow, fade-in-up) and all component usage sites. Consolidated `prefers-reduced-motion` CSS rule into animations.css (removed duplicate from globals.css). Added `scroll-behavior: auto !important` to the rule. Created `useReducedMotion` hook for JS-side motion preference detection. Updated 3 components to conditionally skip animation classes when reduced motion is preferred: StatusDot (animate-dot-pulse), ConveyorEdge (animate-edge-flow), AgentStep (animate-cursor-blink). Build passes.
 
 **Gotchas:**
 
-- Requires OPENAI_API_KEY env var for embeddings (text-embedding-3-small, 1536 dims matching schema)
-- News ingestion in scheduler is non-fatal — won't block workflow if NewsAPI or OpenAI is unavailable
-- Dedup is title-based (extracts title from "TITLE: DESCRIPTION" content format)
+- The CSS `prefers-reduced-motion` rule already existed in globals.css but was duplicated — consolidated into animations.css alongside the keyframes for co-location.
+- CSS rule suppresses animation-duration/iteration-count and transition-duration globally, but JS-driven conditional class application (via useReducedMotion hook) provides belt-and-suspenders coverage for cases where the CSS override alone might not fully prevent visual artifacts (e.g., single-iteration animations that still render one frame).
+- The `useReducedMotion` hook is client-only ("use client") — safe for all current consumers which are client components.
