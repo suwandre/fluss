@@ -86,6 +86,10 @@ export interface UseAgentRunReturn {
 	workflowOutput: Record<string, unknown> | null;
 	lastRunAt: Date | null;
 	startRun: () => Promise<void>;
+	setMonitorOutput: (v: MonitorOutput | null) => void;
+	setWorkflowOutput: (v: Record<string, unknown> | null) => void;
+	setRunId: (v: string | null) => void;
+	setLastRunAt: (v: Date | null) => void;
 }
 
 /**
@@ -348,5 +352,9 @@ export function useAgentRun(): UseAgentRunReturn {
 		workflowOutput,
 		lastRunAt,
 		startRun,
+		setMonitorOutput,
+		setWorkflowOutput,
+		setRunId,
+		setLastRunAt,
 	};
 }

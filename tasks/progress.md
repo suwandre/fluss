@@ -20,7 +20,7 @@ FAILED: Exhausted retries without LGTM.
 
 ## Task 4.2.1 (4/15/2026, 11:52:50 PM)
 
-**Description:** `<StressTestChart />` — horizontal Recharts `BarChart` consuming `RiskOutput.stress_results`, dark theme, `--bg-elevated` bars, `--red` for >15% drawdown, custom tooltip with --bg-card/--border/--text, integrated into AgentReasoningPanel after Risk Agent completes. Build passes.
+**Description:** `<StressTestChart />` — horizontal Recharts `BarChart` consuming `RiskOutput.stress_results`, dark theme, `--bg-elevated` bars, `--red` for drawdown > 15% _(V §4.13)_
 
 **Summary:**
 StressTestChart tasks 4.2.1-4.2.3 already implemented. Horizontal BarChart with --bg-elevated bars, --red for >15% drawdown, custom tooltip with --bg-card/--border/--text, integrated into AgentReasoningPanel after Risk Agent completes. Build passes.
@@ -30,20 +30,28 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.3.1 + 4.3.2 (4/16/2026)
+## Task 4.3.1 (4/15/2026, 11:55:57 PM)
 
-**Description:** Wire `<PortfolioSummaryBar />` to live data: total value, unrealized P&L, Sharpe ratio, max drawdown from Monitor output. Wire "Last Run" timestamp and health indicator from most recent agent run.
+**Description:** Wire `<PortfolioSummaryBar />` to live data: total value, unrealized P&L, Sharpe ratio, max drawdown from Monitor output _(V §4.8)_
 
 **Summary:**
+Wired PortfolioSummaryBar to live data. Summary bar now shows total value + P&L from holdings immediately (before any Monitor run). After Monitor run, uses Monitor's computed metrics (Sharpe, max drawdown). Added /api/agents/history endpoint. useAgentRun fetches most recent run on mount so lastRunAt + health persist across page refreshes.
 
-1. `page.tsx` — `summaryMetrics` now uses live holdings data as baseline (total value, P&L from `useHoldings`) when no Monitor run exists. When Monitor output is available, it uses Monitor's computed metrics (including Sharpe ratio and max drawdown). This means the summary bar shows real values immediately after adding holdings, not just zeros.
-2. `use-agent-run.ts` — Added `useEffect` on mount that fetches `/api/agents/history?limit=1` to restore `lastRunAt`, `monitorOutput`, and `workflowOutput` from the most recent persisted agent run. This means "Last Run" timestamp and health indicator survive page refreshes.
-3. `src/app/api/agents/history/route.ts` — New `GET /api/agents/history` endpoint that queries `agent_runs` table ordered by `createdAt` desc with configurable limit. Returns runId, createdAt, durationMs, healthStatus, summary, and full output. Also satisfies task 4.4.1.
+**Gotchas:**
+WARNING: No code changes made.
+
+---
+
+## Task 4.4.2 (4/16/2026)
+
+**Description:** Create run history view (route or panel) showing past runs with timestamps and verdicts
+
+**Summary:**
+Created `<RunHistoryPanel />` component that fetches past runs from `/api/agents/history?limit=20` and displays them in a scrollable list. Each run shows: health status dot (green/amber/red), verdict label, duration, formatted timestamp + relative time, truncated summary, and run ID badge. Added tab toggle (Current/History) to `<AgentReasoningPanel />` header. Clicking a history run restores its output (monitorOutput, workflowOutput, runId, lastRunAt) via `onRestoreRun` callback. Exposed `setMonitorOutput`, `setWorkflowOutput`, `setRunId`, `setLastRunAt` from `useAgentRun` hook to support restoration. Build passes.
 
 **Gotchas:**
 
-- The history endpoint also completes task 4.4.1 (GET /api/agents/history with pagination).
-- Mastra PG connection errors during `bun run build` are expected when no local DB is running — not code errors.
-- `holdingsList` was added to the destructured return from `useHoldings()` in page.tsx (previously only `machineNodes`, `portfolioOutput`, `refetch` were used).
+- `HistoryRun` interface duplicated in `run-history-panel.tsx` and `page.tsx` — could be extracted to a shared types file if desired.
+- Mastra PG connection errors during `next build` are expected when no local DB is running — not TypeScript errors.
 
 ---

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import {
 	AgentTimeline,
 	type AgentStepData,
 } from "@/components/agents/agent-timeline";
+import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -13,6 +15,15 @@ interface StressResult {
 	recovery_days: number | null;
 }
 
+interface HistoryRun {
+	runId: string;
+	createdAt: string;
+	durationMs: number | null;
+	healthStatus: string | null;
+	summary: string | null;
+	output: Record<string, unknown> | null;
+}
+
 interface AgentReasoningPanelProps {
 	steps: AgentStepData[];
 	runId?: string | null;
@@ -20,11 +31,14 @@ interface AgentReasoningPanelProps {
 	error?: string | null;
 	onRun?: () => void;
 	stressResults?: StressResult[] | null;
+	onRestoreRun?: (run: HistoryRun) => void;
 }
+
+type PanelTab = "current" | "history";
 
 /**
  * Right sidebar panel: header with "Agent Reasoning" title + run ID badge,
- * scrollable body containing <AgentTimeline /> + <StressTestChart />.
+ * tab toggle between current run and history, scrollable body.
  * Collapse toggle is a visual placeholder only — collapsed ~48px icon-strip
  * state is deferred per V §6.2.
  */
@@ -35,9 +49,16 @@ export function AgentReasoningPanel({
 	error,
 	onRun,
 	stressResults,
+	onRestoreRun,
 }: AgentReasoningPanelProps) {
+	const [tab, setTab] = useState<PanelTab>("current");
 	const riskDone = steps[3]?.status === "done";
 	const showChart = riskDone && stressResults && stressResults.length > 0;
+
+	const handleSelectRun = (run: HistoryRun) => {
+		onRestoreRun?.(run);
+		setTab("current");
+	};
 
 	return (
 		<aside
@@ -49,7 +70,7 @@ export function AgentReasoningPanel({
 				<h2 className="text-[13px] font-medium text-text leading-tight">
 					Agent Reasoning
 				</h2>
-				{runId && (
+				{runId && tab === "current" && (
 					<span className="text-[10px] font-mono text-text-dim bg-bg-elevated px-1.5 py-0.5 rounded select-none">
 						{runId.slice(0, 8)}
 					</span>
@@ -65,12 +86,26 @@ export function AgentReasoningPanel({
 					<ChevronRightIcon />
 				</button>
 
+				{/* Tab toggle */}
+				<div className="ml-auto flex items-center gap-0.5 rounded bg-bg-elevated p-0.5">
+					<TabButton
+						active={tab === "current"}
+						onClick={() => setTab("current")}
+						label="Current"
+					/>
+					<TabButton
+						active={tab === "history"}
+						onClick={() => setTab("history")}
+						label="History"
+					/>
+				</div>
+
 				{/* Run trigger */}
-				{onRun && (
+				{onRun && tab === "current" && (
 					<button
 						onClick={onRun}
 						disabled={isRunning}
-						className="ml-auto px-2.5 py-1 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+						className="px-2.5 py-1 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 						type="button"
 					>
 						{isRunning ? "Running…" : "▶ Run"}
@@ -79,26 +114,59 @@ export function AgentReasoningPanel({
 			</div>
 
 			{/* Error banner */}
-			{error && (
+			{error && tab === "current" && (
 				<div className="px-4 py-2 text-[11px] font-mono text-red bg-bg-elevated border-b border-border">
 					{error}
 				</div>
 			)}
 
-			{/* Scrollable body */}
-			<ScrollArea className="flex-1">
-				<div className="p-4">
-					<AgentTimeline steps={steps} />
+			{/* Body */}
+			{tab === "current" ? (
+				<ScrollArea className="flex-1">
+					<div className="p-4">
+						<AgentTimeline steps={steps} />
 
-					{/* Stress test chart — shown after Risk Agent completes */}
-					{showChart && (
-						<div className="mt-4 pt-4 border-t border-border">
-							<StressTestChart data={stressResults} />
-						</div>
-					)}
+						{/* Stress test chart — shown after Risk Agent completes */}
+						{showChart && (
+							<div className="mt-4 pt-4 border-t border-border">
+								<StressTestChart data={stressResults} />
+							</div>
+						)}
+					</div>
+				</ScrollArea>
+			) : (
+				<div className="flex-1 overflow-hidden">
+					<RunHistoryPanel
+						onSelectRun={handleSelectRun}
+						selectedRunId={runId}
+					/>
 				</div>
-			</ScrollArea>
+			)}
 		</aside>
+	);
+}
+
+function TabButton({
+	active,
+	onClick,
+	label,
+}: {
+	active: boolean;
+	onClick: () => void;
+	label: string;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={`px-2 py-0.5 text-[11px] font-mono rounded transition-colors cursor-pointer ${
+				active
+					? "bg-bg-card text-text shadow-sm"
+					: "text-text-dim hover:text-text"
+			}`}
+		>
+			{label}
+		</button>
 	);
 }
 

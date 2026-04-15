@@ -12,11 +12,21 @@ import { useAgentRun } from "@/hooks/use-agent-run";
 import { useHoldings } from "@/hooks/use-holdings";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
+import type { MonitorOutput } from "@/lib/agents/monitor";
 
 interface StressResult {
 	scenario: string;
 	simulated_drawdown_pct: number;
 	recovery_days: number | null;
+}
+
+interface HistoryRun {
+	runId: string;
+	createdAt: string;
+	durationMs: number | null;
+	healthStatus: string | null;
+	summary: string | null;
+	output: Record<string, unknown> | null;
 }
 
 export default function Home() {
@@ -30,6 +40,10 @@ export default function Home() {
 		workflowOutput,
 		lastRunAt,
 		startRun,
+		setMonitorOutput,
+		setWorkflowOutput,
+		setRunId,
+		setLastRunAt,
 	} = useAgentRun();
 	const {
 		holdings: holdingsList,
@@ -67,6 +81,21 @@ export default function Home() {
 			}
 		},
 		[refetchHoldings],
+	);
+
+	// Restore a past run from history
+	const handleRestoreRun = useCallback(
+		(run: HistoryRun) => {
+			setRunId(run.runId);
+			setLastRunAt(new Date(run.createdAt));
+			if (run.output?.monitor) {
+				setMonitorOutput(run.output.monitor as unknown as MonitorOutput);
+			}
+			if (run.output) {
+				setWorkflowOutput(run.output);
+			}
+		},
+		[setMonitorOutput, setWorkflowOutput, setRunId, setLastRunAt],
 	);
 
 	// Compute baseline metrics from live holdings data (available immediately)
@@ -183,6 +212,7 @@ export default function Home() {
 					error={error}
 					onRun={startRun}
 					stressResults={stressResults}
+					onRestoreRun={handleRestoreRun}
 				/>
 			</div>
 		</div>

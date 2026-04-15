@@ -179,7 +179,7 @@
 ### 4.4 Agent run history
 
 - [x] **4.4.1** `GET /api/agents/history` — fetch past agent run results with pagination _(A §10, Phase 4)_
-- [ ] **4.4.2** Create run history view (route or panel) showing past runs with timestamps and verdicts
+- [x] **4.4.2** Create run history view (route or panel) showing past runs with timestamps and verdicts
 
 ### 4.5 Auto-tick & background
 
