@@ -28,12 +28,12 @@ const MCP_SERVERS: MCPServerConfig[] = [
 	},
 	{
 		name: "qmd",
-		command: "qmd",
-		args: ["mcp"],
+		command: process.platform === "win32" ? "npx.cmd" : "qmd",
+		args: process.platform === "win32" ? ["-y", "@tobilu/qmd", "mcp"] : ["mcp"],
 	},
 	{
 		name: "playwright",
-		command: "npx",
+		command: process.platform === "win32" ? "npx.cmd" : "npx",
 		args: ["-y", "@playwright/mcp@latest"],
 	},
 ];
