@@ -323,9 +323,7 @@ Verdict rules:
 
 Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.`,
   model: [
-    { model: "deepseek/deepseek-chat", maxRetries: 2 },
-    { model: "google/gemini-2.5-flash", maxRetries: 2 },
-    { model: "groq/llama-3.3-70b-versatile", maxRetries: 1 },
+    { model: "openrouter/openai/gpt-4o-mini", maxRetries: 2 },
   ],
   tools: { runHistoricalStressTest, computeVar, getMacroContext },
   memory,
