@@ -102,15 +102,38 @@ WARNING: No code changes made.
 
 ---
 
-## Task 4.6.1 (4/16/2026, 12:20:00 AM)
+## Task 4.6.1 (4/16/2026, 12:17:28 AM)
 
 **Description:** Audit all animations against `prefers-reduced-motion` — confirm suppression works _(V §5.3)_
 
 **Summary:**
-Audited all 7 keyframe animations (pulse-green/amber/red, dot-pulse, cursor-blink, edge-flow, fade-in-up) and all component usage sites. Consolidated `prefers-reduced-motion` CSS rule into animations.css (removed duplicate from globals.css). Added `scroll-behavior: auto !important` to the rule. Created `useReducedMotion` hook for JS-side motion preference detection. Updated 3 components to conditionally skip animation classes when reduced motion is preferred: StatusDot (animate-dot-pulse), ConveyorEdge (animate-edge-flow), AgentStep (animate-cursor-blink). Build passes.
+Audited all 7 keyframe animations against prefers-reduced-motion. Consolidated CSS rule into animations.css, added scroll-behavior:auto. Created useReducedMotion hook. Updated StatusDot, ConveyorEdge, AgentStep to conditionally skip animation classes when reduced motion preferred. Build passes.
 
 **Gotchas:**
+WARNING: No code changes made.
 
-- The CSS `prefers-reduced-motion` rule already existed in globals.css but was duplicated — consolidated into animations.css alongside the keyframes for co-location.
-- CSS rule suppresses animation-duration/iteration-count and transition-duration globally, but JS-driven conditional class application (via useReducedMotion hook) provides belt-and-suspenders coverage for cases where the CSS override alone might not fully prevent visual artifacts (e.g., single-iteration animations that still render one frame).
-- The `useReducedMotion` hook is client-only ("use client") — safe for all current consumers which are client components.
+---
+
+## Task 4.6.2 (4/16/2026, 12:20:00 AM)
+
+**Description:** Audit color consistency — every health indicator uses `--green` / `--amber` / `--red` exactly _(V §2.1)_
+
+**Summary:**
+Audited all health-related color usage across 13 components. All health indicators consistently use Tailwind utility classes (text-green/bg-green/border-green, text-amber/bg-amber/border-amber, text-red/bg-red/border-red) which resolve to CSS custom properties (--green, --amber, --red). No hardcoded hex values found for health colors. Specific findings:
+
+- StatusDot: bg-green/bg-amber/bg-red + shadow with --green-glow/--amber-glow/--red-glow ✅
+- shared.ts healthBorderMap/healthLabelMap: border-green/border-amber/border-red, text-green/text-amber/text-red ✅
+- MachineNode/PortfolioOutputNode: use shared.ts maps ✅
+- PortfolioSummaryBar: healthLabelMap + pnlColorMap (text-green/text-red) ✅
+- AgentStep: text-amber for running, text-red for error ✅
+- RunHistoryPanel: text-red/text-amber/text-green for verdict ✅
+- MetricDisplay: text-green/text-red for positive/negative ✅
+- StressTestChart: var(--red) for >15% drawdown ✅
+- ConveyorEdge: var(--teal)/var(--amber)/var(--red) for correlation (not health) ✅
+- Animations: var(--green-glow)/var(--amber-glow)/var(--red-glow) ✅
+  No code changes needed. Build passes.
+
+**Gotchas:**
+None. All health indicators already use correct tokens.
+
+---
