@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import {
 	ReactFlow,
 	Background,
@@ -116,13 +116,15 @@ export function FactoryFloor({
 		() => layoutGraph(initialNodes, initialEdges),
 		[initialNodes, initialEdges],
 	);
-	const [nodes, , onNodesChange] = useNodesState(layoutedNodes);
-	const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+	const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
+	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+	// Re-sync when holdings change (useNodesState only consumes initial value once)
+	useEffect(() => { setNodes(layoutedNodes); }, [layoutedNodes, setNodes]);
+	useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
 
 	// Derive nodes with updated health from agent output
 	const nodesWithHealth = useMemo(() => {
-		if (!assetHealth && !globalHealth) return nodes;
-
 		return nodes.map((node) => {
 			const data = node.data as Record<string, unknown>;
 
@@ -133,14 +135,22 @@ export function FactoryFloor({
 				if (health) return { ...node, data: { ...data, health } };
 			}
 
-			// Output node: global health
-			if (node.type === "portfolioOutput" && globalHealth) {
-				return { ...node, data: { ...data, health: globalHealth } };
+			// Output node: always sync from portfolioOutput prop so metrics
+			// update when holdings fetch completes (useNodesState only consumes
+			// initial value once and won't re-sync on prop changes).
+			if (node.type === "portfolioOutput") {
+				return {
+					...node,
+					data: {
+						...(portfolioOutput as unknown as Record<string, unknown>),
+						...(globalHealth ? { health: globalHealth } : {}),
+					},
+				};
 			}
 
 			return node;
 		}) as typeof nodes;
-	}, [nodes, assetHealth, globalHealth]);
+	}, [nodes, assetHealth, globalHealth, portfolioOutput]);
 
 	// Derive conveyor edges (machine → output) with correlation data
 	const edgesWithCorrelation = useMemo(() => {
