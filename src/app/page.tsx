@@ -9,7 +9,7 @@ import {
 	type NewHolding,
 } from "@/components/holdings/holdings-input";
 import { useAgentRun } from "@/hooks/use-agent-run";
-import { useHoldings } from "@/hooks/use-holdings";
+import { useHoldings, type PortfolioOutputData } from "@/hooks/use-holdings";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
 import type { MonitorOutput } from "@/lib/agents/monitor";
@@ -170,6 +170,17 @@ export default function Home() {
 		return workflowOutput.correlationMatrix as CorrelationEntry[];
 	}, [workflowOutput]);
 
+	// Enrich portfolioOutput with monitorOutput metrics so PortfolioOutputNode
+	// shows live Sharpe, max drawdown, and correct P&L (not hardcoded zeros)
+	const enrichedPortfolioOutput = useMemo<PortfolioOutputData>(() => ({
+		...portfolioOutput,
+		netPnl: summaryMetrics.unrealisedPnl,
+		netPnlPct: summaryMetrics.unrealisedPnlPct,
+		sharpe: summaryMetrics.sharpeRatio ?? 0,
+		maxDrawdownPct: summaryMetrics.maxDrawdownPct,
+		health: summaryMetrics.health,
+	}), [portfolioOutput, summaryMetrics]);
+
 	// Extract stress results from Risk Agent output in workflow output
 	const stressResults = useMemo<StressResult[] | null>(() => {
 		if (!workflowOutput?.risk) return null;
@@ -199,7 +210,7 @@ export default function Home() {
 				<div className="flex-[7] overflow-hidden">
 					<FactoryFloor
 						machineNodes={machineNodes}
-						portfolioOutput={portfolioOutput}
+						portfolioOutput={enrichedPortfolioOutput}
 						assetHealth={assetHealth}
 						globalHealth={monitorOutput?.health_status ?? null}
 						correlationMatrix={correlationMatrix}
