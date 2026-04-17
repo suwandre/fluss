@@ -155,7 +155,10 @@ previous observations, note whether issues are recurring or improving, and track
 changes in risk thresholds or bottleneck patterns over time.
 
 Be direct and specific. If something looks wrong, name it precisely.`,
-	model: [{ model: "openrouter/moonshotai/kimi-k2.5:free", maxRetries: 2 }],
+	model: [
+		{ model: "google/gemini-2.5-flash-lite", maxRetries: 2 },
+		{ model: "groq/llama-3.3-70b-versatile", maxRetries: 2 },
+	],
 	tools: { getPortfolioSnapshot, getHistoricalPerformance },
 	memory,
 });

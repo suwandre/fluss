@@ -423,7 +423,10 @@ Verdict rules:
 - "reject" — any scenario shows >25% drawdown OR VaR >5% daily OR inverted yield curve + high VIX
 
 Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.`,
-	model: [{ model: "openrouter/moonshotai/kimi-k2.5:free", maxRetries: 2 }],
+	model: [
+		{ model: "deepseek/deepseek-chat", maxRetries: 2 },
+		{ model: "openrouter/qwen/qwen3.6-plus", maxRetries: 2 },
+	],
 	tools: { runHistoricalStressTest, computeVar, getMacroContext },
 	memory,
 });
