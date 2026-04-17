@@ -171,6 +171,7 @@ export function useAgentRun(): UseAgentRunReturn {
 
 		const stepStartTimes: Record<string, number> = { monitor: Date.now() };
 		let escalationActive = false;
+		const STREAM_TIMEOUT_MS = 90_000;
 
 		try {
 			const response = await fetch("/api/agents/run", {
@@ -189,11 +190,28 @@ export function useAgentRun(): UseAgentRunReturn {
 			const reader = response.body!.getReader();
 			const decoder = new TextDecoder();
 			let buffer = "";
+			let lastActivity = Date.now();
 
 			// eslint-disable-next-line no-constant-condition
 			while (true) {
-				const { done, value } = await reader.read();
+				// Timeout check — if no data arrives for STREAM_TIMEOUT_MS, abort
+				const readResult = await Promise.race([
+					reader.read(),
+					new Promise<never>((_, reject) =>
+						setTimeout(
+							() =>
+								reject(
+									new Error(
+										"Agent stream timed out — no data received. Try again.",
+									),
+								),
+							STREAM_TIMEOUT_MS - (Date.now() - lastActivity),
+						),
+					),
+				]);
+				const { done, value } = readResult;
 				if (done) break;
+				lastActivity = Date.now();
 
 				buffer += decoder.decode(value, { stream: true });
 
@@ -334,7 +352,12 @@ export function useAgentRun(): UseAgentRunReturn {
 			setSteps((prev) =>
 				prev.map((s) =>
 					s.status === "running"
-						? { ...s, status: "error" as const, isStreaming: false }
+						? {
+								...s,
+								status: "error" as const,
+								isStreaming: false,
+								errorMessage: message,
+							}
 						: s,
 				),
 			);

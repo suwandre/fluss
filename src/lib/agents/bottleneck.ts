@@ -1,14 +1,14 @@
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
-import { z } from "zod";
 import * as ss from "simple-statistics";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices, getHistory } from "@/lib/market";
-import type { AssetClass } from "@/lib/types/visual";
-import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 import { searchMarketDocumentsRAG } from "@/lib/market/news-rag";
 import { memory } from "@/lib/memory";
+import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
+import type { AssetClass } from "@/lib/types/visual";
 
 // --- Output schema ---
 
@@ -271,9 +271,7 @@ identified patterns. Note if a bottleneck is recurring, worsening, or improving
 since the last assessment.
 
 Be precise with numbers. Always report the correlation coefficient or volatility percentage.`,
-	model: [
-		{ model: "openrouter/openai/gpt-4o-mini", maxRetries: 2 },
-	],
+	model: [{ model: "openrouter/moonshotai/kimi-k2.5", maxRetries: 2 }],
 	tools: {
 		getCorrelationMatrix,
 		getVolatilityContribution,

@@ -1,8 +1,8 @@
 "use client";
 
+import { AgentStep } from "@/components/agents/agent-step";
 import type { AgentStatus } from "@/lib/types/visual";
 import { cn } from "@/lib/utils";
-import { AgentStep } from "@/components/agents/agent-step";
 
 export interface AgentStepData {
 	name: string;
@@ -11,6 +11,7 @@ export interface AgentStepData {
 	structuredOutput?: Record<string, unknown>;
 	reasoning?: string;
 	isStreaming?: boolean;
+	errorMessage?: string;
 }
 
 interface AgentTimelineProps {
@@ -35,7 +36,7 @@ export function AgentTimeline({ steps }: AgentTimelineProps) {
 						key={step.name}
 						className={cn(isDimmed && "opacity-45 transition-opacity")}
 					>
-						<AgentStep {...step} />
+						<AgentStep {...step} errorMessage={step.errorMessage} />
 						{!isLast && (
 							<div className="ml-[5px] h-4 border-l border-border-bright" />
 						)}

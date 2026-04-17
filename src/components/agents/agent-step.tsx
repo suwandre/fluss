@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { AgentStatus } from "@/lib/types/visual";
-import { StatusDot } from "@/components/ui/status-dot";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { StatusDot } from "@/components/ui/status-dot";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import type { AgentStatus } from "@/lib/types/visual";
 
 interface AgentStepProps {
 	name: string;
@@ -17,6 +17,7 @@ interface AgentStepProps {
 	structuredOutput?: Record<string, unknown>;
 	reasoning?: string;
 	isStreaming?: boolean;
+	errorMessage?: string;
 }
 
 const STATUS_LABEL_MAP: Record<AgentStatus, string> = {
@@ -52,6 +53,7 @@ export function AgentStep({
 	structuredOutput,
 	reasoning,
 	isStreaming = false,
+	errorMessage,
 }: AgentStepProps) {
 	const [reasoningOpen, setReasoningOpen] = useState(false);
 	const reducedMotion = useReducedMotion();
@@ -99,6 +101,13 @@ export function AgentStep({
 						</span>
 					)}
 				</div>
+
+				{/* Error message */}
+				{status === "error" && errorMessage && (
+					<div className="mt-1 text-[11px] font-mono text-red leading-snug break-words">
+						{errorMessage}
+					</div>
+				)}
 
 				{/* Structured output */}
 				{showStructuredOutput && structuredOutput && (
