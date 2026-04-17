@@ -150,6 +150,7 @@ const monitorStep = createStep({
       structuredOutput: { schema: MonitorOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 4096 },
+      activeTools: [],
     });
 
     return result.object;
@@ -206,6 +207,7 @@ const bottleneckStep = createStep({
       structuredOutput: { schema: BottleneckOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 4096 },
+      activeTools: [],
     });
 
     return {
@@ -252,6 +254,7 @@ const redesignStep = createStep({
       structuredOutput: { schema: RedesignOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 4096 },
+      activeTools: [],
     });
 
     return { ...inputData, redesign: redesignResult.object };
@@ -292,6 +295,7 @@ const riskStep = createStep({
       structuredOutput: { schema: RiskOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 4096 },
+      activeTools: [],
     });
 
     return { ...inputData, risk: riskResult.object };
