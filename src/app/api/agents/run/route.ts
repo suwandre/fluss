@@ -34,10 +34,24 @@ export async function POST(req: Request) {
       try {
         // Forward workflow stream events to the client as custom data parts.
         // The client (useAgentRun hook) parses these to update the timeline.
+        const KEEPALIVE_MS = 30_000;
         const reader = runOutput.fullStream.getReader();
         try {
           while (true) {
-            const { done, value } = await reader.read();
+            const result = await Promise.race([
+              reader.read() as Promise<ReadableStreamReadResult<unknown>>,
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), KEEPALIVE_MS)),
+            ]);
+
+            if (result === null) {
+              writer.write({
+                type: "data-keepalive" as const,
+                data: {},
+              } as Parameters<typeof writer.write>[0]);
+              continue;
+            }
+
+            const { done, value } = result;
             if (done) break;
 
             writer.write({

@@ -87,7 +87,7 @@ export async function getHistoricalOHLCV(
 ): Promise<OHLCVBar[]> {
   const result = await yahooFinance.chart(ticker, {
     period1,
-    period2,
+    ...(period2 !== undefined ? { period2 } : {}),
     interval,
   });
 
