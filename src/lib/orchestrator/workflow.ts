@@ -11,11 +11,16 @@ import { getBatchPrices } from "@/lib/market";
 import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 
 // ── Memory context ──────────────────────────────────────────────────
-// Fixed thread/resource IDs so agents reference previous run context.
-// Using a constant threadId ensures cross-run memory continuity —
-// Mastra Memory retrieves the last 20 messages from the same thread,
-// so each run builds on prior observations and working memory state.
-const MEMORY_THREAD_ID = "portfolio-factory-thread";
+// Per-agent thread IDs prevent schema contamination: shared memory ends
+// with the last agent's output (e.g. Risk), so the next Monitor run sees
+// Risk JSON in context and mirrors it. Separate threads give each agent
+// its own history while still preserving cross-run continuity per agent.
+const MEMORY_THREADS = {
+  monitor: "portfolio-factory-monitor",
+  bottleneck: "portfolio-factory-bottleneck",
+  redesign: "portfolio-factory-redesign",
+  risk: "portfolio-factory-risk",
+} as const;
 const MEMORY_RESOURCE_ID = "portfolio-factory";
 
 // ── Shared schemas ──────────────────────────────────────────────────
@@ -148,7 +153,7 @@ const monitorStep = createStep({
 
     const result = await monitorAgent.generate(prompt, {
       structuredOutput: { schema: MonitorOutput },
-      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      memory: { thread: MEMORY_THREADS.monitor, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 4096 },
       activeTools: [],
     });
@@ -205,7 +210,7 @@ const bottleneckStep = createStep({
     ).bottleneckAgent;
     const bottleneckResult = await bottleneckAgent.generate(bottleneckPrompt, {
       structuredOutput: { schema: BottleneckOutput },
-      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      memory: { thread: MEMORY_THREADS.bottleneck, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 4096 },
       activeTools: [],
     });
@@ -252,7 +257,7 @@ const redesignStep = createStep({
     const redesignAgent = (await import("@/lib/agents/redesign")).redesignAgent;
     const redesignResult = await redesignAgent.generate(redesignPrompt, {
       structuredOutput: { schema: RedesignOutput },
-      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      memory: { thread: MEMORY_THREADS.redesign, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 8192 },
       activeTools: [],
     });
@@ -293,7 +298,7 @@ const riskStep = createStep({
     const riskAgent = (await import("@/lib/agents/risk")).riskAgent;
     const riskResult = await riskAgent.generate(riskPrompt, {
       structuredOutput: { schema: RiskOutput },
-      memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID },
       modelSettings: { maxOutputTokens: 8192 },
       activeTools: [],
     });
