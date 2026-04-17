@@ -32,10 +32,7 @@ function buildStructuredOutput(
 		case "monitor":
 			return {
 				health: output.health_status,
-				summary:
-					typeof output.summary === "string"
-						? output.summary.slice(0, 80)
-						: output.summary,
+				summary: output.summary,
 				concerns: Array.isArray(output.concerns) ? output.concerns.length : 0,
 				escalate: output.escalate,
 			};
@@ -46,10 +43,7 @@ function buildStructuredOutput(
 			return {
 				bottleneck: pb?.ticker,
 				severity: pb?.severity,
-				analysis:
-					typeof output.analysis === "string"
-						? output.analysis.slice(0, 80)
-						: output.analysis,
+				analysis: output.analysis,
 			};
 		}
 		case "redesign": {

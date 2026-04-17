@@ -118,7 +118,7 @@ export function AgentStep({
 								className="flex gap-1.5 text-[12px] font-mono leading-snug"
 							>
 								<span className="text-text-dim shrink-0">{key}:</span>
-								<span className="text-text truncate">{renderValue(value)}</span>
+								<span className="text-text break-words min-w-0">{renderValue(value)}</span>
 							</div>
 						))}
 					</div>
