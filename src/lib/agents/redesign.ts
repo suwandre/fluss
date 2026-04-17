@@ -493,7 +493,7 @@ For each action, provide:
 - Clear rationale tied to the bottleneck diagnosis
 
 Summarize the expected improvement in plain language with numbers.`,
-	model: [{ model: "openrouter/moonshotai/kimi-k2.5", maxRetries: 2 }],
+	model: [{ model: "openrouter/moonshotai/kimi-k2.5:free", maxRetries: 2 }],
 	tools: { getAlternativeAssets, simulateRebalance, getRebalanceHistory },
 	memory,
 });

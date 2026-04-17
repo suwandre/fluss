@@ -149,6 +149,7 @@ const monitorStep = createStep({
     const result = await monitorAgent.generate(prompt, {
       structuredOutput: { schema: MonitorOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      modelSettings: { maxOutputTokens: 4096 },
     });
 
     return result.object;
@@ -204,6 +205,7 @@ const bottleneckStep = createStep({
     const bottleneckResult = await bottleneckAgent.generate(bottleneckPrompt, {
       structuredOutput: { schema: BottleneckOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      modelSettings: { maxOutputTokens: 4096 },
     });
 
     return {
@@ -249,6 +251,7 @@ const redesignStep = createStep({
     const redesignResult = await redesignAgent.generate(redesignPrompt, {
       structuredOutput: { schema: RedesignOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      modelSettings: { maxOutputTokens: 4096 },
     });
 
     return { ...inputData, redesign: redesignResult.object };
@@ -288,6 +291,7 @@ const riskStep = createStep({
     const riskResult = await riskAgent.generate(riskPrompt, {
       structuredOutput: { schema: RiskOutput },
       memory: { thread: MEMORY_THREAD_ID, resource: MEMORY_RESOURCE_ID },
+      modelSettings: { maxOutputTokens: 4096 },
     });
 
     return { ...inputData, risk: riskResult.object };

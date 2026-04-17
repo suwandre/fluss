@@ -155,7 +155,7 @@ previous observations, note whether issues are recurring or improving, and track
 changes in risk thresholds or bottleneck patterns over time.
 
 Be direct and specific. If something looks wrong, name it precisely.`,
-	model: [{ model: "openrouter/moonshotai/kimi-k2.5", maxRetries: 2 }],
+	model: [{ model: "openrouter/moonshotai/kimi-k2.5:free", maxRetries: 2 }],
 	tools: { getPortfolioSnapshot, getHistoricalPerformance },
 	memory,
 });

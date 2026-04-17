@@ -271,7 +271,7 @@ identified patterns. Note if a bottleneck is recurring, worsening, or improving
 since the last assessment.
 
 Be precise with numbers. Always report the correlation coefficient or volatility percentage.`,
-	model: [{ model: "openrouter/moonshotai/kimi-k2.5", maxRetries: 2 }],
+	model: [{ model: "openrouter/moonshotai/kimi-k2.5:free", maxRetries: 2 }],
 	tools: {
 		getCorrelationMatrix,
 		getVolatilityContribution,
