@@ -46,6 +46,24 @@ function renderValue(value: unknown): string {
 	return String(value);
 }
 
+const TRUNCATE_THRESHOLD = 80;
+
+function ExpandableValue({ value }: { value: string }) {
+	const [expanded, setExpanded] = useState(false);
+	if (value.length <= TRUNCATE_THRESHOLD) {
+		return <span className="text-text break-words min-w-0">{value}</span>;
+	}
+	return (
+		<span
+			className="text-text break-words min-w-0 cursor-pointer hover:text-text-muted transition-colors"
+			onClick={() => setExpanded((v) => !v)}
+			title={expanded ? "Click to collapse" : "Click to expand"}
+		>
+			{expanded ? value : `${value.slice(0, TRUNCATE_THRESHOLD)}…`}
+		</span>
+	);
+}
+
 export function AgentStep({
 	name,
 	status,
@@ -112,15 +130,22 @@ export function AgentStep({
 				{/* Structured output */}
 				{showStructuredOutput && structuredOutput && (
 					<div className="mt-1.5 space-y-0.5">
-						{Object.entries(structuredOutput).map(([key, value]) => (
-							<div
-								key={key}
-								className="flex gap-1.5 text-[12px] font-mono leading-snug"
-							>
-								<span className="text-text-dim shrink-0">{key}:</span>
-								<span className="text-text break-words min-w-0">{renderValue(value)}</span>
-							</div>
-						))}
+						{Object.entries(structuredOutput).map(([key, value]) => {
+							const rendered = renderValue(value);
+							return (
+								<div
+									key={key}
+									className="flex gap-1.5 text-[12px] font-mono leading-snug"
+								>
+									<span className="text-text-dim shrink-0">{key}:</span>
+									{typeof value === "string" ? (
+										<ExpandableValue value={rendered} />
+									) : (
+										<span className="text-text break-words min-w-0">{rendered}</span>
+									)}
+								</div>
+							);
+						})}
 					</div>
 				)}
 
