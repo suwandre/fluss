@@ -156,8 +156,8 @@ changes in risk thresholds or bottleneck patterns over time.
 
 Be direct and specific. If something looks wrong, name it precisely.`,
 	model: [
-		{ model: "google/gemini-2.5-flash-lite", maxRetries: 2 },
-		{ model: "groq/llama-3.3-70b-versatile", maxRetries: 2 },
+		{ model: "google/gemini-2.5-flash", maxRetries: 2 },
+		{ model: "groq/llama3-groq-70b-8192-tool-use-preview", maxRetries: 2 },
 	],
 	tools: { getPortfolioSnapshot, getHistoricalPerformance },
 	memory,
