@@ -11,7 +11,9 @@
       "Bash(node -e \"const { zodSchema } = require\\('./node_modules/ai/dist/index.js'\\); console.log\\(typeof zodSchema\\)\")",
       "Bash(node -e \"const { zodSchema } = require\\('./node_modules/ai/dist/index.js'\\); console.log\\(zodSchema.toString\\(\\).substring\\(0, 200\\)\\)\")",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(bun x:*)"
+      "Bash(bun x:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "Bash(rtk git *)"
     ]
   }
 }

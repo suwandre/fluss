@@ -1,14 +1,9 @@
-## Communication Style
-
-Terse like caveman. Technical substance exact. Only fluff die. Drop: articles, filler (just/really/basically), pleasantries, hedging. Fragments OK. Short synonyms. Code unchanged. Pattern: [thing] [action] [reason]. [next step]. ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift. Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
-
----
-
 ## Task Workflow
 
 Read `tasks/TASKS.md` and `tasks/progress.md` before starting any work.
 
 ### Builder role
+
 1. Work on the NEXT incomplete task only. Do not skip ahead or batch tasks.
 2. Before finishing: run `bun run build` (or typecheck) and fix all errors.
 3. Check that nothing from previous tasks was accidentally removed or overridden — compare against `tasks/progress.md`.
@@ -17,18 +12,11 @@ Read `tasks/TASKS.md` and `tasks/progress.md` before starting any work.
 6. `git add`, commit (compact message describing the change), push.
 
 ### Reviewer role
+
 1. Read the latest commit diff and `tasks/progress.md`.
 2. Check for: bugs, type errors, accidental deletions, inconsistencies vs `architecture/` docs.
 3. If issues found: fix them, then commit with prefix `fix:`.
 4. If clean: output `LGTM` and nothing else.
-
----
-
-## About Me
-
-**Name:** Suwandre
-**Role:** Software engineer
-**Location:** Berlin, Germany
 
 ### Language Preferences
 
@@ -47,6 +35,12 @@ Read `tasks/TASKS.md` and `tasks/progress.md` before starting any work.
 - Keep things smart and simple.
 - Refer to available skills when possible.
 - Use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
+## Tools
+
+- Context7 MCP: use for any library/API docs without being asked
+- `/compact`: run manually when context gets heavy mid-task
+- ralph: for long multi-task loops — ask Claude to "plan with ralph" then run the loop externally
 
 <!-- BEGIN:nextjs-agent-rules -->
 
