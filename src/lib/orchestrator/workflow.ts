@@ -258,7 +258,7 @@ const redesignStep = createStep({
     const redesignResult = await redesignAgent.generate(redesignPrompt, {
       structuredOutput: { schema: RedesignOutput },
       memory: { thread: MEMORY_THREADS.redesign, resource: MEMORY_RESOURCE_ID },
-      modelSettings: { maxOutputTokens: 8192 },
+      modelSettings: { maxOutputTokens: 4096 },
       activeTools: [],
     });
 
@@ -299,7 +299,7 @@ const riskStep = createStep({
     const riskResult = await riskAgent.generate(riskPrompt, {
       structuredOutput: { schema: RiskOutput },
       memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID },
-      modelSettings: { maxOutputTokens: 8192 },
+      modelSettings: { maxOutputTokens: 4096 },
       activeTools: [],
     });
 
