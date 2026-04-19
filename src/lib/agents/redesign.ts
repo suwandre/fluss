@@ -494,8 +494,8 @@ For each action, provide:
 
 Summarize the expected improvement in plain language with numbers.`,
 	model: [
-		{ model: "google/gemini-2.5-flash", maxRetries: 2 },
-		{ model: "groq/llama3-groq-70b-8192-tool-use-preview", maxRetries: 2 },
+		{ model: "google/gemini-2.0-flash", maxRetries: 2 },
+		{ model: "groq/llama-3.3-70b-versatile", maxRetries: 2 },
 	],
 	tools: { getAlternativeAssets, simulateRebalance, getRebalanceHistory },
 	memory,
