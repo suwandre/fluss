@@ -254,7 +254,7 @@ cash/stablecoins (USDC) are distinct sectors. A portfolio of 10 altcoins with
 no BTC or stablecoins has near-zero true diversification.
 
 Be direct and specific. If something looks wrong, name it precisely.`,
-  model: "google/gemini-2.5-flash-lite",
+  model: "groq/llama-3.3-70b-versatile",
   tools: {
     getPortfolioSnapshot: createTool({
       id: "get-portfolio-snapshot",
@@ -431,7 +431,7 @@ Agents are tiered by frequency and reasoning complexity:
 
 | Agent                            | Primary Model                  | Fallback                       | Rationale                                      |
 | -------------------------------- | ------------------------------ | ------------------------------ | ---------------------------------------------- |
-| **Monitor** (every tick)         | `google/gemini-2.5-flash-lite` | `groq/llama-3.3-70b-versatile` | Runs most often — needs fastest/cheapest model |
+| **Monitor** (every tick)         | `groq/llama-3.3-70b-versatile` | `openrouter/deepseek/deepseek-chat:free` | Runs most often — Groq rate limits are generous on free tier |
 | **Bottleneck** (on escalation)   | `google/gemini-2.5-flash`      | `groq/llama-3.3-70b-versatile` | Good reasoning for correlation analysis        |
 | **Redesign** (on escalation)     | `google/gemini-2.5-flash`      | `groq/llama-3.3-70b-versatile` | Tool calling + structured output for proposals |
 | **Risk** (rare, heavy reasoning) | `deepseek/deepseek-chat`       | `openrouter/qwen/qwen3.6-plus` | Stress-test reasoning, runs infrequently       |
@@ -447,10 +447,10 @@ const monitorAgent = new Agent({
   id: "monitor",
   name: "Monitor Agent",
   model: {
-    provider: "google/gemini-2.5-flash-lite",
+    provider: "groq/llama-3.3-70b-versatile",
     fallbacks: [
-      "groq/llama-3.3-70b-versatile",
       "openrouter/deepseek/deepseek-chat:free",
+      "groq/llama-3.1-8b-instant",
     ],
   },
   // ...

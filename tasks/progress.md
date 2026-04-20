@@ -180,7 +180,7 @@ None. Build is clean.
 **Summary:**
 Fixed agent model configs to match ARCHITECTURE_V1.md §6:
 
-- **Monitor**: `google/gemini-2.0-flash` → `google/gemini-2.5-flash-lite` (primary), added `openrouter/deepseek/deepseek-chat:free` as 3rd fallback
+- **Monitor**: `google/gemini-2.0-flash` → `google/gemini-2.5-flash-lite` (primary), added `openrouter/deepseek/deepseek-chat:free` as 3rd fallback → **updated**: `google/gemini-2.5-flash-lite` rate-limited, swapped to `groq/llama-3.3-70b-versatile` (primary), `groq/llama-3.1-8b-instant` added as 3rd fallback
 - **Bottleneck**: `google/gemini-2.0-flash` → `google/gemini-2.5-flash` (primary), added `openrouter/deepseek/deepseek-chat:free` as 3rd fallback
 - **Redesign**: `google/gemini-2.0-flash` → `google/gemini-2.5-flash` (primary), added `openrouter/deepseek/deepseek-chat:free` as 3rd fallback
 - **Risk**: Already correct (`deepseek/deepseek-chat` → `openrouter/qwen/qwen3.6-plus`) — no change needed
@@ -188,7 +188,7 @@ Fixed agent model configs to match ARCHITECTURE_V1.md §6:
 Fallback chains after fix:
 | Agent     | Primary                          | Fallback 1                          | Fallback 2                               |
 |-----------|----------------------------------|-------------------------------------|------------------------------------------|
-| Monitor   | google/gemini-2.5-flash-lite    | groq/llama-3.3-70b-versatile       | openrouter/deepseek/deepseek-chat:free   |
+| Monitor   | groq/llama-3.3-70b-versatile   | openrouter/deepseek/deepseek-chat:free | groq/llama-3.1-8b-instant             |
 | Bottleneck| google/gemini-2.5-flash          | groq/llama-3.3-70b-versatile       | openrouter/deepseek/deepseek-chat:free   |
 | Redesign  | google/gemini-2.5-flash          | groq/llama-3.3-70b-versatile       | openrouter/deepseek/deepseek-chat:free   |
 | Risk      | deepseek/deepseek-chat           | openrouter/qwen/qwen3.6-plus        | —                                        |
@@ -196,6 +196,22 @@ Fallback chains after fix:
 Mastra natively supports model fallback arrays — each model gets its own `maxRetries` before moving to the next. No manual fallback logic needed.
 
 Build passes clean.
+
+**Gotchas:**
+None.
+
+---
+
+## Hotfix: Monitor agent rate limit — swap primary model (4/20/2026)
+
+**Description:** `google/gemini-2.5-flash-lite` hitting 429 rate limits on free tier. Swapped Monitor agent to Groq as primary.
+
+**Summary:**
+New fallback chain: `groq/llama-3.3-70b-versatile` → `openrouter/deepseek/deepseek-chat:free` → `groq/llama-3.1-8b-instant`
+
+Files changed:
+1. `src/lib/agents/monitor.ts` — swapped model array order, added `llama-3.1-8b-instant` as 3rd fallback
+2. `architecture/ARCHITECTURE_V1.md` — updated 3 references (code snippet, table, fallback example)
 
 **Gotchas:**
 None.
