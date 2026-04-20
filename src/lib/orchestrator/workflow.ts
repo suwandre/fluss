@@ -5,6 +5,11 @@ import { MonitorOutput } from "@/lib/agents/monitor";
 import { BottleneckOutput } from "@/lib/agents/bottleneck";
 import { RedesignOutput } from "@/lib/agents/redesign";
 import { RiskOutput } from "@/lib/agents/risk";
+import {
+	isStructuredOutputError,
+	parseRawAgentText,
+	recoverStructuredOutput,
+} from "@/lib/agents/normalize-output";
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices } from "@/lib/market";
@@ -147,20 +152,43 @@ const monitorStep = createStep({
     const prompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
+      "CRITICAL: Output ONLY raw valid JSON matching this exact schema:",
+      "{",
+      '  "health_status": "nominal" | "warning" | "critical",',
+      '  "portfolio_metrics": { "total_value": number, "unrealised_pnl_pct": number, "sharpe_ratio": number|null, "max_drawdown_pct": number, "largest_position_pct": number },',
+      '  "concerns": [string, ...],',
+      '  "escalate": boolean,',
+      '  "summary": string,',
+      '  "asset_health": [{ "ticker": string, "health": "nominal"|"warning"|"critical" }, ...]',
+      "}",
+      "",
       "Analyze this portfolio and assess its health:",
       JSON.stringify(inputData.portfolioData, null, 2),
       `Total portfolio value: $${inputData.totalValue.toFixed(2)}`,
       `Total cost basis: $${inputData.totalCost.toFixed(2)}`,
     ].join("\n");
 
-    const result = await monitorAgent.generate(prompt, {
-      structuredOutput: { schema: MonitorOutput },
-      memory: { thread: MEMORY_THREADS.monitor, resource: MEMORY_RESOURCE_ID },
-      modelSettings: { maxOutputTokens: 4096 },
-      activeTools: [],
-    });
-
-    return result.object;
+    try {
+      const result = await monitorAgent.generate(prompt, {
+        structuredOutput: { schema: MonitorOutput, jsonPromptInjection: true },
+        memory: { thread: MEMORY_THREADS.monitor, resource: MEMORY_RESOURCE_ID },
+        modelSettings: { maxOutputTokens: 4096 },
+        activeTools: [],
+      });
+      return result.object;
+    } catch (err) {
+      if (!isStructuredOutputError(err)) throw err;
+      return await recoverStructuredOutput(
+        monitorAgent,
+        prompt,
+        MonitorOutput,
+        (r) => {
+          const { normalizeMonitorOutput } = require("@/lib/agents/normalize-output");
+          return normalizeMonitorOutput(r);
+        },
+        { memory: { thread: MEMORY_THREADS.monitor, resource: MEMORY_RESOURCE_ID } },
+      );
+    }
   },
 });
 
@@ -197,6 +225,13 @@ const bottleneckStep = createStep({
     const bottleneckPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
+      "CRITICAL: Output ONLY raw valid JSON matching this exact schema:",
+      "{",
+      '  "primary_bottleneck": { "ticker": string, "reason": string, "severity": "low"|"medium"|"high", "metric": string },',
+      '  "secondary_bottlenecks": [{ "ticker": string, "reason": string }, ...],',
+      '  "analysis": string',
+      "}",
+      "",
       "The Monitor Agent has flagged a concern with this portfolio.",
       `Health status: ${monitorResult.health_status}`,
       `Concerns: ${monitorResult.concerns.join("; ") || "none listed"}`,
@@ -206,7 +241,7 @@ const bottleneckStep = createStep({
       "",
       `Tickers to analyze: ${tickers.join(", ")}`,
       "",
-      "Identify the primary bottleneck asset. Use your tools to compute correlation matrices and volatility contributions.",
+      "Identify the primary bottleneck asset. Analyze the correlation data and volatility contributions provided above.",
     ].join("\n");
 
     const bottleneckAgent = (
@@ -249,6 +284,14 @@ const redesignStep = createStep({
     const redesignPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
+      "CRITICAL: Output ONLY raw valid JSON matching this exact schema:",
+      "{",
+      '  "proposed_actions": [{ "action": "reduce"|"increase"|"replace"|"add"|"remove", "ticker": string, "target_pct": number, "rationale": string }, ...],',
+      '  "expected_improvement": { "sharpe_delta": number|null, "volatility_delta_pct": number|null, "narrative": string },',
+      '  "confidence": "low"|"medium"|"high",',
+      '  "proposal_summary": string',
+      "}",
+      "",
       "The Bottleneck Agent has diagnosed a problem.",
       `Primary bottleneck: ${inputData.bottleneck.primary_bottleneck.ticker} — ${inputData.bottleneck.primary_bottleneck.reason}`,
       `Severity: ${inputData.bottleneck.primary_bottleneck.severity}`,
@@ -257,7 +300,7 @@ const redesignStep = createStep({
       "Original portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
       "",
-      "Propose concrete rebalancing actions. Use your tools to find alternatives and simulate the rebalance before recommending.",
+      "Propose concrete rebalancing actions. Analyze the holdings data above and recommend specific changes with target percentages.",
     ].join("\n");
 
     const redesignAgent = (await import("@/lib/agents/redesign")).redesignAgent;
@@ -292,6 +335,15 @@ const riskStep = createStep({
     const riskPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
+      "CRITICAL: Output ONLY raw valid JSON matching this exact schema:",
+      "{",
+      '  "stress_results": [{ "scenario": string, "simulated_drawdown_pct": number, "recovery_days": number|null }, ...],',
+      '  "var_95": number,',
+      '  "verdict": "approve"|"approve_with_caveats"|"reject",',
+      '  "caveats": [string, ...],',
+      '  "risk_summary": string',
+      "}",
+      "",
       "The Redesign Agent has proposed changes. Stress-test them.",
       `Proposed actions: ${inputData.redesign.proposed_actions.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ")}`,
       `Confidence: ${inputData.redesign.confidence}`,
@@ -300,7 +352,7 @@ const riskStep = createStep({
       "Current portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
       "",
-      "Run all relevant stress scenarios, compute VaR, and check macro context. Provide a final risk verdict.",
+      "Assess all relevant stress scenarios, estimate VaR, and provide a final risk verdict with specific caveats.",
     ].join("\n");
 
     const riskAgent = (await import("@/lib/agents/risk")).riskAgent;

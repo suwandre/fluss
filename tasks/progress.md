@@ -328,3 +328,22 @@ TypeScript passes clean. Build fails on pre-existing `DATABASE_URL` issue (unrel
 
 **Gotchas:**
 Prompt-level fix only. If Ollama Cloud still wraps in markdown, may need a middleware/response parser that strips markdown code fences before schema validation.
+
+---
+
+## Hotfix: Structured output — add exact schema field names to all agent prompts (4/20/2026)
+
+**Description:** Fix structured output validation failures across all 4 agents. Model (minimax-m2.5:cloud via Ollama Cloud) doesn't reliably follow `json_schema` response format — returns wrong keys (e.g. `portfolioValue` instead of `total_value`). Also remove "Use your tools" references from prompts where `activeTools: []` disables tools.
+
+**Summary:**
+Added exact schema shape to each workflow prompt in `src/lib/orchestrator/workflow.ts`:
+
+1. **Monitor** — added schema block with: `health_status` ("nominal"|"warning"|"critical"), `portfolio_metrics` ({total_value, unrealised_pnl_pct, sharpe_ratio, max_drawdown_pct, largest_position_pct}), `concerns` (string[]), `escalate` (boolean), `summary` (string), `asset_health` ([{ticker, health}])
+2. **Bottleneck** — added schema block with: `primary_bottleneck` ({ticker, reason, severity, metric}), `secondary_bottlenecks` ([{ticker, reason}]), `analysis` (string). Removed "Use your tools to compute correlation matrices and volatility contributions" → "Analyze the correlation data and volatility contributions provided above"
+3. **Redesign** — added schema block with: `proposed_actions` ([{action, ticker, target_pct, rationale}]), `expected_improvement` ({sharpe_delta, volatility_delta_pct, narrative}), `confidence`, `proposal_summary`. Removed "Use your tools to find alternatives and simulate the rebalance" → "Analyze the holdings data above and recommend specific changes with target percentages"
+4. **Risk** — added schema block with: `stress_results` ([{scenario, simulated_drawdown_pct, recovery_days}]), `var_95`, `verdict`, `caveats`, `risk_summary`. Removed "Run all relevant stress scenarios, compute VaR, and check macro context" → "Assess all relevant stress scenarios, estimate VaR, and provide a final risk verdict with specific caveats"
+
+Schemas unchanged. Only prompts modified. TypeScript passes clean. Build fails on pre-existing DATABASE_URL issue (unrelated).
+
+**Gotchas:**
+None.
