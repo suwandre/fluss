@@ -347,3 +347,35 @@ Schemas unchanged. Only prompts modified. TypeScript passes clean. Build fails o
 
 **Gotchas:**
 None.
+
+---
+
+## Hotfix: Structured output validation recovery for minimax-m2.5:cloud (4/20/2026)
+
+**Description:** `minimax-m2.5:cloud` doesn't support native `json_schema` response_format — returns its own field names (e.g. `status: "UNHEALTHY"` instead of `health_status: "critical"`). Causes `STRUCTURED_OUTPUT_SCHEMA_VALIDATION_FAILED` error.
+
+**Summary:**
+3-part fix:
+
+1. **Created `src/lib/agents/normalize-output.ts`** — Normalizer utility with:
+   - `parseRawAgentText()` — strips markdown code fences, parses JSON
+   - `normalizeMonitorOutput()` — maps alt field patterns (status→health_status, portfolioValue→total_value, risks→concerns, etc.)
+   - `tryNormalizeMonitorOutput()` — parse + normalize + validate against MonitorOutput
+   - `recoverStructuredOutput()` — generic recovery: re-generate without structuredOutput, parse text, normalize, validate schema
+   - `isStructuredOutputError()` — check if error is a structured output validation failure
+
+2. **Added `jsonPromptInjection: true`** to all 4 agent `structuredOutput` configs in `workflow.ts` — injects schema definition into prompt so model knows exact field names
+
+3. **Wrapped all 4 agent generate calls in try/catch** — on `STRUCTURED_OUTPUT_SCHEMA_VALIDATION_FAILED`:
+   - Monitor: uses `normalizeMonitorOutput` then validates against MonitorOutput
+   - Bottleneck/Redesign/Risk: use identity normalizer (schema field names match what the prompt specifies)
+   - Recovery path: `agent.generate()` without structuredOutput → `parseRawAgentText()` → normalizer → `schema.parse()`
+
+Files changed:
+- `src/lib/agents/normalize-output.ts` — NEW
+- `src/lib/orchestrator/workflow.ts` — imports, `jsonPromptInjection: true` on all 4 agents, try/catch recovery on all 4 steps
+
+TypeScript passes clean.
+
+**Gotchas:**
+Build fails on pre-existing DATABASE_URL issue (unrelated).

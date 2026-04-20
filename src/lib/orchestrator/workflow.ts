@@ -7,7 +7,7 @@ import { RedesignOutput } from "@/lib/agents/redesign";
 import { RiskOutput } from "@/lib/agents/risk";
 import {
 	isStructuredOutputError,
-	parseRawAgentText,
+	normalizeMonitorOutput,
 	recoverStructuredOutput,
 } from "@/lib/agents/normalize-output";
 import { db } from "@/lib/db";
@@ -182,10 +182,7 @@ const monitorStep = createStep({
         monitorAgent,
         prompt,
         MonitorOutput,
-        (r) => {
-          const { normalizeMonitorOutput } = require("@/lib/agents/normalize-output");
-          return normalizeMonitorOutput(r);
-        },
+        normalizeMonitorOutput,
         { memory: { thread: MEMORY_THREADS.monitor, resource: MEMORY_RESOURCE_ID } },
       );
     }
@@ -244,19 +241,33 @@ const bottleneckStep = createStep({
       "Identify the primary bottleneck asset. Analyze the correlation data and volatility contributions provided above.",
     ].join("\n");
 
-    const bottleneckAgent = (
-      await import("@/lib/agents/bottleneck")
-    ).bottleneckAgent;
-    const bottleneckResult = await bottleneckAgent.generate(bottleneckPrompt, {
-      structuredOutput: { schema: BottleneckOutput },
-      memory: { thread: MEMORY_THREADS.bottleneck, resource: MEMORY_RESOURCE_ID },
-      modelSettings: { maxOutputTokens: 4096 },
-      activeTools: [],
-    });
+     const bottleneckAgent = (
+       await import("@/lib/agents/bottleneck")
+     ).bottleneckAgent;
+
+    let bottleneckResultObj;
+    try {
+      const result = await bottleneckAgent.generate(bottleneckPrompt, {
+        structuredOutput: { schema: BottleneckOutput, jsonPromptInjection: true },
+        memory: { thread: MEMORY_THREADS.bottleneck, resource: MEMORY_RESOURCE_ID },
+        modelSettings: { maxOutputTokens: 4096 },
+        activeTools: [],
+      });
+      bottleneckResultObj = result.object;
+    } catch (err) {
+      if (!isStructuredOutputError(err)) throw err;
+      bottleneckResultObj = await recoverStructuredOutput(
+        bottleneckAgent,
+        bottleneckPrompt,
+        BottleneckOutput,
+        (r) => r,
+        { memory: { thread: MEMORY_THREADS.bottleneck, resource: MEMORY_RESOURCE_ID } },
+      );
+    }
 
     return {
       monitor: monitorResult,
-      bottleneck: bottleneckResult.object,
+      bottleneck: bottleneckResultObj,
       redesign: null,
       risk: null,
       correlationMatrix,
@@ -304,14 +315,28 @@ const redesignStep = createStep({
     ].join("\n");
 
     const redesignAgent = (await import("@/lib/agents/redesign")).redesignAgent;
-    const redesignResult = await redesignAgent.generate(redesignPrompt, {
-      structuredOutput: { schema: RedesignOutput },
-      memory: { thread: MEMORY_THREADS.redesign, resource: MEMORY_RESOURCE_ID },
-      modelSettings: { maxOutputTokens: 4096 },
-      activeTools: [],
-    });
 
-    return { ...inputData, redesign: redesignResult.object };
+    let redesignResultObj;
+    try {
+      const result = await redesignAgent.generate(redesignPrompt, {
+        structuredOutput: { schema: RedesignOutput, jsonPromptInjection: true },
+        memory: { thread: MEMORY_THREADS.redesign, resource: MEMORY_RESOURCE_ID },
+        modelSettings: { maxOutputTokens: 4096 },
+        activeTools: [],
+      });
+      redesignResultObj = result.object;
+    } catch (err) {
+      if (!isStructuredOutputError(err)) throw err;
+      redesignResultObj = await recoverStructuredOutput(
+        redesignAgent,
+        redesignPrompt,
+        RedesignOutput,
+        (r) => r,
+        { memory: { thread: MEMORY_THREADS.redesign, resource: MEMORY_RESOURCE_ID } },
+      );
+    }
+
+    return { ...inputData, redesign: redesignResultObj };
   },
 });
 
@@ -356,14 +381,28 @@ const riskStep = createStep({
     ].join("\n");
 
     const riskAgent = (await import("@/lib/agents/risk")).riskAgent;
-    const riskResult = await riskAgent.generate(riskPrompt, {
-      structuredOutput: { schema: RiskOutput },
-      memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID },
-      modelSettings: { maxOutputTokens: 4096 },
-      activeTools: [],
-    });
 
-    return { ...inputData, risk: riskResult.object };
+    let riskResultObj;
+    try {
+      const result = await riskAgent.generate(riskPrompt, {
+        structuredOutput: { schema: RiskOutput, jsonPromptInjection: true },
+        memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID },
+        modelSettings: { maxOutputTokens: 4096 },
+        activeTools: [],
+      });
+      riskResultObj = result.object;
+    } catch (err) {
+      if (!isStructuredOutputError(err)) throw err;
+      riskResultObj = await recoverStructuredOutput(
+        riskAgent,
+        riskPrompt,
+        RiskOutput,
+        (r) => r,
+        { memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID } },
+      );
+    }
+
+    return { ...inputData, risk: riskResultObj };
   },
 });
 
