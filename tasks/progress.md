@@ -258,3 +258,32 @@ Updated fallback chains:
 
 **Gotchas:**
 None.
+
+---
+
+## Hotfix: Switch to Ollama Cloud models (4/20/2026)
+
+**Description:** Replace Groq/OpenAI/Google models with Ollama Cloud Pro models (`minimax-m2.5:cloud` primary, `qwen3.5:cloud` fallback) across monitor, bottleneck, and redesign agents.
+
+**Summary:**
+Switched 3 agents from free-tier providers (Groq, OpenAI, Google) to Ollama Cloud Pro ($20/mo). Mastra has a built-in `ollama-cloud` provider — no extra packages needed. Model format: `ollama-cloud/{model-name}`. API key: `OLLAMA_API_KEY` env var.
+
+Updated fallback chains:
+
+| Agent     | Primary                              | Fallback                             |
+|-----------|--------------------------------------|--------------------------------------|
+| Monitor   | ollama-cloud/minimax-m2.5:cloud    | ollama-cloud/qwen3.5:cloud        |
+| Bottleneck| ollama-cloud/minimax-m2.5:cloud    | ollama-cloud/qwen3.5:cloud        |
+| Redesign  | ollama-cloud/minimax-m2.5:cloud    | ollama-cloud/qwen3.5:cloud        |
+| Risk      | deepseek/deepseek-chat               | openrouter/qwen/qwen3.6-plus       |
+
+Files changed:
+1. `src/lib/agents/monitor.ts` — model array
+2. `src/lib/agents/bottleneck.ts` — model array
+3. `src/lib/agents/redesign.ts` — model array
+4. `.env.example` — added `OLLAMA_API_KEY` as primary, marked others as optional fallbacks
+
+TypeScript passes clean. Build fails on pre-existing `DATABASE_URL` issue (unrelated).
+
+**Gotchas:**
+None.
