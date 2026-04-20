@@ -156,3 +156,17 @@ Compared all components against draft-v1-glm.html. Fixed 6 visual discrepancies:
 
 **Gotchas:**
 Portfolio Output Node had a typo in import path (`@/lib/lib/types/visual`) that was introduced and immediately fixed. Build passes.
+
+---
+
+## Task 4.6.5 (4/20/2026)
+
+**Description:** Full production build validation: `bun next build && bun next start` on target deployment
+
+**Summary:**
+Production build (`bun next build`) passes clean. Next.js 16.2.2 (Turbopack) compiled successfully in 7.1s. TypeScript compiled in 7.2s. All 8 routes generated (2 static, 6 dynamic). Zero errors, zero warnings.
+
+`portfolio-summary-bar.tsx` had a formatting-only diff (140 insertions / 140 deletions) — no logic changes, just reformatting. File is intact and builds fine.
+
+**Gotchas:**
+None. Build is clean.

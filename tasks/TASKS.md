@@ -194,7 +194,7 @@
 - [x] **4.6.2** Audit color consistency — every health indicator uses `--green` / `--amber` / `--red` exactly _(V §2.1)_
 - [x] **4.6.3** Audit typography — Inter for prose, JetBrains Mono for metrics, correct sizes and weights _(V §3.2)_
 - [x] **4.6.4** Final visual comparison against `draft-v1-glm.html` _(V §11)_
-- [ ] **4.6.5** Full production build validation: `bun next build && bun next start` on target deployment
+- [x] **4.6.5** Full production build validation: `bun next build && bun next start` on target deployment
 
 ---
 
