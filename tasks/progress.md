@@ -287,3 +287,25 @@ TypeScript passes clean. Build fails on pre-existing `DATABASE_URL` issue (unrel
 
 **Gotchas:**
 None.
+
+---
+
+## Hotfix: Risk agent — switch to Ollama Cloud models (4/20/2026)
+
+**Description:** Replace deepseek/openrouter models in risk agent with Ollama Cloud Pro models (matching other agents).
+
+**Summary:**
+Risk agent was the last holdout using free-tier providers. Updated model array:
+
+| Agent     | Primary                              | Fallback                             |
+|-----------|--------------------------------------|--------------------------------------|
+| Monitor   | ollama-cloud/minimax-m2.5:cloud    | ollama-cloud/qwen3.5:cloud        |
+| Bottleneck| ollama-cloud/minimax-m2.5:cloud    | ollama-cloud/qwen3.5:cloud        |
+| Redesign  | ollama-cloud/minimax-m2.5:cloud    | ollama-cloud/qwen3.5:cloud        |
+| Risk      | ollama-cloud/minimax-m2.5:cloud    | ollama-cloud/qwen3.5:cloud        |
+
+Files changed:
+1. `src/lib/agents/risk.ts` — model array: `deepseek/deepseek-chat` → `ollama-cloud/minimax-m2.5:cloud`, `openrouter/qwen/qwen3.6-plus` → `ollama-cloud/qwen3.5:cloud`
+
+**Gotchas:**
+None.
