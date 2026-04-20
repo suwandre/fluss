@@ -495,8 +495,7 @@ For each action, provide:
 Summarize the expected improvement in plain language with numbers.`,
 	model: [
 		{ model: "google/gemini-2.5-flash", maxRetries: 2 },
-		{ model: "groq/llama-3.3-70b-versatile", maxRetries: 2 },
-		{ model: "openrouter/deepseek/deepseek-chat:free", maxRetries: 2 },
+		{ model: "groq/llama-3.1-8b-instant", maxRetries: 2 },
 	],
 	tools: { getAlternativeAssets, simulateRebalance, getRebalanceHistory },
 	memory,

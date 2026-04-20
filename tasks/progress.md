@@ -235,3 +235,26 @@ TypeScript passes clean. Build fails only on pre-existing DATABASE_URL issue (un
 
 **Gotchas:**
 None.
+
+---
+
+## Hotfix: Remove broken model refs — llama-3.3-70b-versatile + deepseek-chat:free (4/20/2026)
+
+**Description:** `groq/llama-3.3-70b-versatile` doesn't support `json_schema` structured output in current Mastra/Groq SDK. `openrouter/deepseek/deepseek-chat:free` returns 404 endpoints. Remove both.
+
+**Summary:**
+- **Monitor**: `groq/llama-3.3-70b-versatile` → `groq/llama-3.1-8b-instant` (primary), `openrouter/deepseek/deepseek-chat:free` → `openai/gpt-4o-mini` (fallback)
+- **Bottleneck**: `groq/llama-3.3-70b-versatile` → `groq/llama-3.1-8b-instant`, removed `openrouter/deepseek/deepseek-chat:free`
+- **Redesign**: `groq/llama-3.3-70b-versatile` → `groq/llama-3.1-8b-instant`, removed `openrouter/deepseek/deepseek-chat:free`
+
+Updated fallback chains:
+
+| Agent     | Primary                          | Fallback 1                          |
+|-----------|----------------------------------|-------------------------------------|
+| Monitor   | groq/llama-3.1-8b-instant      | openai/gpt-4o-mini                  |
+| Bottleneck| google/gemini-2.5-flash          | groq/llama-3.1-8b-instant          |
+| Redesign  | google/gemini-2.5-flash          | groq/llama-3.1-8b-instant          |
+| Risk      | deepseek/deepseek-chat           | openrouter/qwen/qwen3.6-plus        |
+
+**Gotchas:**
+None.

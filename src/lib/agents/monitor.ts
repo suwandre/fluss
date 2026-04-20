@@ -156,9 +156,8 @@ changes in risk thresholds or bottleneck patterns over time.
 
 Be direct and specific. If something looks wrong, name it precisely.`,
 	model: [
-		{ model: "groq/llama-3.3-70b-versatile", maxRetries: 2 },
-		{ model: "openrouter/deepseek/deepseek-chat:free", maxRetries: 2 },
 		{ model: "groq/llama-3.1-8b-instant", maxRetries: 2 },
+		{ model: "openai/gpt-4o-mini", maxRetries: 2 },
 	],
 	tools: { getPortfolioSnapshot, getHistoricalPerformance },
 	memory,
