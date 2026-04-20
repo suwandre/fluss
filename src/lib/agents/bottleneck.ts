@@ -272,8 +272,9 @@ since the last assessment.
 
 Be precise with numbers. Always report the correlation coefficient or volatility percentage.`,
 	model: [
-		{ model: "google/gemini-2.0-flash", maxRetries: 2 },
+		{ model: "google/gemini-2.5-flash", maxRetries: 2 },
 		{ model: "groq/llama-3.3-70b-versatile", maxRetries: 2 },
+		{ model: "openrouter/deepseek/deepseek-chat:free", maxRetries: 2 },
 	],
 	tools: {
 		getCorrelationMatrix,
