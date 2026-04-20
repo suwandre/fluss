@@ -199,3 +199,23 @@ Build passes clean.
 
 **Gotchas:**
 None.
+
+---
+
+## Hotfix: Skipped agent state (4/20/2026)
+
+**Description:** When Monitor returns health_status === "nominal", bottleneck/redesign/risk agents are skipped (null in workflow output). UI previously showed them as "Queued" (gray) — misleading. Changed to show "Skipped" with subtitle "Health nominal — no action needed".
+
+**Summary:**
+Added "skipped" to `AgentStatus` type union. Updated 6 files:
+
+1. `src/lib/types/visual.ts` — added `"skipped"` to `AgentStatus`
+2. `src/components/agents/agent-step.tsx` — added "Skipped" label, badge style (slightly lighter bg than queued), `skipReason` prop, subtitle rendering, hollow dot (same as queued)
+3. `src/components/agents/agent-timeline.tsx` — added `skipReason` to `AgentStepData`, excluded skipped steps from dimming (they're intentionally inactive, not waiting)
+4. `src/hooks/use-agent-run.ts` — when Monitor returns nominal, marks remaining steps as `status: "skipped"`, `skipReason: "Health nominal — no action needed"`. Added `rebuildStepsFromOutput()` to restore step statuses from persisted workflow output (used on mount and by page.tsx restore handler). Exposed in hook return.
+5. `src/app/page.tsx` — `handleRestoreRun` now calls `rebuildStepsFromOutput` so history-restored runs also show correct skipped states
+
+TypeScript passes clean. Build fails only on pre-existing DATABASE_URL issue (unrelated).
+
+**Gotchas:**
+None.
