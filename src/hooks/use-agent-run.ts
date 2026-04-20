@@ -84,6 +84,7 @@ export interface UseAgentRunReturn {
 	setWorkflowOutput: (v: Record<string, unknown> | null) => void;
 	setRunId: (v: string | null) => void;
 	setLastRunAt: (v: Date | null) => void;
+	rebuildStepsFromOutput: (output: Record<string, unknown>) => void;
 }
 
 /**
@@ -106,6 +107,47 @@ export function useAgentRun(): UseAgentRunReturn {
 	> | null>(null);
 	const [lastRunAt, setLastRunAt] = useState<Date | null>(null);
 	const abortRef = useRef<AbortController | null>(null);
+
+	/** Rebuild timeline step statuses from a persisted workflow output. */
+	const rebuildStepsFromOutput = useCallback(
+		(output: Record<string, unknown>) => {
+			const monitorResult = output.monitor as Record<string, unknown> | undefined;
+			if (!monitorResult) return;
+
+			const isNominal = monitorResult.health_status === "nominal";
+			const agentKeys = ["bottleneck", "redesign", "risk"] as const;
+
+			setSteps(
+				INITIAL_STEPS.map((s, i) => {
+					if (i === 0) return { ...s, status: "done" as const };
+					if (isNominal) {
+						return {
+							...s,
+							status: "skipped" as const,
+							skipReason: "Health nominal — no action needed",
+						};
+					}
+					const agentOutput = output[agentKeys[i - 1]];
+					if (agentOutput) {
+						return {
+							...s,
+							status: "done" as const,
+							structuredOutput: buildStructuredOutput(
+								agentKeys[i - 1],
+								agentOutput as Record<string, unknown>,
+							),
+						};
+					}
+					return {
+						...s,
+						status: "skipped" as const,
+						skipReason: "Health nominal — no action needed",
+					};
+				}),
+			);
+		},
+		[],
+	);
 
 	// On mount, fetch the most recent run to restore lastRunAt + monitorOutput
 	useEffect(() => {
@@ -135,6 +177,7 @@ export function useAgentRun(): UseAgentRunReturn {
 				// Restore workflowOutput for correlation matrix and stress results
 				if (latest.output) {
 					setWorkflowOutput(latest.output);
+					rebuildStepsFromOutput(latest.output);
 				}
 			} catch {
 				// Silently ignore — non-critical hydration from history
@@ -295,7 +338,11 @@ export function useAgentRun(): UseAgentRunReturn {
 													),
 												}
 											: i > 0 && !escalationActive
-												? { ...s } // keep remaining as queued
+												? {
+														...s,
+														status: "skipped" as const,
+														skipReason: "Health nominal — no action needed",
+													}
 												: s,
 									),
 								);
@@ -373,5 +420,6 @@ export function useAgentRun(): UseAgentRunReturn {
 		setWorkflowOutput,
 		setRunId,
 		setLastRunAt,
+		rebuildStepsFromOutput,
 	};
 }

@@ -44,6 +44,7 @@ export default function Home() {
 		setWorkflowOutput,
 		setRunId,
 		setLastRunAt,
+		rebuildStepsFromOutput,
 	} = useAgentRun();
 	const {
 		holdings: holdingsList,
@@ -93,9 +94,10 @@ export default function Home() {
 			}
 			if (run.output) {
 				setWorkflowOutput(run.output);
+				rebuildStepsFromOutput(run.output);
 			}
 		},
-		[setMonitorOutput, setWorkflowOutput, setRunId, setLastRunAt],
+		[setMonitorOutput, setWorkflowOutput, setRunId, setLastRunAt, rebuildStepsFromOutput],
 	);
 
 	// Compute baseline metrics from live holdings data (available immediately)

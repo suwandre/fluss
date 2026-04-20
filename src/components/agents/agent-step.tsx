@@ -18,12 +18,14 @@ interface AgentStepProps {
 	reasoning?: string;
 	isStreaming?: boolean;
 	errorMessage?: string;
+	skipReason?: string;
 }
 
 const STATUS_LABEL_MAP: Record<AgentStatus, string> = {
 	done: "Done",
 	running: "Running",
 	queued: "Queued",
+	skipped: "Skipped",
 	error: "Error",
 };
 
@@ -31,6 +33,7 @@ const BADGE_STYLES: Record<AgentStatus, string> = {
 	done: "bg-[rgba(34,197,94,0.12)] text-green",
 	running: "bg-[rgba(245,158,11,0.12)] text-amber",
 	queued: "bg-[rgba(82,82,91,0.2)] text-text-dim",
+	skipped: "bg-[rgba(82,82,91,0.15)] text-text-dim",
 	error: "bg-[rgba(239,68,68,0.12)] text-red",
 };
 
@@ -72,11 +75,12 @@ export function AgentStep({
 	reasoning,
 	isStreaming = false,
 	errorMessage,
+	skipReason,
 }: AgentStepProps) {
 	const [reasoningOpen, setReasoningOpen] = useState(false);
 	const reducedMotion = useReducedMotion();
 
-	const dotVariant = status === "queued" ? "hollow" : "filled";
+	const dotVariant = status === "queued" || status === "skipped" ? "hollow" : "filled";
 	const dotStatus =
 		status === "error" ? "critical" : status === "done" ? "nominal" : "warning";
 	const dotAnimate = status === "running";
@@ -124,6 +128,13 @@ export function AgentStep({
 				{status === "error" && errorMessage && (
 					<div className="mt-1 text-[11px] font-mono text-red leading-snug break-words">
 						{errorMessage}
+					</div>
+				)}
+
+				{/* Skip reason */}
+				{status === "skipped" && skipReason && (
+					<div className="mt-1 text-[11px] text-text-dim leading-snug">
+						{skipReason}
 					</div>
 				)}
 

@@ -12,6 +12,7 @@ export interface AgentStepData {
 	reasoning?: string;
 	isStreaming?: boolean;
 	errorMessage?: string;
+	skipReason?: string;
 }
 
 interface AgentTimelineProps {
@@ -29,7 +30,7 @@ export function AgentTimeline({ steps }: AgentTimelineProps) {
 		<div className="flex flex-col">
 			{steps.map((step, i) => {
 				const isLast = i === steps.length - 1;
-				const isDimmed = runningIndex !== -1 && i > runningIndex;
+				const isDimmed = runningIndex !== -1 && i > runningIndex && step.status !== "skipped";
 
 				return (
 					<div

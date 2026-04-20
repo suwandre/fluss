@@ -170,3 +170,32 @@ Production build (`bun next build`) passes clean. Next.js 16.2.2 (Turbopack) com
 
 **Gotchas:**
 None. Build is clean.
+
+---
+
+## Hotfix: Agent model fallback chains (4/20/2026)
+
+**Description:** Fix 429 rate limit on Gemini free tier — wrong model used + no 3rd fallback tier
+
+**Summary:**
+Fixed agent model configs to match ARCHITECTURE_V1.md §6:
+
+- **Monitor**: `google/gemini-2.0-flash` → `google/gemini-2.5-flash-lite` (primary), added `openrouter/deepseek/deepseek-chat:free` as 3rd fallback
+- **Bottleneck**: `google/gemini-2.0-flash` → `google/gemini-2.5-flash` (primary), added `openrouter/deepseek/deepseek-chat:free` as 3rd fallback
+- **Redesign**: `google/gemini-2.0-flash` → `google/gemini-2.5-flash` (primary), added `openrouter/deepseek/deepseek-chat:free` as 3rd fallback
+- **Risk**: Already correct (`deepseek/deepseek-chat` → `openrouter/qwen/qwen3.6-plus`) — no change needed
+
+Fallback chains after fix:
+| Agent     | Primary                          | Fallback 1                          | Fallback 2                               |
+|-----------|----------------------------------|-------------------------------------|------------------------------------------|
+| Monitor   | google/gemini-2.5-flash-lite    | groq/llama-3.3-70b-versatile       | openrouter/deepseek/deepseek-chat:free   |
+| Bottleneck| google/gemini-2.5-flash          | groq/llama-3.3-70b-versatile       | openrouter/deepseek/deepseek-chat:free   |
+| Redesign  | google/gemini-2.5-flash          | groq/llama-3.3-70b-versatile       | openrouter/deepseek/deepseek-chat:free   |
+| Risk      | deepseek/deepseek-chat           | openrouter/qwen/qwen3.6-plus        | —                                        |
+
+Mastra natively supports model fallback arrays — each model gets its own `maxRetries` before moving to the next. No manual fallback logic needed.
+
+Build passes clean.
+
+**Gotchas:**
+None.
