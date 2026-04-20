@@ -309,3 +309,22 @@ Files changed:
 
 **Gotchas:**
 None.
+
+---
+
+## Hotfix: Structured output — JSON-only prompt prefix (4/20/2026)
+
+**Description:** Fix `STRUCTURED_OUTPUT_SCHEMA_VALIDATION_FAILED` (expected object, received undefined) from Ollama Cloud (`minimax-m2.5:cloud`). Models were returning markdown-wrapped JSON (```json ... ```) or conversational text, which the AI SDK can't parse when expecting strict JSON objects.
+
+**Summary:**
+Added "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text." as the first line of every agent prompt in `src/lib/orchestrator/workflow.ts`:
+
+1. `monitorStep` — added prefix
+2. `bottleneckStep` — added prefix
+3. `redesignStep` — added prefix
+4. `riskStep` — added prefix
+
+TypeScript passes clean. Build fails on pre-existing `DATABASE_URL` issue (unrelated).
+
+**Gotchas:**
+Prompt-level fix only. If Ollama Cloud still wraps in markdown, may need a middleware/response parser that strips markdown code fences before schema validation.

@@ -145,6 +145,8 @@ const monitorStep = createStep({
   outputSchema: MonitorOutput,
   execute: async ({ inputData }) => {
     const prompt = [
+      "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
+      "",
       "Analyze this portfolio and assess its health:",
       JSON.stringify(inputData.portfolioData, null, 2),
       `Total portfolio value: $${inputData.totalValue.toFixed(2)}`,
@@ -193,6 +195,8 @@ const bottleneckStep = createStep({
     const { tickers, portfolioData } = marketSnapshot;
 
     const bottleneckPrompt = [
+      "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
+      "",
       "The Monitor Agent has flagged a concern with this portfolio.",
       `Health status: ${monitorResult.health_status}`,
       `Concerns: ${monitorResult.concerns.join("; ") || "none listed"}`,
@@ -243,6 +247,8 @@ const redesignStep = createStep({
     const { portfolioData } = marketSnapshot;
 
     const redesignPrompt = [
+      "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
+      "",
       "The Bottleneck Agent has diagnosed a problem.",
       `Primary bottleneck: ${inputData.bottleneck.primary_bottleneck.ticker} — ${inputData.bottleneck.primary_bottleneck.reason}`,
       `Severity: ${inputData.bottleneck.primary_bottleneck.severity}`,
@@ -284,6 +290,8 @@ const riskStep = createStep({
     const { portfolioData } = marketSnapshot;
 
     const riskPrompt = [
+      "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
+      "",
       "The Redesign Agent has proposed changes. Stress-test them.",
       `Proposed actions: ${inputData.redesign.proposed_actions.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ")}`,
       `Confidence: ${inputData.redesign.confidence}`,
