@@ -151,7 +151,7 @@ export default function Home() {
 			unrealisedPnl: Math.round(holdingsMetrics.unrealisedPnl),
 			unrealisedPnlPct: holdingsMetrics.unrealisedPnlPct,
 			sharpeRatio: null as number | null,
-			maxDrawdownPct: 0,
+			maxDrawdownPct: null as number | null,
 			health: "nominal" as HealthState,
 		};
 	}, [monitorOutput, holdingsMetrics]);
@@ -178,8 +178,8 @@ export default function Home() {
 		...portfolioOutput,
 		netPnl: summaryMetrics.unrealisedPnl,
 		netPnlPct: summaryMetrics.unrealisedPnlPct,
-		sharpe: summaryMetrics.sharpeRatio ?? 0,
-		maxDrawdownPct: summaryMetrics.maxDrawdownPct,
+		sharpe: summaryMetrics.sharpeRatio ?? null,
+		maxDrawdownPct: summaryMetrics.maxDrawdownPct ?? null,
 		health: summaryMetrics.health,
 	}), [portfolioOutput, summaryMetrics]);
 

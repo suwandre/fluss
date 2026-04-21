@@ -17,7 +17,7 @@ type PortfolioSummaryBarProps = {
   unrealisedPnl: number;
   unrealisedPnlPct: number;
   sharpeRatio: number | null;
-  maxDrawdownPct: number;
+  maxDrawdownPct: number | null;
   lastRunAt: Date | null;
   health: HealthState;
   onAddHolding: () => void;
@@ -116,7 +116,7 @@ export function PortfolioSummaryBar({
 
       <Cell label="Max Drawdown">
         <span className="font-mono text-lg font-medium text-red">
-          {drawdownPct(maxDrawdownPct)}
+          {maxDrawdownPct !== null ? drawdownPct(maxDrawdownPct) : "—"}
         </span>
       </Cell>
 

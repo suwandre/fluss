@@ -37,8 +37,8 @@ export interface MachineNodeData {
 export interface PortfolioOutputData {
 	netPnl: number;
 	netPnlPct: number;
-	sharpe: number;
-	maxDrawdownPct: number;
+	sharpe: number | null;
+	maxDrawdownPct: number | null;
 	health: HealthState;
 }
 
@@ -145,8 +145,8 @@ export function useHoldings() {
 		return {
 			netPnl: Math.round(netPnl),
 			netPnlPct: Math.round(netPnlPct * 10) / 10,
-			sharpe: 0,
-			maxDrawdownPct: 0,
+			sharpe: null,
+			maxDrawdownPct: null,
 			health: "nominal" as HealthState,
 		};
 	})();

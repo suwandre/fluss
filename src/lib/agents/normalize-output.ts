@@ -70,12 +70,20 @@ export function normalizeMonitorOutput(
 		const portfolioValue = result.portfolioValue as number | undefined;
 		const totalPnlPct = result.totalPnlPct as number | undefined;
 
+		// Prefer precomputed metrics from the prompt if LLM echoed them back
+		const preSharpe =
+			(result.sharpeRatio as number | null | undefined) ??
+			(result.sharpe_ratio as number | null | undefined);
+		const preMaxDD =
+			(result.maxDrawdownPct as number | undefined) ??
+			(result.max_drawdown_pct as number | undefined);
+
 		if (portfolioValue !== undefined) {
 			const assets = result.assets as
 				| Array<Record<string, unknown>>
 				| undefined;
 			let largestPositionPct = 0;
-			let maxDrawdownPct = 0;
+			let maxDrawdownPct = preMaxDD ?? 0;
 
 			if (Array.isArray(assets)) {
 				for (const asset of assets) {
@@ -89,10 +97,25 @@ export function normalizeMonitorOutput(
 			result.portfolio_metrics = {
 				total_value: portfolioValue,
 				unrealised_pnl_pct: totalPnlPct ?? 0,
-				sharpe_ratio: null,
+				sharpe_ratio: preSharpe ?? null,
 				max_drawdown_pct: maxDrawdownPct,
 				largest_position_pct: largestPositionPct,
 			};
+		}
+	} else {
+		// portfolio_metrics exists — ensure sharpe/max_drawdown aren't left empty
+		const pm = result.portfolio_metrics as Record<string, unknown>;
+		if (pm.sharpe_ratio === undefined) {
+			pm.sharpe_ratio =
+				(result.sharpeRatio as number | null | undefined) ??
+				(result.sharpe_ratio as number | null | undefined) ??
+				null;
+		}
+		if (pm.max_drawdown_pct === undefined) {
+			pm.max_drawdown_pct =
+				(result.maxDrawdownPct as number | undefined) ??
+				(result.max_drawdown_pct as number | undefined) ??
+				0;
 		}
 	}
 

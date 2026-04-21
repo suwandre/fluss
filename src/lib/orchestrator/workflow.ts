@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
 import { getBatchPrices } from "@/lib/market";
 import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
+import { computePortfolioMetrics } from "@/lib/orchestrator/compute-metrics";
 
 // ── Memory context ──────────────────────────────────────────────────
 // Per-agent thread IDs prevent schema contamination: shared memory ends
@@ -62,6 +63,15 @@ const CorrelationMatrixSchema = z.array(CorrelationEntrySchema);
 /** Market snapshot + correlation matrix — passed between fetch → monitor */
 const SnapshotWithCorrelationSchema = MarketSnapshotSchema.extend({
   correlationMatrix: CorrelationMatrixSchema,
+});
+
+const PortfolioMetricsSchema = z.object({
+  sharpeRatio: z.number().nullable(),
+  maxDrawdownPct: z.number(),
+});
+
+const SnapshotWithMetricsSchema = SnapshotWithCorrelationSchema.extend({
+  portfolioMetrics: PortfolioMetricsSchema,
 });
 
 const WorkflowOutputSchema = z.object({
@@ -141,12 +151,32 @@ const computeCorrelationStep = createStep({
   },
 });
 
-// ── Step 3: Monitor Agent ───────────────────────────────────────────
+// ── Step 3: Compute portfolio metrics (Sharpe + Max Drawdown) ────────────
+
+const computeMetricsStep = createStep({
+  id: "compute-portfolio-metrics",
+  description:
+    "Pre-compute portfolio-level Sharpe ratio and Max Drawdown from 90 days of historical prices.",
+  inputSchema: SnapshotWithCorrelationSchema,
+  outputSchema: SnapshotWithMetricsSchema,
+  execute: async ({ inputData }) => {
+    const metrics = await computePortfolioMetrics(
+      inputData.portfolioData.map((d) => ({
+        ticker: d.ticker,
+        assetClass: d.assetClass,
+        quantity: d.quantity,
+      })),
+    );
+    return { ...inputData, portfolioMetrics: metrics };
+  },
+});
+
+// ── Step 4: Monitor Agent ───────────────────────────────────────────
 
 const monitorStep = createStep({
   id: "monitor",
   description: "Run Monitor Agent to assess portfolio health",
-  inputSchema: SnapshotWithCorrelationSchema,
+  inputSchema: SnapshotWithMetricsSchema,
   outputSchema: MonitorOutput,
   execute: async ({ inputData }) => {
     const prompt = [
@@ -161,6 +191,10 @@ const monitorStep = createStep({
       '  "summary": string,',
       '  "asset_health": [{ "ticker": string, "health": "nominal"|"warning"|"critical" }, ...]',
       "}",
+      "",
+      "Precomputed portfolio metrics (do not override unless you disagree strongly):",
+      `Sharpe ratio: ${inputData.portfolioMetrics.sharpeRatio ?? "insufficient data"}`,
+      `Max drawdown: ${(inputData.portfolioMetrics.maxDrawdownPct ?? 0).toFixed(2)}%`,
       "",
       "Analyze this portfolio and assess its health:",
       JSON.stringify(inputData.portfolioData, null, 2),
@@ -417,6 +451,7 @@ export const portfolioFactoryWorkflow = createWorkflow({
 })
   .then(fetchMarketSnapshot)
   .then(computeCorrelationStep)
+  .then(computeMetricsStep)
   .then(monitorStep)
   .then(bottleneckStep)
   .then(redesignStep)

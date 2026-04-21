@@ -12,8 +12,8 @@ import { healthLabelMap, pnlVariant, HANDLE_CLASSNAME } from "./shared";
 type PortfolioOutputData = {
 	netPnl: number;
 	netPnlPct: number;
-	sharpe: number;
-	maxDrawdownPct: number;
+	sharpe: number | null;
+	maxDrawdownPct: number | null;
 	health: HealthState;
 };
 
@@ -81,12 +81,12 @@ function PortfolioOutputNodeComponent({
 						value={pnlDollars(data.netPnl)}
 						variant={pnlVariant(data.netPnl)}
 					/>
-					<MetricDisplay label="Sharpe" value={data.sharpe.toFixed(2)} />
-					<MetricDisplay
-						label="Max DD"
-						value={drawdownPct(data.maxDrawdownPct)}
-						variant="negative"
-					/>
+				<MetricDisplay label="Sharpe" value={data.sharpe !== null ? data.sharpe.toFixed(2) : "—"} />
+				<MetricDisplay
+					label="Max DD"
+					value={data.maxDrawdownPct !== null ? drawdownPct(data.maxDrawdownPct) : "—"}
+					variant="negative"
+				/>
 				</div>
 
 				<div className="h-px bg-border mx-3.5" />

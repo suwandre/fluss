@@ -36,9 +36,10 @@ export function currencyDisplay(value: number): string {
   return "$" + currencyAbs(value)
 }
 
-// ── Drawdown percentage: "-12.4%" ────────────────────────────────────
+// ── Drawdown percentage: "-12.4%" / "—" if null ────────────────────
 
-export function drawdownPct(value: number): string {
+export function drawdownPct(value: number | null | undefined): string {
+  if (value == null) return "—"
   const abs = Math.abs(value).toFixed(1)
   if (abs === "0.0") return "0.0%"
   return "-" + abs + "%"
