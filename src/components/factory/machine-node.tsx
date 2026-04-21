@@ -25,7 +25,7 @@ type MachineNodeData = {
   pnlPct: number
   volatility: number
   volatilityLabel: VolatilityLabel
-  sharpe: number
+  sharpe: number | null
   health: HealthState
 }
 
@@ -89,7 +89,7 @@ function MachineNodeComponent({ data, isConnectable, selected }: NodeProps<Machi
             <span className="text-xs font-medium text-text-muted">Volatility</span>
             <VolatilityBar segments={4} filled={volatilityToFilled(data.volatility)} label={data.volatilityLabel} />
           </div>
-          <MetricDisplay label="Sharpe" value={data.sharpe.toFixed(2)} />
+          <MetricDisplay label="Sharpe" value={data.sharpe !== null ? data.sharpe.toFixed(2) : "—"} />
         </div>
 
         <div className="h-px bg-border mx-3.5" />

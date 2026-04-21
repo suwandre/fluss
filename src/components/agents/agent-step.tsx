@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/collapsible";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import type { AgentStatus } from "@/lib/types/visual";
+import { cn } from "@/lib/utils";
+import type { AgentStatus, HealthState } from "@/lib/types/visual";
 
 interface AgentStepProps {
 	name: string;
@@ -49,21 +50,75 @@ function renderValue(value: unknown): string {
 	return String(value);
 }
 
+function getDotStatus(
+	status: AgentStatus,
+	structuredOutput?: Record<string, unknown>,
+): HealthState {
+	if (status === "error") return "critical";
+	if (status !== "done") return "warning";
+	if (!structuredOutput) return "nominal";
+
+	const criticalValues = new Set(["critical", "high", "reject"]);
+	const warningValues = new Set(["warning", "medium", "approve_with_caveats"]);
+	const fields = ["health_status", "severity", "confidence", "verdict"];
+
+	for (const key of fields) {
+		const val = structuredOutput[key];
+		if (typeof val !== "string") continue;
+		const lower = val.toLowerCase();
+		if (criticalValues.has(lower)) return "critical";
+		if (warningValues.has(lower)) return "warning";
+	}
+
+	return "nominal";
+}
+
 const TRUNCATE_THRESHOLD = 80;
+
+function formatRiskField(key: string, value: unknown): string {
+	if (key === "verdict" && typeof value === "string") {
+		const map: Record<string, string> = {
+			reject: "\u274c Rejected",
+			approve_with_caveats: "\u26a0\ufe0f Approved with caveats",
+			approve: "\u2705 Approved",
+		};
+		return map[value.toLowerCase()] ?? value;
+	}
+	if (key === "var_95" && typeof value === "number") {
+		return `VaR 95%: ${value}% (max daily loss at 95% confidence)`;
+	}
+	if (key === "stress_results" && Array.isArray(value)) {
+		return `${value.length} historical stress scenarios tested`;
+	}
+	return renderValue(value);
+}
 
 function ExpandableValue({ value }: { value: string }) {
 	const [expanded, setExpanded] = useState(false);
+
 	if (value.length <= TRUNCATE_THRESHOLD) {
-		return <span className="text-text break-words min-w-0">{value}</span>;
+		return <span className="text-text break-words min-w-0 select-text">{value}</span>;
 	}
+
 	return (
-		<span
-			className="text-text break-words min-w-0 cursor-pointer hover:text-text-muted transition-colors"
-			onClick={() => setExpanded((v) => !v)}
-			title={expanded ? "Click to collapse" : "Click to expand"}
-		>
-			{expanded ? value : `${value.slice(0, TRUNCATE_THRESHOLD)}…`}
-		</span>
+		<div className="flex flex-col min-w-0">
+			<span
+				className={cn(
+					"text-text break-words min-w-0 select-text",
+					!expanded && "line-clamp-2",
+					expanded && "whitespace-pre-wrap",
+				)}
+			>
+				{value}
+			</span>
+			<button
+				type="button"
+				onClick={() => setExpanded((v) => !v)}
+				className="mt-0.5 text-[11px] text-text-muted hover:text-text transition-colors w-fit"
+			>
+				{expanded ? "Show less" : "Show more"}
+			</button>
+		</div>
 	);
 }
 
@@ -81,8 +136,7 @@ export function AgentStep({
 	const reducedMotion = useReducedMotion();
 
 	const dotVariant = status === "queued" || status === "skipped" ? "hollow" : "filled";
-	const dotStatus =
-		status === "error" ? "critical" : status === "done" ? "nominal" : "warning";
+	const dotStatus = getDotStatus(status, structuredOutput);
 	const dotAnimate = status === "running";
 
 	const showStructuredOutput = status === "done" || status === "running";
@@ -142,19 +196,15 @@ export function AgentStep({
 				{showStructuredOutput && structuredOutput && (
 					<div className="mt-1.5 space-y-0.5">
 						{Object.entries(structuredOutput).map(([key, value]) => {
-							const rendered = renderValue(value);
+							const rendered = formatRiskField(key, value);
 							return (
 								<div
 									key={key}
 									className="flex gap-1.5 text-[12px] font-mono leading-snug"
 								>
-									<span className="text-text-dim shrink-0">{key}:</span>
-									{typeof value === "string" ? (
-										<ExpandableValue value={rendered} />
-									) : (
-										<span className="text-text break-words min-w-0">{rendered}</span>
-									)}
-								</div>
+								<span className="text-text-dim shrink-0">{key}:</span>
+								<ExpandableValue value={rendered} />
+							</div>
 							);
 						})}
 					</div>

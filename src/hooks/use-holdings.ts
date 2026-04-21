@@ -7,6 +7,11 @@ import type {
 	VolatilityLabel,
 } from "@/lib/types/visual";
 
+interface OHLCVBar {
+	date: string;
+	close: number;
+}
+
 // ── Types ────────────────────────────────────────────────────────────
 
 export interface HoldingFromAPI {
@@ -30,7 +35,7 @@ export interface MachineNodeData {
 	pnlPct: number;
 	volatility: number;
 	volatilityLabel: VolatilityLabel;
-	sharpe: number;
+	sharpe: number | null;
 	health: HealthState;
 }
 
@@ -74,11 +79,44 @@ function estimateVolatility(assetClass: AssetClass): number {
 	}
 }
 
+function mean(arr: number[]): number {
+	return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function stdDev(arr: number[]): number {
+	if (arr.length < 2) return 0;
+	const m = mean(arr);
+	const variance = mean(arr.map((x) => (x - m) ** 2));
+	return Math.sqrt(variance);
+}
+
+function computeSharpe(history: OHLCVBar[]): number | null {
+	if (history.length < 2) return null;
+	// Sort by date ascending
+	const sorted = [...history].sort(
+		(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+	);
+	const returns: number[] = [];
+	for (let i = 1; i < sorted.length; i++) {
+		const prev = sorted[i - 1].close;
+		const curr = sorted[i].close;
+		if (prev !== 0) returns.push((curr - prev) / prev);
+	}
+	if (returns.length < 10) return null;
+	const m = mean(returns);
+	const s = stdDev(returns);
+	if (s === 0) return null;
+	const riskFreeDaily = 0.05 / 252;
+	const sharpeDaily = (m - riskFreeDaily) / s;
+	return sharpeDaily * Math.sqrt(252);
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────
 
 export function useHoldings() {
 	const [holdings, setHoldings] = useState<HoldingFromAPI[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [sharpeMap, setSharpeMap] = useState<Record<string, number | null>>({});
 
 	const fetchHoldings = useCallback(async () => {
 		try {
@@ -97,6 +135,43 @@ export function useHoldings() {
 		fetchHoldings();
 	}, [fetchHoldings]);
 
+	// Fetch 90-day OHLCV for each holding and compute per-asset Sharpe
+	useEffect(() => {
+		if (holdings.length === 0) {
+			setSharpeMap({});
+			return;
+		}
+		let cancelled = false;
+
+		async function load() {
+			const results: Record<string, number | null> = {};
+			await Promise.all(
+				holdings.map(async (h) => {
+					try {
+						const res = await fetch(
+							`/api/market/historical/${encodeURIComponent(h.ticker)}?assetClass=${h.assetClass}&days=90`,
+						);
+						if (!res.ok) {
+							results[h.ticker] = null;
+							return;
+						}
+						const bars: OHLCVBar[] = await res.json();
+						if (cancelled) return;
+						results[h.ticker] = computeSharpe(bars);
+					} catch {
+						results[h.ticker] = null;
+					}
+				}),
+			);
+			if (!cancelled) setSharpeMap(results);
+		}
+
+		load();
+		return () => {
+			cancelled = true;
+		};
+	}, [holdings]);
+
 	// Build machine node data from holdings
 	const machineNodes: MachineNodeData[] = holdings.map((h) => {
 		const price = h.currentPrice ?? h.avgCost;
@@ -114,7 +189,7 @@ export function useHoldings() {
 			pnlPct: Math.round(pnlPct * 10) / 10,
 			volatility: vol,
 			volatilityLabel: volatilityLabel(vol),
-			sharpe: 0, // not available from holdings alone
+			sharpe: sharpeMap[h.ticker] ?? null,
 			health: "nominal" as HealthState,
 		};
 	});

@@ -1,5 +1,22 @@
 # Progress Log
 
+## Task — Fix 5 UI bugs from user dogfooding session (4/21/2026)
+
+**Description:** User reported 5 UX bugs after running the full agent pipeline. Each fixed independently.
+
+**Summary:**
+1. **Sharpe 0.00 for individual machine nodes:** `src/hooks/use-holdings.ts` now fetches 90d OHLCV per holding via `/api/market/historical/{ticker}?days=90`, computes daily returns, and derives per-asset annualized Sharpe (`mean/stdDev × √252`, risk-free daily = 0.05/252). Falls back to `null` (renders `"—"`) if <10 return samples or `stdDev = 0`. Added `sharpeMap` state; updated `MachineNodeData.sharpe` → `number | null`. `src/components/factory/machine-node.tsx` renders `"—"` when null.
+2. **Cross-correlation edge looks unnatural:** `src/components/factory/conveyor-edge.tsx` now overrides `sourcePosition → Bottom` and `targetPosition → Top` for `isCrossCorrelation` edges so the Bezier curve draws vertically between stacked machine nodes. Removed unused `selected` prop dependency.
+3. **Agent status dots all green despite critical output:** `src/components/agents/agent-step.tsx` replaced flat `done → nominal` mapping with `getDotStatus(status, structuredOutput)` that inspects actual agent verdicts: `critical/high/reject` → red, `warning/medium/approve_with_caveats` → amber, else → green.
+4. **Risk Agent output too terse / confusing:** Same file, new `formatRiskField()` helper: `verdict → "❌ Rejected" / "⚠️ Approved with caveats" / "✅ Approved"`; `var_95 → "VaR 95%: X% (max daily loss at 95% confidence)"`; `stress_results → "N historical stress scenarios tested"`.
+5. **Summary text not copy-pasteable:** Rewrote `ExpandableValue` in `agent-step.tsx` to render full text always, apply CSS `line-clamp-2` when collapsed, and move the "Show more / Show less" toggle into a separate `<button>` below the text. Text itself is fully selectable with `select-text` class.
+
+**Gotchas:**
+- `tsc --noEmit` passes clean (0 errors).
+- `bun run build` fails only at collect-page-data due to pre-existing `DATABASE_URL` `ERR_INVALID_URL` (missing protocol in env). Unrelated.
+
+---
+
 ## Task — Fix Sharpe Ratio and Max Drawdown always showing 0/null (4/21/2026)
 
 **Description:** User reported that after running agents repeatedly, Max Drawdown % shows "0.0%" and Sharpe Ratio shows "—" (null). These are portfolio-level time-series metrics that the Monitor agent could not compute from a single snapshot.

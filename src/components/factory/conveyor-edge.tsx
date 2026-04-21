@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { getBezierPath, type Edge, type EdgeProps } from "@xyflow/react";
+import { getBezierPath, Position, type Edge, type EdgeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -42,7 +42,6 @@ function ConveyorEdgeComponent({
 	sourcePosition,
 	targetPosition,
 	data,
-	selected,
 }: EdgeProps<ConveyorEdge>) {
 	const reducedMotion = useReducedMotion();
 	const correlation = data?.correlation ?? 0.5;
@@ -52,13 +51,16 @@ function ConveyorEdgeComponent({
 	const strokeWidth = tierWidthMap[tier];
 	const markerId = `conveyor-arrow-${tier}`;
 
+	const sp = isCross ? Position.Bottom : sourcePosition;
+	const tp = isCross ? Position.Top : targetPosition;
+
 	const [edgePath] = getBezierPath({
 		sourceX,
 		sourceY,
 		targetX,
 		targetY,
-		sourcePosition,
-		targetPosition,
+		sourcePosition: sp,
+		targetPosition: tp,
 	});
 
 	return (
@@ -88,12 +90,11 @@ function ConveyorEdgeComponent({
 				strokeWidth={strokeWidth}
 				strokeDasharray="8 4"
 				markerEnd={`url(#${markerId})`}
-				className={cn(
-					!reducedMotion && "animate-edge-flow",
-					"transition-colors duration-150",
-					isCross && !selected && "opacity-50",
-					selected && "opacity-100",
-				)}
+			className={cn(
+				!reducedMotion && "animate-edge-flow",
+				"transition-colors duration-150",
+				isCross && "opacity-50",
+			)}
 			/>
 		</>
 	);
