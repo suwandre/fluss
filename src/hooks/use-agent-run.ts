@@ -248,7 +248,6 @@ export function useAgentRun(): UseAgentRunReturn {
 				]);
 				const { done, value } = readResult;
 				if (done) break;
-				lastActivity = Date.now();
 
 				buffer += decoder.decode(value, { stream: true });
 
@@ -267,6 +266,11 @@ export function useAgentRun(): UseAgentRunReturn {
 						event = JSON.parse(payload);
 					} catch {
 						continue; // skip malformed JSON
+					}
+
+					// Only reset activity timer on real events, not keepalives
+					if (event.type !== "data-keepalive") {
+						lastActivity = Date.now();
 					}
 
 					// Extract runId from custom data part
@@ -339,10 +343,10 @@ export function useAgentRun(): UseAgentRunReturn {
 												}
 											: i > 0 && !escalationActive
 												? {
-														...s,
-														status: "skipped" as const,
-														skipReason: "Health nominal — no action needed",
-													}
+															...s,
+															status: "skipped" as const,
+															skipReason: "Health nominal — no action needed",
+														}
 												: s,
 									),
 								);
