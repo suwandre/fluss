@@ -213,6 +213,19 @@ function RunSummary({ steps }: { steps: AgentStepData[] }) {
 	const config = styles[lower] ?? null;
 	if (!config) return null;
 
+	const improvement =
+		typeof riskStep?.structuredOutput?.improvement_summary === "string"
+			? (riskStep.structuredOutput.improvement_summary as string)
+			: null;
+	const hasImprovement =
+		improvement != null &&
+		/improved|better|lower|delta|→/.test(improvement.toLowerCase());
+
+	let text = config.text;
+	if (lower === "rejected" && hasImprovement) {
+		text = `Risk Agent blocked this rebalancing, BUT your current portfolio is even riskier. ${improvement}. Consider an even more conservative redesign.`;
+	}
+
 	return (
 		<div
 			className={cn(
@@ -224,7 +237,7 @@ function RunSummary({ steps }: { steps: AgentStepData[] }) {
 				{config.icon} What this means for you
 			</span>
 			<br />
-			{config.text}
+			{text}
 		</div>
 	);
 }

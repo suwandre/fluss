@@ -1,5 +1,24 @@
 # Progress Log
 
+## Task — Make Risk Agent compare proposed vs current portfolio (4/22/2026)
+
+**Description:** Risk Agent always tested the current portfolio because tools read from DB. Need comparative evaluation: pre-compute both current and proposed stress/VaR, then ask the agent to compare and judge delta.
+
+**Summary:**
+- `src/lib/agents/risk.ts` — Exported `runHistoricalStressTest` and `computeVar` (added `export`). Both tools now accept optional `positions_override` array (`{ ticker, weight, assetClass, quantity? }`). When provided, skips DB read and uses passed positions directly. Removed reference to nonexistent `simulateRebalance` tool in agent instructions. Rewrote instructions: agent receives pre-computed numbers, ONLY job is comparative verdict. Verdict rules revised to comparative logic (better/worse vs current, not absolute thresholds). Added crypto-specific note: drawdowns up to 70% acceptable if current is worse — delta matters.
+- `src/lib/orchestrator/workflow.ts` (`riskStep`) — Pre-computes both current and proposed portfolio stress results + VaR before calling Risk Agent:
+  - Builds `currentPositions` from market snapshot weights.
+  - Builds `proposedPositions` from redesign actions: looks up prices (existing from snapshot, new tickers via `getBatchPrices`), calculates `quantity = dollarValue / price`, skips unpriceable tickers with warning.
+  - Calls `runHistoricalStressTest.execute` and `computeVar.execute` with `positions_override` for both sets.
+  - Injects both result sets into prompt. Agent now ONLY compares.
+- `src/components/agents/agent-reasoning-panel.tsx` (`RunSummary`) — If Risk verdict is `rejected` but `improvement_summary` mentions improvement (regex: improved/better/lower/delta/→), shows contextual message explaining current portfolio is even riskier and suggesting a more conservative redesign.
+
+**Gotchas:**
+- `runHistoricalStressTest.execute` and `computeVar.execute` are typed as possibly `undefined` on the tool object; cast `as any` in workflow to allow direct invocation.
+- Build fails only at runtime DB connection (ECONNREFUSED / missing protocol). TypeScript compiles clean.
+
+---
+
 ## Task — Switch embeddings to Ollama, guard against CoinGecko 401 crashes (4/21/2026)
 
 **Description:** Remove `@ai-sdk/openai` dependency for embeddings. Add local Ollama fallback. Harden CoinGecko and equity-curve robustness.

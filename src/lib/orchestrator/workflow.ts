@@ -6,6 +6,10 @@ import { BottleneckOutput } from "@/lib/agents/bottleneck";
 import { RedesignOutput } from "@/lib/agents/redesign";
 import { RiskOutput } from "@/lib/agents/risk";
 import {
+	runHistoricalStressTest,
+	computeVar,
+} from "@/lib/agents/risk";
+import {
 	isStructuredOutputError,
 	normalizeMonitorOutput,
 	recoverStructuredOutput,
@@ -391,6 +395,80 @@ const riskStep = createStep({
     >;
     const { portfolioData } = marketSnapshot;
 
+    // ── Build current positions from snapshot ─────────────────────────────
+    const currentPositions = portfolioData.map((d) => ({
+      ticker: d.ticker,
+      weight:
+        marketSnapshot.totalValue > 0 && d.marketValue != null
+          ? d.marketValue / marketSnapshot.totalValue
+          : 0,
+      assetClass: d.assetClass,
+      quantity: d.quantity,
+    }));
+
+    // ── Build proposed positions from redesign actions ────────────────────
+    type ProposedAction = { action: string; ticker: string; target_pct: number; rationale?: string };
+    const actions = inputData.redesign.proposed_actions as ProposedAction[] | undefined;
+    const totalValue = marketSnapshot.totalValue;
+
+    const proposedPositions: { ticker: string; weight: number; assetClass: string; quantity: number }[] = [];
+
+    if (actions && actions.length > 0 && totalValue > 0) {
+      const newTickers = actions
+        .map((a) => a.ticker)
+        .filter(
+          (t) => !portfolioData.some((d) => d.ticker.toUpperCase() === t.toUpperCase()),
+        );
+      const newPrices = new Set(newTickers);
+      const newPriceMap = newTickers.length > 0
+        ? await getBatchPrices(
+            newTickers.map((t) => ({
+              ticker: t,
+              assetClass: "crypto" as const,
+            })),
+          )
+        : new Map<string, { price: number | null }>();
+
+      for (const action of actions) {
+        const dollarValue = (action.target_pct / 100) * totalValue;
+        const existing = portfolioData.find(
+          (d) => d.ticker.toUpperCase() === action.ticker.toUpperCase(),
+        );
+        let currentPrice = existing?.currentPrice ?? null;
+        if (currentPrice == null) {
+          const fetched = newPriceMap.get(action.ticker);
+          if (fetched && "price" in fetched && fetched.price != null) {
+            currentPrice = fetched.price as number;
+          }
+        }
+        if (currentPrice == null || currentPrice <= 0) {
+          console.warn(
+            `[riskStep] Cannot price proposed ticker ${action.ticker} — skipping in stress test`,
+          );
+          continue;
+        }
+        const quantity = dollarValue / currentPrice;
+        proposedPositions.push({
+          ticker: action.ticker,
+          weight: action.target_pct / 100,
+          assetClass: existing?.assetClass ?? "crypto",
+          quantity,
+        });
+      }
+    }
+
+    // ── Pre-compute stress + VaR for BOTH portfolios ──────────────────────
+    const [currentStress, proposedStress, currentVaR, proposedVaR] = await Promise.all([
+      (runHistoricalStressTest as any).execute({ positions_override: currentPositions }),
+      proposedPositions.length > 0
+        ? (runHistoricalStressTest as any).execute({ positions_override: proposedPositions })
+        : Promise.resolve({ stress_results: [] }),
+      (computeVar as any).execute({ positions_override: currentPositions }),
+      proposedPositions.length > 0
+        ? (computeVar as any).execute({ positions_override: proposedPositions })
+        : Promise.resolve({ var_pct: 0, var_dollar: 0, portfolio_value: 0, confidence_level: 0.95, lookback_days: 252 }),
+    ]);
+
     const riskPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
@@ -404,22 +482,34 @@ const riskStep = createStep({
       '  "improvement_summary": string',
       "}",
       "",
-      "CRITICAL: You are evaluating the PROPOSED portfolio from the Redesign Agent, NOT the current portfolio.",
-      "Stress-test the proposed allocation. Compare its VaR and max drawdown to the current portfolio.",
-      "Approve if the proposed portfolio is meaningfully less risky than the current one.",
+      "COMPARATIVE RISK ANALYSIS: Compare the PROPOSED portfolio to the CURRENT portfolio using the PRE-COMPUTED data below. Do NOT recalculate — use these numbers directly.",
+      "",
+      "Current portfolio pre-computed stress results:",
+      JSON.stringify(currentStress.stress_results, null, 2),
+      `Current portfolio VaR 95%: ${currentVaR.var_pct}%`,
+      "",
+      "Proposed portfolio pre-computed stress results:",
+      JSON.stringify(proposedStress.stress_results, null, 2),
+      `Proposed portfolio VaR 95%: ${proposedVaR.var_pct}%`,
       "",
       "Proposed actions:",
-      `${inputData.redesign.proposed_actions.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ")}`,
+      `${actions?.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ") ?? "none"}`,
       `Redesign confidence: ${inputData.redesign.confidence}`,
       `Expected improvement: ${inputData.redesign.expected_improvement.narrative}`,
       "",
       "Current portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
       "",
-      "Proposed portfolio holdings (simulated from proposed actions):",
-      JSON.stringify({ allocations: inputData.redesign.proposed_actions }, null, 2),
+      "Rules:",
+      '- "approved" — proposed is meaningfully better than current (drawdown improved, VaR lower, or 2+ metrics better)',
+      '- "approved_with_caveats" — proposed is slightly better or mixed (not worse overall)',
+      '- "rejected" — proposed is WORSE than current in key metrics, OR introduces new catastrophic risk not present in current',
       "",
-      "Assess all relevant stress scenarios, estimate VaR, and provide a final risk verdict with specific caveats.",
+      "For crypto portfolios: absolute drawdowns up to 70% in crypto-native crashes are acceptable IF current portfolio showed even worse. The delta matters, not perfection.",
+      "",
+      "improvement_summary MUST explicitly compare current vs proposed (e.g. 'Current max DD -29% -> Proposed -15%, an improvement of 14pp').",
+      "",
+      "Provide your verdict, caveats, risk_summary, and improvement_summary based ONLY on the pre-computed numbers above.",
     ].join("\n");
 
     const riskAgent = (await import("@/lib/agents/risk")).riskAgent;

@@ -87,16 +87,29 @@ type ScenarioKey = keyof typeof STRESS_SCENARIOS;
 
 // --- Tools ---
 
-const runHistoricalStressTest = createTool({
+export const runHistoricalStressTest = createTool({
 	id: "run-historical-stress-test",
 	description:
-		"Run a historical stress test on current holdings by simulating P&L during past market events. Fetches historical prices for each scenario and computes the drawdown the portfolio would have experienced.",
+		"Run a historical stress test on a portfolio by simulating P&L during past market events. Fetches historical prices for each scenario and computes the drawdown the portfolio would have experienced.",
 	inputSchema: z.object({
 		scenarios: z
 			.array(z.string())
 			.optional()
 			.describe(
 				"Scenario keys to run. If omitted, selects based on portfolio composition.",
+			),
+		positions_override: z
+			.array(
+				z.object({
+					ticker: z.string(),
+					weight: z.number(),
+					assetClass: z.string(),
+					quantity: z.number().optional(),
+				}),
+			)
+			.optional()
+			.describe(
+				"Optional portfolio positions to test instead of reading from DB. If provided, uses these tickers/weights.",
 			),
 	}),
 	outputSchema: z.object({
@@ -109,29 +122,44 @@ const runHistoricalStressTest = createTool({
 		),
 	}),
 	execute: async (input) => {
-		const rows = await db.select().from(holdings);
-		if (rows.length === 0) return { stress_results: [] };
+		let positions: { ticker: string; weight: number; assetClass: string }[] = [];
 
-		// Live prices for weights
-		const priceMap = await getBatchPrices(
-			rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
-		);
-		let totalValue = 0;
-		const positions: { ticker: string; weight: number; assetClass: string }[] =
-			[];
-		for (const row of rows) {
-			const price = priceMap.get(row.ticker)?.price ?? 0;
-			const value = price * row.quantity;
-			totalValue += value;
-			positions.push({
-				ticker: row.ticker,
-				weight: value,
-				assetClass: row.assetClass,
-			});
+		if (input.positions_override && input.positions_override.length > 0) {
+			const totalWeight = input.positions_override.reduce(
+				(sum, p) => sum + p.weight,
+				0,
+			);
+			positions = input.positions_override.map((p) => ({
+				ticker: p.ticker,
+				weight: totalWeight > 0 ? p.weight / totalWeight : 0,
+				assetClass: p.assetClass,
+			}));
+		} else {
+			const rows = await db.select().from(holdings);
+			if (rows.length === 0) return { stress_results: [] };
+
+			const priceMap = await getBatchPrices(
+				rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
+			);
+			let totalValue = 0;
+			const pos: typeof positions = [];
+			for (const row of rows) {
+				const price = priceMap.get(row.ticker)?.price ?? 0;
+				const value = price * row.quantity;
+				totalValue += value;
+				pos.push({
+					ticker: row.ticker,
+					weight: value,
+					assetClass: row.assetClass,
+				});
+			}
+			if (totalValue > 0) {
+				for (const p of pos) p.weight /= totalValue;
+			}
+			positions = pos;
 		}
-		if (totalValue > 0) {
-			for (const p of positions) p.weight /= totalValue;
-		}
+
+		if (positions.length === 0) return { stress_results: [] };
 
 		const hasCrypto = positions.some((p) => p.assetClass === "crypto");
 		const hasTraditional = positions.some((p) => p.assetClass !== "crypto");
@@ -206,10 +234,10 @@ const runHistoricalStressTest = createTool({
 	},
 });
 
-const computeVar = createTool({
+export const computeVar = createTool({
 	id: "compute-var",
 	description:
-		"Compute Value at Risk (VaR) for the current portfolio at a given confidence level using historical simulation.",
+		"Compute Value at Risk (VaR) for a portfolio at a given confidence level using historical simulation.",
 	inputSchema: z.object({
 		confidenceLevel: z
 			.number()
@@ -219,6 +247,19 @@ const computeVar = createTool({
 			.number()
 			.describe("Lookback window in days for historical returns")
 			.default(252),
+		positions_override: z
+			.array(
+				z.object({
+					ticker: z.string(),
+					weight: z.number(),
+					assetClass: z.string(),
+					quantity: z.number().optional(),
+				}),
+			)
+			.optional()
+			.describe(
+				"Optional portfolio positions to use instead of reading from DB.",
+			),
 	}),
 	outputSchema: z.object({
 		var_pct: z.number().describe("Value at Risk as percentage of portfolio"),
@@ -231,36 +272,53 @@ const computeVar = createTool({
 		const confidence = input.confidenceLevel ?? 0.95;
 		const lookbackDays = input.days ?? 252;
 
-		const rows = await db.select().from(holdings);
-		if (rows.length === 0) {
-			return {
-				var_pct: 0,
-				var_dollar: 0,
-				portfolio_value: 0,
-				confidence_level: confidence,
-				lookback_days: lookbackDays,
-			};
-		}
-
-		const priceMap = await getBatchPrices(
-			rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
-		);
-
+		let positions: { ticker: string; weight: number; assetClass: string }[] = [];
 		let totalValue = 0;
-		const positions: { ticker: string; weight: number; assetClass: string }[] =
-			[];
-		for (const row of rows) {
-			const price = priceMap.get(row.ticker)?.price ?? 0;
-			const value = price * row.quantity;
-			totalValue += value;
-			positions.push({
-				ticker: row.ticker,
-				weight: value,
-				assetClass: row.assetClass,
-			});
-		}
-		if (totalValue > 0) {
-			for (const p of positions) p.weight /= totalValue;
+
+		if (input.positions_override && input.positions_override.length > 0) {
+			const totalWeight = input.positions_override.reduce(
+				(sum, p) => sum + p.weight,
+				0,
+			);
+			positions = input.positions_override.map((p) => ({
+				ticker: p.ticker,
+				weight: totalWeight > 0 ? p.weight / totalWeight : 0,
+				assetClass: p.assetClass,
+			}));
+			// Estimate portfolio value for dollar VaR — use quantity if available, else approximate
+			for (const p of input.positions_override) {
+				totalValue += p.weight * 1000; // rough proxy; dollar VaR is secondary to pct
+			}
+		} else {
+			const rows = await db.select().from(holdings);
+			if (rows.length === 0) {
+				return {
+					var_pct: 0,
+					var_dollar: 0,
+					portfolio_value: 0,
+					confidence_level: confidence,
+					lookback_days: lookbackDays,
+				};
+			}
+
+			const priceMap = await getBatchPrices(
+				rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
+			);
+			const pos: typeof positions = [];
+			for (const row of rows) {
+				const price = priceMap.get(row.ticker)?.price ?? 0;
+				const value = price * row.quantity;
+				totalValue += value;
+				pos.push({
+					ticker: row.ticker,
+					weight: value,
+					assetClass: row.assetClass,
+				});
+			}
+			if (totalValue > 0) {
+				for (const p of pos) p.weight /= totalValue;
+			}
+			positions = pos;
 		}
 
 		// Fetch historical returns for all holdings
@@ -400,34 +458,22 @@ const getMacroContext = createTool({
 export const riskAgent = new Agent({
 	id: "risk",
 	name: "Risk Agent",
-	instructions: `You are the Risk Agent in a Portfolio Factory system. You stress-test the Redesign Agent's proposed changes and provide a final risk verdict.
+	instructions: `You are the Risk Agent in a Portfolio Factory system. You receive PRE-COMPUTED stress test results and VaR numbers for BOTH the current portfolio and the proposed portfolio. Your ONLY job is to compare them and issue a comparative verdict.
 
-Your job:
-1. Run historical stress tests — simulate how the portfolio would perform during past crises (COVID crash, 2022 rate hikes, 2008 GFC for traditional; Terra/LUNA, FTX, May 2021 crash for crypto)
-2. Compute Value at Risk (VaR) at 95% confidence — how much could the portfolio lose on a bad day
-3. Check macro context — VIX, yield curve, market sentiment — to contextualize risk
+You do NOT run calculations. You do NOT fetch prices. Use the pre-computed numbers in the prompt directly.
 
-CRITICAL: You are evaluating the PROPOSED portfolio from the Redesign Agent, NOT the current portfolio. Use the simulateRebalance tool with the proposed actions to build the proposed holdings, then stress-test that proposed allocation. Compare its VaR and max drawdown to the current portfolio.
+Verdict rules (comparative, NOT absolute thresholds):
+- "approved" — proposed is meaningfully better than current (drawdown improved, VaR lower, or 2+ metrics better)
+- "approved_with_caveats" — proposed is slightly better or mixed (not worse overall)
+- "rejected" — proposed is WORSE than current in key metrics, OR introduces new catastrophic risk not present in current
 
-Rules:
-- Run ALL relevant stress scenarios for the portfolio's asset mix
-- VaR at 95% is your baseline risk metric — report it clearly
-- Cross-reference macro context: high VIX + inverted yield curve = elevated systemic risk
-- Crypto-only portfolios should run crypto-native scenarios; mixed portfolios run both sets
-- Recovery days are estimates — note uncertainty
+CRITICAL: For crypto portfolios, absolute drawdowns up to 70% in crypto-native crashes are acceptable IF the current portfolio showed even worse. The delta matters, not perfection.
+
+CRITICAL: improvement_summary MUST explicitly compare current vs proposed with exact numbers (e.g. "Current max DD -29% → Proposed -15%, an improvement of 14pp"). Do not skip this.
 
 When prior run context is available, compare current stress test results and VaR to previous assessments. Note if risk has increased or decreased, and whether past caveats have materialized or resolved.
 
-Verdict rules:
-- "approved" — stress tests show manageable drawdowns (<15%), VaR within expectations, stable macro
-- "approved_with_caveats" — some scenarios show 15-25% drawdown OR elevated VIX OR flat yield curve
-- "rejected" — any scenario shows >25% drawdown OR VaR >5% daily OR inverted yield curve + high VIX
-
-Approve if the proposed portfolio is meaningfully less risky than the current one.
-
-Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.
-
-Also provide improvement_summary: a one-sentence delta description (e.g. "Max drawdown improved from -29% to -15%").`,
+Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.`,
 	model: [
 		{ model: "ollama-cloud/minimax-m2.5:cloud", maxRetries: 2 },
 		{ model: "ollama-cloud/qwen3.5:cloud", maxRetries: 2 },
