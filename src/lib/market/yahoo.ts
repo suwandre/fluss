@@ -2,6 +2,20 @@ import YahooFinance from "yahoo-finance2";
 
 const yahooFinance = new YahooFinance();
 
+const YAHOO_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(label: string, promise: Promise<T>): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Yahoo Finance timeout: ${label}`)),
+        YAHOO_TIMEOUT_MS
+      )
+    ),
+  ]);
+}
+
 export interface PriceSnapshot {
   ticker: string;
   price: number;
@@ -22,7 +36,7 @@ export interface OHLCVBar {
 }
 
 export async function getPriceSnapshot(ticker: string): Promise<PriceSnapshot> {
-  const quote = await yahooFinance.quote(ticker, {
+  const quote = await withTimeout(`quote-${ticker}`, yahooFinance.quote(ticker, {
     fields: [
       "symbol",
       "regularMarketPrice",
@@ -31,7 +45,7 @@ export async function getPriceSnapshot(ticker: string): Promise<PriceSnapshot> {
       "regularMarketVolume",
       "marketCap",
     ],
-  });
+  }));
 
   return {
     ticker: quote.symbol,
@@ -47,7 +61,7 @@ export async function getPriceSnapshot(ticker: string): Promise<PriceSnapshot> {
 export async function getBatchPriceSnapshots(tickers: string[]): Promise<Map<string, PriceSnapshot>> {
   if (tickers.length === 0) return new Map();
 
-  const quotes = await yahooFinance.quote(tickers, {
+  const quotes = await withTimeout(`quote-${tickers.join(",")}`, yahooFinance.quote(tickers, {
     return: "object",
     fields: [
       "symbol",
@@ -57,7 +71,7 @@ export async function getBatchPriceSnapshots(tickers: string[]): Promise<Map<str
       "regularMarketVolume",
       "marketCap",
     ],
-  });
+  }));
 
   const map = new Map<string, PriceSnapshot>();
 
@@ -85,11 +99,11 @@ export async function getHistoricalOHLCV(
   period2?: string | Date,
   interval: "1d" | "1wk" | "1mo" = "1d",
 ): Promise<OHLCVBar[]> {
-  const result = await yahooFinance.chart(ticker, {
+  const result = await withTimeout(`chart-${ticker}`, yahooFinance.chart(ticker, {
     period1,
     ...(period2 !== undefined ? { period2 } : {}),
     interval,
-  });
+  }));
 
   return result.quotes
     .filter((row) => row.open != null && row.high != null && row.low != null && row.close != null)
