@@ -8,6 +8,7 @@ import {
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface StressResult {
 	scenario: string;
@@ -124,7 +125,7 @@ export function AgentReasoningPanel({
 			{tab === "current" ? (
 				<ScrollArea className="flex-1 overflow-hidden">
 					<div className="p-4">
-						<RunSummary steps={steps} isRunning={isRunning} />
+						<RunSummary steps={steps} />
 						<AgentTimeline steps={steps} />
 
 						{/* Stress test chart — shown after Risk Agent completes */}
@@ -147,69 +148,68 @@ export function AgentReasoningPanel({
 	);
 }
 
-function RunSummary({
-	steps,
-	isRunning,
-}: {
-	steps: AgentStepData[];
-	isRunning?: boolean;
-}) {
-	const allDone =
-		steps.length === 4 && steps.every((s) => s.status === "done");
+
+function RunSummary({ steps }: { steps: AgentStepData[] }) {
+	const allDone = steps.length > 0 && steps.every((s) => s.status === "done");
+	const riskStep = steps[3];
+	const verdict =
+		typeof riskStep?.structuredOutput?.verdict === "string"
+			? riskStep.structuredOutput.verdict
+			: null;
 
 	if (!allDone) {
-		if (isRunning) {
+		const anyRunning = steps.some((s) => s.status === "running");
+		if (anyRunning) {
 			return (
-				<div className="rounded bg-bg-elevated border-l-2 border-border px-3 py-2 mb-4 text-[12px] font-sans leading-relaxed text-text-dim">
-					Analysis in progress...
+				<div className="mb-4 rounded border-l-2 border-amber bg-bg-elevated px-3 py-2 text-[12px] font-sans leading-relaxed text-text">
+					<span className="font-medium">Analysis in progress…</span>{" "}
+					Agents are still evaluating your portfolio. Summary will appear here when complete.
 				</div>
 			);
 		}
 		return null;
 	}
 
-	const riskStep = steps[3];
-	const verdict = riskStep?.structuredOutput?.verdict as string | undefined;
-
 	if (!verdict) return null;
 
-	const configMap = {
+	const lower = verdict.toLowerCase();
+
+	const styles: Record<
+		string,
+		{ border: string; icon: string; text: string }
+	> = {
 		approve: {
-			borderColor: "var(--green)",
+			border: "border-green",
 			icon: "✅",
-			message:
-				"The proposed rebalancing is approved. The Risk Agent found the changes safe to execute.",
+			text: "The proposed rebalancing is approved. The Risk Agent found the changes safe to execute.",
 		},
 		approve_with_caveats: {
-			borderColor: "var(--amber)",
+			border: "border-amber",
 			icon: "⚠️",
-			message:
-				"Approved with caveats. The changes are acceptable, but review the warnings below before proceeding.",
+			text: "Approved with caveats. The changes are acceptable, but review the warnings below before proceeding.",
 		},
 		reject: {
-			borderColor: "var(--red)",
+			border: "border-red",
 			icon: "❌",
-			message:
-				"The proposed rebalancing is too risky. Your current portfolio is unchanged — no action needed.",
+			text: "Rejected. The proposed rebalancing is too risky. Your current portfolio is unchanged — no action needed.",
 		},
 	};
 
-	const config = configMap[verdict as keyof typeof configMap];
-
+	const config = styles[lower] ?? null;
 	if (!config) return null;
 
 	return (
 		<div
-			className="rounded bg-bg-elevated border-l-2 px-3 py-2 mb-4 text-[12px] font-sans leading-relaxed"
-			style={{ borderLeftColor: config.borderColor }}
+			className={cn(
+				"mb-4 rounded border-l-2 bg-bg-elevated px-3 py-2 text-[12px] font-sans leading-relaxed text-text",
+				config.border,
+			)}
 		>
-			<span
-				className="font-semibold block mb-0.5"
-				style={{ color: config.borderColor }}
-			>
-				What this means for you
+			<span className="font-medium">
+				{config.icon} What this means for you
 			</span>
-			<span className="text-text">{config.icon} {config.message}</span>
+			<br />
+			{config.text}
 		</div>
 	);
 }
