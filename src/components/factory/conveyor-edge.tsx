@@ -51,16 +51,13 @@ function ConveyorEdgeComponent({
 	const strokeWidth = tierWidthMap[tier];
 	const markerId = `conveyor-arrow-${tier}`;
 
-	const sp = isCross ? Position.Bottom : sourcePosition;
-	const tp = isCross ? Position.Top : targetPosition;
-
 	const [edgePath] = getBezierPath({
 		sourceX,
 		sourceY,
 		targetX,
 		targetY,
-		sourcePosition: sp,
-		targetPosition: tp,
+		sourcePosition,
+		targetPosition,
 	});
 
 	return (

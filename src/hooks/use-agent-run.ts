@@ -196,8 +196,7 @@ export function useAgentRun(): UseAgentRunReturn {
 
 		// Reset state — mark Monitor as running immediately for fast feedback
 		setError(null);
-		setMonitorOutput(null);
-		setWorkflowOutput(null);
+		// Do not clear monitorOutput or workflowOutput here to retain previous state in UI
 		setRunId(null);
 		setIsRunning(true);
 		setSteps(
