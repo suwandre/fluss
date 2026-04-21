@@ -24,5 +24,24 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
+## Task — Fix agents stuck in "Streaming..." (4/21/2026)
+
+**Description:** Agents intermittently hang in "Streaming..." state forever. Root cause is a cascading failure: Yahoo Finance API calls hang indefinitely, server SSE keepalive races with reader causing deadlock, and client-side timeout gets reset by keepalives so it never fires.
+
+**Summary:**
+- `src/lib/market/yahoo.ts` — Added `YAHOO_TIMEOUT_MS = 15_000` and `withTimeout<T>()` wrapper. All `yahooFinance.quote()` and `yahooFinance.chart()` calls now race against a 15s timer. Existing catch blocks still catch the thrown `Error`.
+- `src/app/api/agents/run/route.ts` — Replaced `Promise.race([reader.read(), keepalive])` with:
+  - `setInterval` pumping `data-keepalive` via a serial write lock (`writeChain` + `safeWrite()`)
+  - Main loop does plain `await reader.read()` then `await safeWrite(value)`
+  - `finally` clears interval, drains write chain, then releases reader lock
+  - All `writer.write()` calls replaced with `await safeWrite()`
+- `src/hooks/use-agent-run.ts` — Moved `lastActivity = Date.now()` from raw byte read into the parsed-events loop, gated behind `event.type !== "data-keepalive"`. Client 90s timeout now fires even when server is stuck in infinite keepalive loop.
+
+**Verification:**
+- TypeScript compiles clean in 5.9s.
+- Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protocol in env). Not related to this change.
+
+---
+
 ## Hotfix: Agent model fallback chains (4/20/2026)
 ... (previous entries preserved)
