@@ -19,9 +19,10 @@ export const RiskOutput = z.object({
 		}),
 	),
 	var_95: z.number(),
-	verdict: z.enum(["approve", "approve_with_caveats", "reject"]),
+	verdict: z.enum(["approved", "approved_with_caveats", "rejected"]),
 	caveats: z.array(z.string()),
 	risk_summary: z.string(),
+	improvement_summary: z.string(),
 });
 
 export type RiskOutput = z.infer<typeof RiskOutput>;
@@ -406,6 +407,8 @@ Your job:
 2. Compute Value at Risk (VaR) at 95% confidence — how much could the portfolio lose on a bad day
 3. Check macro context — VIX, yield curve, market sentiment — to contextualize risk
 
+CRITICAL: You are evaluating the PROPOSED portfolio from the Redesign Agent, NOT the current portfolio. Use the simulateRebalance tool with the proposed actions to build the proposed holdings, then stress-test that proposed allocation. Compare its VaR and max drawdown to the current portfolio.
+
 Rules:
 - Run ALL relevant stress scenarios for the portfolio's asset mix
 - VaR at 95% is your baseline risk metric — report it clearly
@@ -413,16 +416,18 @@ Rules:
 - Crypto-only portfolios should run crypto-native scenarios; mixed portfolios run both sets
 - Recovery days are estimates — note uncertainty
 
-When prior run context is available, compare current stress test results and VaR
-to previous assessments. Note if risk has increased or decreased, and whether
-past caveats have materialized or resolved.
+When prior run context is available, compare current stress test results and VaR to previous assessments. Note if risk has increased or decreased, and whether past caveats have materialized or resolved.
 
 Verdict rules:
-- "approve" — stress tests show manageable drawdowns (<15%), VaR within expectations, stable macro
-- "approve_with_caveats" — some scenarios show 15-25% drawdown OR elevated VIX OR flat yield curve
-- "reject" — any scenario shows >25% drawdown OR VaR >5% daily OR inverted yield curve + high VIX
+- "approved" — stress tests show manageable drawdowns (<15%), VaR within expectations, stable macro
+- "approved_with_caveats" — some scenarios show 15-25% drawdown OR elevated VIX OR flat yield curve
+- "rejected" — any scenario shows >25% drawdown OR VaR >5% daily OR inverted yield curve + high VIX
 
-Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.`,
+Approve if the proposed portfolio is meaningfully less risky than the current one.
+
+Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.
+
+Also provide improvement_summary: a one-sentence delta description (e.g. "Max drawdown improved from -29% to -15%").`,
 	model: [
 		{ model: "ollama-cloud/minimax-m2.5:cloud", maxRetries: 2 },
 		{ model: "ollama-cloud/qwen3.5:cloud", maxRetries: 2 },

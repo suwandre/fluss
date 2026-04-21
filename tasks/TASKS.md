@@ -208,3 +208,8 @@ _Total: ~70 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] Guard CoinGecko 401 → `null` + console warning instead of throw
 - [x] Guard crypto `getHistory` with try-catch → `null`
 - [x] Harden `computePortfolioMetrics` equity curve: per-item try-catch, allow partial data per date
+- [x] Remove duplicate stress-test explainer text from `agent-reasoning-panel.tsx`
+- [x] Fix stress chart: absolute drawdown bars, red >15%, `XAxis` domain `[0, 'auto']`, legend
+- [x] Add edge correlation legend to `factory-floor.tsx`
+- [x] Separate run-state dot from verdict badge in `agent-step.tsx`
+- [x] Risk Agent prompt update: evaluate proposed vs current, new verdict enum + `improvement_summary`

@@ -178,15 +178,30 @@ function RunSummary({ steps }: { steps: AgentStepData[] }) {
 		string,
 		{ border: string; icon: string; text: string }
 	> = {
+		approved: {
+			border: "border-green",
+			icon: "✅",
+			text: "The proposed rebalancing is approved. The Risk Agent found the changes safe to execute.",
+		},
 		approve: {
 			border: "border-green",
 			icon: "✅",
 			text: "The proposed rebalancing is approved. The Risk Agent found the changes safe to execute.",
 		},
+		approved_with_caveats: {
+			border: "border-amber",
+			icon: "⚠️",
+			text: "Approved with caveats. The changes are acceptable, but review the warnings below before proceeding.",
+		},
 		approve_with_caveats: {
 			border: "border-amber",
 			icon: "⚠️",
 			text: "Approved with caveats. The changes are acceptable, but review the warnings below before proceeding.",
+		},
+		rejected: {
+			border: "border-red",
+			icon: "❌",
+			text: "Rejected. The proposed rebalancing is too risky. Your current portfolio is unchanged — no action needed.",
 		},
 		reject: {
 			border: "border-red",

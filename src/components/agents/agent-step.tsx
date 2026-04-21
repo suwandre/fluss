@@ -55,34 +55,79 @@ function renderValue(value: unknown): string {
 	return String(value);
 }
 
-function getDotStatus(
-	status: AgentStatus,
-	structuredOutput?: Record<string, unknown>,
-): HealthState {
+/** Run-state color for the dot (NOT the verdict). */
+function getDotStatus(status: AgentStatus): HealthState {
 	if (status === "error") return "critical";
-	if (status !== "done") return "warning";
-	if (!structuredOutput) return "nominal";
-
-	const criticalValues = new Set(["critical", "high", "reject"]);
-	const warningValues = new Set(["warning", "medium", "approve_with_caveats"]);
-	const fields = ["health_status", "severity", "confidence", "verdict"];
-
-	for (const key of fields) {
-		const val = structuredOutput[key];
-		if (typeof val !== "string") continue;
-		const lower = val.toLowerCase();
-		if (criticalValues.has(lower)) return "critical";
-		if (warningValues.has(lower)) return "warning";
-	}
-
+	if (status === "running") return "warning";
 	return "nominal";
 }
+
+/** Extract a compact verdict badge from agent output. */
+function getVerdictBadge(
+	name: string,
+	structuredOutput?: Record<string, unknown>,
+): { label: string; tier: HealthState } | null {
+	if (!structuredOutput) return null;
+	const lowerName = name.toLowerCase();
+	if (lowerName.includes("monitor")) {
+		const st = structuredOutput.health_status;
+		if (typeof st !== "string") return null;
+		const map: Record<string, { label: string; tier: HealthState }> = {
+			nominal: { label: "Nominal", tier: "nominal" },
+			warning: { label: "Warning", tier: "warning" },
+			critical: { label: "Critical", tier: "critical" },
+		};
+		return map[st.toLowerCase()] ?? null;
+	}
+	if (lowerName.includes("bottleneck")) {
+		const sev =
+			(structuredOutput.primary_bottleneck as Record<string, unknown> | undefined)
+				?.severity ?? structuredOutput.severity;
+		if (typeof sev !== "string") return null;
+		const map: Record<string, { label: string; tier: HealthState }> = {
+			low: { label: "Low", tier: "nominal" },
+			medium: { label: "Medium", tier: "warning" },
+			high: { label: "High", tier: "critical" },
+		};
+		return map[sev.toLowerCase()] ?? null;
+	}
+	if (lowerName.includes("redesign")) {
+		const conf = structuredOutput.confidence;
+		if (typeof conf !== "string") return null;
+		const map: Record<string, { label: string; tier: HealthState }> = {
+			low: { label: "Low confidence", tier: "warning" },
+			medium: { label: "Medium confidence", tier: "warning" },
+			high: { label: "High confidence", tier: "nominal" },
+		};
+		return map[conf.toLowerCase()] ?? null;
+	}
+	if (lowerName.includes("risk")) {
+		const v = structuredOutput.verdict;
+		if (typeof v !== "string") return null;
+		const map: Record<string, { label: string; tier: HealthState }> = {
+			approved: { label: "Approved", tier: "nominal" },
+			approved_with_caveats: { label: "Caveats", tier: "warning" },
+			rejected: { label: "Rejected", tier: "critical" },
+		};
+		return map[v.toLowerCase()] ?? null;
+	}
+	return null;
+}
+
+const VERDICT_BADGE_STYLES: Record<HealthState, string> = {
+	nominal: "bg-[rgba(34,197,94,0.12)] text-green",
+	warning: "bg-[rgba(245,158,11,0.12)] text-amber",
+	critical: "bg-[rgba(239,68,68,0.12)] text-red",
+};
 
 const TRUNCATE_THRESHOLD = 80;
 
 function formatRiskField(key: string, value: unknown): string {
 	if (key === "verdict" && typeof value === "string") {
 		const map: Record<string, string> = {
+			rejected: "❌ Rejected",
+			approved_with_caveats: "⚠️ Approved with caveats",
+			approved: "✅ Approved",
 			reject: "❌ Rejected",
 			approve_with_caveats: "⚠️ Approved with caveats",
 			approve: "✅ Approved",
@@ -188,8 +233,9 @@ export function AgentStep({
 	const reducedMotion = useReducedMotion();
 
 	const dotVariant = status === "queued" || status === "skipped" ? "hollow" : "filled";
-	const dotStatus = getDotStatus(status, structuredOutput);
+	const dotStatus = getDotStatus(status);
 	const dotAnimate = status === "running";
+	const verdict = getVerdictBadge(name, structuredOutput);
 
 	const showStructuredOutput = status === "done" || status === "running";
 	const hasReasoning = !!reasoning || isStreaming;
@@ -215,13 +261,21 @@ export function AgentStep({
 						{name}
 					</span>
 
-					<span
-						className={`text-[11px] font-mono font-medium px-2 py-px rounded-full ${BADGE_STYLES[status]}`}
-					>
-						{status === "running" && isStreaming
-							? "Streaming…"
-							: STATUS_LABEL_MAP[status]}
-					</span>
+                              <span
+                                        className={`text-[11px] font-mono font-medium px-2 py-px rounded-full ${BADGE_STYLES[status]}`}
+                                >
+                                        {status === "running" && isStreaming
+                                                ? "Streaming…"
+                                                : STATUS_LABEL_MAP[status]}
+                                </span>
+
+                                {verdict && (
+                                        <span
+                                                className={`text-[10px] font-mono font-medium px-1.5 py-px rounded-full ${VERDICT_BADGE_STYLES[verdict.tier]}`}
+                                        >
+                                                {verdict.label}
+                                        </span>
+                                )}
 
 					{durationMs != null && (
 						<span className="ml-auto text-[11px] font-mono text-text-dim">

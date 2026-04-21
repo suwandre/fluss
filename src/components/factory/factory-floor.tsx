@@ -212,26 +212,44 @@ export function FactoryFloor({
 	);
 
 	return (
-		<ReactFlow
-			nodes={nodesWithHealth}
-			edges={allEdges}
-			onNodesChange={onNodesChange}
-			onEdgesChange={onEdgesChange}
-			nodeTypes={nodeTypes}
-			edgeTypes={edgeTypes}
-			fitView
-			nodesDraggable
-			minZoom={0.5}
-			maxZoom={1.5}
-			proOptions={{ hideAttribution: true }}
-		>
-			<Background
-				variant={BackgroundVariant.Dots}
-				gap={24}
-				size={1}
-				color="#1e1e2e"
-			/>
-			<Controls />
-		</ReactFlow>
+		<div className="relative w-full h-full">
+			<ReactFlow
+				nodes={nodesWithHealth}
+				edges={allEdges}
+				onNodesChange={onNodesChange}
+				onEdgesChange={onEdgesChange}
+				nodeTypes={nodeTypes}
+				edgeTypes={edgeTypes}
+				fitView
+				nodesDraggable
+				minZoom={0.5}
+				maxZoom={1.5}
+				proOptions={{ hideAttribution: true }}
+			>
+				<Background
+					variant={BackgroundVariant.Dots}
+					gap={24}
+					size={1}
+					color="#1e1e2e"
+				/>
+				<Controls />
+			</ReactFlow>
+
+			{/* Correlation edge legend */}
+			<div className="absolute bottom-3 left-3 z-10 rounded border border-border bg-bg-card/90 px-2.5 py-1.5 text-[10px] font-mono text-text-dim shadow-sm">
+				<div className="flex items-center gap-1.5 mb-0.5">
+					<span className="inline-block w-4 h-[2px] bg-teal" />
+					<span>Low correlation</span>
+				</div>
+				<div className="flex items-center gap-1.5 mb-0.5">
+					<span className="inline-block w-4 h-[2px] bg-amber" />
+					<span>Moderate</span>
+				</div>
+				<div className="flex items-center gap-1.5">
+					<span className="inline-block w-4 h-[2px] bg-red" />
+					<span>High correlation</span>
+				</div>
+			</div>
+		</div>
 	);
 }

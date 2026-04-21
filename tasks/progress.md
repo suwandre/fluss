@@ -97,5 +97,27 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
+## Task — Apply 5 targeted UI/UX fixes (4/21/2026)
+
+**Description:** User reported 5 specific regressions / missing features after dogfooding. Each fix applied independently.
+
+**Summary:**
+1. **Deduped stress-test explainer text:** Removed duplicate wrapper paragraphs from `agent-reasoning-panel.tsx`. Only `stress-test-chart.tsx` keeps the text now.
+2. **Stress chart data / colors / bar width:** `stress-test-chart.tsx` now maps `simulated_drawdown_pct` → absolute `drawdown` for bars, keeps signed `drawdown_pct` in tooltip. Color logic uses `Math.abs(drawdown_pct) > 15` (not hardcoded). Added `XAxis` with `domain={[0, 'auto']}` so bars render with proportional width. LabelList still shows `-17.6%`. Added tiny legend below chart: red = >15%, gray = manageable.
+3. **Edge correlation legend on Factory Floor:** `factory-floor.tsx` now wraps `ReactFlow` in a relative container and renders an absolute-positioned legend box (bottom-left, `z-10`) with teal/amber/red lines + labels, entirely via Tailwind (not React Flow nodes).
+4. **Separate run-state dot from verdict badge:** `agent-step.tsx` now has two independent indicators:
+   - **Dot:** run-state only (`pending` = gray hollow, `streaming` = amber pulse, `done` = green, `error` = red).
+   - **Verdict badge:** compact colored pill per agent type showing actual verdict (Monitor `health_status`, Bottleneck `severity`, Redesign `confidence`, Risk `verdict`). Added `useVerdictBadge()` helper and `VERDICT_BADGE_STYLES` map.
+5. **Risk Agent evaluates proposed vs current portfolio:**
+   - Updated `RiskOutput` Zod schema: `verdict` enum changed to `"approved" | "approved_with_caveats" | "rejected"`. Added `improvement_summary` field.
+   - `workflow.ts` Risk step prompt now explicitly tells the agent: "You are evaluating the PROPOSED portfolio from the Redesign Agent, NOT the current portfolio." Passes proposed actions as simulated holdings.
+   - UI consumers (`agent-step.tsx` `formatRiskField`, `agent-reasoning-panel.tsx` `RunSummary`) updated to handle both old (`approve`/`reject`) and new (`approved`/`rejected`) enum values, plus `approved_with_caveats` tier (amber box).
+
+**Verification:**
+- `bun tsc --noEmit` passes clean (0 errors).
+- Build fails only at collect-page-data due to pre-existing `DATABASE_URL` `ERR_INVALID_URL` (missing protocol in env). Unrelated.
+
+---
+
 ## Hotfix: Agent model fallback chains (4/20/2026)
 ... (previous entries preserved)
