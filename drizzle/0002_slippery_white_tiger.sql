@@ -1,0 +1,1 @@
+ALTER TABLE "market_documents" ALTER COLUMN "embedding" SET DATA TYPE vector(768);

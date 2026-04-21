@@ -1,6 +1,6 @@
 import type { PriceSnapshot, OHLCVBar } from "./yahoo";
 
-const BASE_URL = "https://api.coingecko.com/api/v3";
+const BASE_URL = process.env.COINGECKO_BASE_URL || "https://api.coingecko.com/api/v3";
 
 const TICKER_TO_ID: Record<string, string> = {
   BTC: "bitcoin",
@@ -78,6 +78,11 @@ export async function getCryptoPriceSnapshot(ticker: string): Promise<PriceSnaps
     headers: buildHeaders(),
   });
 
+  if (res.status === 401) {
+    console.warn(`[coingecko] 401 on price snapshot for ${ticker} — skipping. Check your API key.`);
+    return null;
+  }
+
   if (!res.ok) {
     throw new Error(`CoinGecko price fetch failed: ${res.status}`);
   }
@@ -121,6 +126,11 @@ export async function getBatchCryptoPriceSnapshots(tickers: string[]): Promise<M
     headers: buildHeaders(),
   });
 
+  if (res.status === 401) {
+    console.warn(`[coingecko] 401 on batch price snapshots — skipping. Check your API key.`);
+    return map;
+  }
+
   if (!res.ok) {
     throw new Error(`CoinGecko batch price fetch failed: ${res.status}`);
   }
@@ -160,6 +170,11 @@ export async function getCryptoHistoricalOHLCV(
   const res = await fetchWithTimeout(`${BASE_URL}/coins/${coinId}/market_chart?${params}`, {
     headers: buildHeaders(),
   });
+
+  if (res.status === 401) {
+    console.warn(`[coingecko] 401 on OHLCV for ${ticker} — skipping. Check your API key.`);
+    return null;
+  }
 
   if (!res.ok) {
     throw new Error(`CoinGecko market chart fetch failed for ${ticker}: ${res.status}`);

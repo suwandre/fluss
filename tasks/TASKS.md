@@ -199,3 +199,12 @@
 ---
 
 _Total: ~70 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIGN_V1.md_
+
+---
+
+## Post-Phase Fixes (4/21/2026)
+
+- [x] Switch embeddings from OpenAI to local Ollama (`nomic-embed-text`, 768-dim)
+- [x] Guard CoinGecko 401 → `null` + console warning instead of throw
+- [x] Guard crypto `getHistory` with try-catch → `null`
+- [x] Harden `computePortfolioMetrics` equity curve: per-item try-catch, allow partial data per date

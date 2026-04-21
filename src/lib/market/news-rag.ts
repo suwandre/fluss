@@ -1,5 +1,4 @@
-import { embed, embedMany } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { generateEmbedding, generateEmbeddings } from "@/lib/market/embeddings";
 import { db } from "@/lib/db";
 import { marketDocuments } from "@/lib/db/schema";
 import { sql, desc, cosineDistance, gt, and, isNotNull } from "drizzle-orm";
@@ -7,7 +6,6 @@ import { eq } from "drizzle-orm";
 
 // ── Config ──────────────────────────────────────────────────────────
 const NEWS_API_KEY = process.env.NEWS_API_KEY ?? "";
-const EMBEDDING_MODEL = openai.embedding("text-embedding-3-small");
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -22,24 +20,6 @@ interface NewsAPIArticle {
 interface IngestResult {
 	ingested: number;
 	skipped: number;
-}
-
-// ── Embedding helpers ───────────────────────────────────────────────
-
-async function generateEmbedding(text: string): Promise<number[]> {
-	const { embedding } = await embed({ model: EMBEDDING_MODEL, value: text });
-	return embedding;
-}
-
-async function generateEmbeddings(
-	texts: string[],
-): Promise<{ embedding: number[] }[]> {
-	if (texts.length === 0) return [];
-	const { embeddings } = await embedMany({
-		model: EMBEDDING_MODEL,
-		values: texts,
-	});
-	return embeddings.map((embedding) => ({ embedding }));
 }
 
 // ── NewsAPI fetch ───────────────────────────────────────────────────
@@ -98,7 +78,7 @@ async function fetchNewsHeadlines(
 
 /**
  * Ingest news headlines for portfolio tickers into the market_documents table.
- * Generates embeddings via OpenAI and stores them with pgvector.
+ * Generates embeddings via Ollama and stores them with pgvector.
  *
  * @param tickers - Portfolio ticker symbols to search news for
  * @returns Number of documents ingested and skipped
@@ -143,7 +123,7 @@ export async function ingestNewsHeadlines(
 	let ingested = 0;
 	for (let i = 0; i < newArticles.length; i++) {
 		const article = newArticles[i];
-		const embedding = embeddings[i]?.embedding;
+		const embedding = embeddings[i];
 		if (!embedding) continue;
 
 		try {

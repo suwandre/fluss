@@ -1,5 +1,26 @@
 # Progress Log
 
+## Task — Switch embeddings to Ollama, guard against CoinGecko 401 crashes (4/21/2026)
+
+**Description:** Remove `@ai-sdk/openai` dependency for embeddings. Add local Ollama fallback. Harden CoinGecko and equity-curve robustness.
+
+**Summary:**
+- `src/lib/market/embeddings.ts` — NEW. `generateEmbedding(text)` and `generateEmbeddings(texts)` call Ollama `/api/embeddings` and `/api/embed` directly via raw `fetch`. Model configurable via `OLLAMA_EMBEDDING_MODEL` (default `nomic-embed-text`). Base URL via `OLLAMA_BASE_URL` (default `http://localhost:11434`). Throws clear message: "Check your local Ollama server and model."
+- `src/lib/db/schema.ts` — Changed pgvector `market_documents.embedding` from 1536 to 768 dimensions (matches nomic-embed-text). Generated migration `drizzle/0002_slippery_white_tiger.sql`.
+- `src/lib/market/news-rag.ts` — Removed `@ai-sdk/openai` and `ai` imports. Replaced `embed`/`embedMany` calls with new `generateEmbedding`/`generateEmbeddings`. No caller signature changes.
+- `src/lib/market/coingecko.ts` — Added `COINGECKO_BASE_URL` env support (default `https://api.coingecko.com/api/v3`). On HTTP 401, returns `null` and prints warning with ticker/endpoint instead of throwing.
+- `src/lib/market/index.ts` — `getHistory` for crypto now wraps `getCryptoHistoricalOHLCV` in try-catch, returns `null` on failure.
+- `src/lib/orchestrator/compute-metrics.ts` — Wrapped each `getHistory` call inside `Promise.all` with per-item try-catch so one ticker failure doesn't kill all metrics. Adjusted equity-curve logic to allow partial data per date: skips any date where a ticker has no price, includes date if at least one ticker contributes. If all tickers missing on a date, that date is omitted.
+
+**Verification:**
+- TypeScript compiles clean (6.2s).
+- Build succeeds with dummy DATABASE_URL (fails at runtime DB connection, not compilation).
+
+**Gotchas:**
+- Build still fails on production DATABASE_URL because the env value lacks protocol (`://`). Unrelated to this change.
+
+---
+
 ## Task — Add UX clarity: tooltips, verdict summary, stress test context (4/21/2026)
 
 **Description:** User was confused by Risk Agent jargon ("Verdict: rejected", var95, scenarios) and stress test meaning. Implemented plain-English explanations.
@@ -72,7 +93,7 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 **Verification:**
 - TypeScript compiles clean in 5.9s.
-- Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protocol in env). Not related to this change.
+- Build fails only on pre-existing DATABASE_URL ERR_INVALID_URL (missing protocol in env).
 
 ---
 

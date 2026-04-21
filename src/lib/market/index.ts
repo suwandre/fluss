@@ -38,7 +38,11 @@ export async function getHistory(
 ): Promise<OHLCVBar[] | null> {
   if (isCrypto(assetClass)) {
     const days = (options?.days as 1 | 7 | 14 | 30 | 90 | 180 | 365) ?? 30;
-    return getCryptoHistoricalOHLCV(ticker, days);
+    try {
+      return await getCryptoHistoricalOHLCV(ticker, days);
+    } catch {
+      return null;
+    }
   }
 
   const period1 = options?.period1 ?? new Date(Date.now() - (options?.days ?? 30) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);

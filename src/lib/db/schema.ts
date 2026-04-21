@@ -61,7 +61,7 @@ export const marketDocuments = pgTable(
 		ticker: t.text(),
 		source: t.text().notNull(), // 'news', 'report', 'earnings'
 		content: t.text().notNull(),
-		embedding: vector("embedding", { dimensions: 1536 }),
+		embedding: vector("embedding", { dimensions: 768 }),
 		publishedAt: t.timestamp("published_at", { withTimezone: true }),
 		createdAt: t
 			.timestamp("created_at", { withTimezone: true })

@@ -16,8 +16,9 @@ interface HoldingForMetrics {
  * Compute portfolio-level Sharpe ratio and Max Drawdown from 90 days of historical prices.
  *
  * - Fetches 90 days of daily closes for each holding.
- * - Builds a blended portfolio equity curve (quantity * close) per day.
- * - Requires all holdings to have data for a given date to include it.
+ * - Builds a blended portfolio equity curve (quantity * close) per date.
+ * - Allows partial data: a date is included if at least one ticker has a price.
+ * - Skips any date where every ticker is missing a price.
  * - Sharpe: annualized, using 5% risk-free rate.
  * - Max drawdown: peak-to-trough as a percentage (e.g. 15.2 => 15.2%).
  */
@@ -28,28 +29,32 @@ export async function computePortfolioMetrics(
 		return { sharpeRatio: null, maxDrawdownPct: 0 };
 	}
 
-	// Fetch 90 days of history for each holding
+	// Fetch 90 days of history for each holding — isolated try-catch so one failure doesn't kill the rest
 	const historyMap = new Map<string, { date: string; close: number }[]>();
 	await Promise.all(
 		portfolioData.map(async (entry) => {
-			const history = await getHistory(
-				entry.ticker,
-				entry.assetClass as AssetClass,
-				{ days: 90 },
-			);
-			if (!history || history.length === 0) return;
-			const bars = history.map((bar) => ({
-				date:
-					bar.date instanceof Date
-						? bar.date.toISOString().slice(0, 10)
-						: String(bar.date),
-				close: bar.close,
-			}));
-			historyMap.set(entry.ticker, bars);
+			try {
+				const history = await getHistory(
+					entry.ticker,
+					entry.assetClass as AssetClass,
+					{ days: 90 },
+				);
+				if (!history || history.length === 0) return;
+				const bars = history.map((bar) => ({
+					date:
+						bar.date instanceof Date
+							? bar.date.toISOString().slice(0, 10)
+							: String(bar.date),
+					close: bar.close,
+				}));
+				historyMap.set(entry.ticker, bars);
+			} catch {
+				// Swallow per-ticker failure so others contribute
+			}
 		}),
 	);
 
-	// Build aligned portfolio values per date
+	// Build aligned portfolio values per date — allow partial contributor sets
 	const allDates = new Set<string>();
 	for (const bars of historyMap.values()) {
 		for (const bar of bars) allDates.add(bar.date);
@@ -59,21 +64,18 @@ export async function computePortfolioMetrics(
 	const portfolioValues: number[] = [];
 	for (const date of sortedDates) {
 		let value = 0;
-		let allPresent = true;
+		let anyPresent = false;
+
 		for (const entry of portfolioData) {
 			const bars = historyMap.get(entry.ticker);
-			if (!bars) {
-				allPresent = false;
-				break;
-			}
+			if (!bars) continue;
 			const bar = bars.find((b) => b.date === date);
-			if (!bar) {
-				allPresent = false;
-				break;
-			}
+			if (!bar) continue;
 			value += bar.close * entry.quantity;
+			anyPresent = true;
 		}
-		if (allPresent) {
+
+		if (anyPresent) {
 			portfolioValues.push(value);
 		}
 	}
