@@ -6,6 +6,11 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+	Tooltip,
+	TooltipTrigger,
+	TooltipContent,
+} from "@/components/ui/tooltip";
 import { StatusDot } from "@/components/ui/status-dot";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { cn } from "@/lib/utils";
@@ -78,9 +83,9 @@ const TRUNCATE_THRESHOLD = 80;
 function formatRiskField(key: string, value: unknown): string {
 	if (key === "verdict" && typeof value === "string") {
 		const map: Record<string, string> = {
-			reject: "\u274c Rejected",
-			approve_with_caveats: "\u26a0\ufe0f Approved with caveats",
-			approve: "\u2705 Approved",
+			reject: "❌ Rejected",
+			approve_with_caveats: "⚠️ Approved with caveats",
+			approve: "✅ Approved",
 		};
 		return map[value.toLowerCase()] ?? value;
 	}
@@ -91,6 +96,53 @@ function formatRiskField(key: string, value: unknown): string {
 		return `${value.length} historical stress scenarios tested`;
 	}
 	return renderValue(value);
+}
+
+const FIELD_TOOLTIPS: Record<string, string> = {
+	verdict:
+		"The Risk Agent's final judgment on whether the proposed rebalancing is safe enough to execute.",
+	var_95:
+		"Value at Risk: the worst single-day loss expected on 95% of trading days, based on historical data.",
+	stress_results:
+		"Historical 'what-if' simulations. Shows how much your portfolio would lose if past market crashes happened again today.",
+	caveats: "Specific warnings or conditions attached to the verdict.",
+	risk_summary: "A plain-English summary of the risk assessment.",
+	health_status:
+		"Overall portfolio health as judged by the Monitor Agent: critical, warning, or nominal.",
+	concerns: "Number of risk concerns flagged by the Monitor Agent.",
+	escalate:
+		"Whether the Monitor Agent triggered the full rebalancing pipeline due to detected issues.",
+	confidence: "How certain the agent is in its assessment.",
+	bottleneck:
+		"The single biggest risk concentration or weak point identified in your portfolio.",
+	severity:
+		"How severe the identified bottleneck is: low, medium, high, or critical.",
+	actions: "Number of rebalancing moves proposed by the Redesign Agent.",
+	improvement:
+		"What the Redesign Agent expects to improve after rebalancing.",
+	scenarios: "How many historical crash scenarios were simulated.",
+};
+
+function InfoIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			width="12"
+			height="12"
+			viewBox="0 0 12 12"
+			fill="none"
+			className={className}
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			<circle cx="6" cy="6" r="5.5" stroke="currentColor" strokeWidth="1" />
+			<path
+				d="M6 5V8M6 3.5V3.51"
+				stroke="currentColor"
+				strokeWidth="1"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+		</svg>
+	);
 }
 
 function ExpandableValue({ value }: { value: string }) {
@@ -197,14 +249,32 @@ export function AgentStep({
 					<div className="mt-1.5 space-y-0.5">
 						{Object.entries(structuredOutput).map(([key, value]) => {
 							const rendered = formatRiskField(key, value);
+							const tip = FIELD_TOOLTIPS[key];
 							return (
 								<div
 									key={key}
-									className="flex gap-1.5 text-[12px] font-mono leading-snug"
+									className="flex gap-1 items-start text-[12px] font-mono leading-snug"
 								>
-								<span className="text-text-dim shrink-0">{key}:</span>
-								<ExpandableValue value={rendered} />
-							</div>
+									{tip ? (
+										<Tooltip>
+											<TooltipTrigger>
+												<button
+													type="button"
+													className="shrink-0 mt-0.5 text-text-dim hover:text-text transition-colors cursor-help"
+												>
+													<InfoIcon className="size-3" />
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="right">
+												{tip}
+											</TooltipContent>
+										</Tooltip>
+									) : (
+										<span className="w-3 shrink-0" />
+									)}
+									<span className="text-text-dim shrink-0">{key}:</span>
+									<ExpandableValue value={rendered} />
+								</div>
 							);
 						})}
 					</div>

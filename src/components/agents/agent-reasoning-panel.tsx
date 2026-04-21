@@ -124,6 +124,7 @@ export function AgentReasoningPanel({
 			{tab === "current" ? (
 				<ScrollArea className="flex-1 overflow-hidden">
 					<div className="p-4">
+						<RunSummary steps={steps} isRunning={isRunning} />
 						<AgentTimeline steps={steps} />
 
 						{/* Stress test chart — shown after Risk Agent completes */}
@@ -143,6 +144,73 @@ export function AgentReasoningPanel({
 				</div>
 			)}
 		</aside>
+	);
+}
+
+function RunSummary({
+	steps,
+	isRunning,
+}: {
+	steps: AgentStepData[];
+	isRunning?: boolean;
+}) {
+	const allDone =
+		steps.length === 4 && steps.every((s) => s.status === "done");
+
+	if (!allDone) {
+		if (isRunning) {
+			return (
+				<div className="rounded bg-bg-elevated border-l-2 border-border px-3 py-2 mb-4 text-[12px] font-sans leading-relaxed text-text-dim">
+					Analysis in progress...
+				</div>
+			);
+		}
+		return null;
+	}
+
+	const riskStep = steps[3];
+	const verdict = riskStep?.structuredOutput?.verdict as string | undefined;
+
+	if (!verdict) return null;
+
+	const configMap = {
+		approve: {
+			borderColor: "var(--green)",
+			icon: "✅",
+			message:
+				"The proposed rebalancing is approved. The Risk Agent found the changes safe to execute.",
+		},
+		approve_with_caveats: {
+			borderColor: "var(--amber)",
+			icon: "⚠️",
+			message:
+				"Approved with caveats. The changes are acceptable, but review the warnings below before proceeding.",
+		},
+		reject: {
+			borderColor: "var(--red)",
+			icon: "❌",
+			message:
+				"The proposed rebalancing is too risky. Your current portfolio is unchanged — no action needed.",
+		},
+	};
+
+	const config = configMap[verdict as keyof typeof configMap];
+
+	if (!config) return null;
+
+	return (
+		<div
+			className="rounded bg-bg-elevated border-l-2 px-3 py-2 mb-4 text-[12px] font-sans leading-relaxed"
+			style={{ borderLeftColor: config.borderColor }}
+		>
+			<span
+				className="font-semibold block mb-0.5"
+				style={{ color: config.borderColor }}
+			>
+				What this means for you
+			</span>
+			<span className="text-text">{config.icon} {config.message}</span>
+		</div>
 	);
 }
 

@@ -1,5 +1,21 @@
 # Progress Log
 
+## Task — Add UX clarity: tooltips, verdict summary, stress test context (4/21/2026)
+
+**Description:** User was confused by Risk Agent jargon ("Verdict: rejected", var95, scenarios) and stress test meaning. Implemented plain-English explanations.
+
+**Summary:**
+- `src/components/agents/agent-step.tsx`: Added `FIELD_TOOLTIPS` map with plain-English definitions for 13 agent output fields. Added small info-icon (ⓘ) buttons next to each structured-output key that show tooltip on hover. Added `formatRiskField` translations for verdict, var_95, and stress_results. Added `InfoIcon` helper.
+- `src/app/layout.tsx`: Wrapped app in `<TooltipProvider>` so tooltips work globally.
+- `src/components/agents/agent-reasoning-panel.tsx`: Added `RunSummary` component that displays a color-coded "What this means for you" box based on Risk Agent verdict. Green = approved, amber = caveats, red = rejected + "no action needed". Only shows when all agents are done.
+- `src/components/charts/stress-test-chart.tsx`: Added plain-English explainer text above and below the chart title describing what stress tests are and how to read red vs gray bars.
+- Installed shadcn `<Tooltip>` component (`bunx shadcn@latest add tooltip`).
+
+**Gotchas:**
+- Build fails only on pre-existing DATABASE_URL ERR_INVALID_URL (missing protocol in env). Not related.
+
+---
+
 ## Task — Fix 5 UI bugs from user dogfooding session (4/21/2026)
 
 **Description:** User reported 5 UX bugs after running the full agent pipeline. Each fixed independently.

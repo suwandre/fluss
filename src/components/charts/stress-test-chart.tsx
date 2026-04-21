@@ -80,9 +80,15 @@ export function StressTestChart({ data }: StressTestChartProps) {
 
 	return (
 		<div className="w-full" data-slot="stress-test-chart">
+			<p className="text-[11px] text-text-dim font-sans mb-1">
+				Historical disaster simulation: we replay past market crashes against your current portfolio to find hidden fragility.
+			</p>
 			<h3 className="text-[11px] font-mono text-text-muted mb-2 uppercase tracking-wider">
 				Stress Test Results
 			</h3>
+			<p className="text-[11px] text-text-muted font-sans mt-1">
+				Red bars = your portfolio would have lost more than 15%. Gray = manageable loss.
+			</p>
 			<ResponsiveContainer width="100%" height={sorted.length * 40 + 24}>
 				<BarChart
 					data={sorted}
