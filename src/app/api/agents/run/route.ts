@@ -26,7 +26,13 @@ export async function POST(req: Request) {
 
   const uiMessageStream = createUIMessageStream({
     execute: async ({ writer }) => {
-      writer.write({
+      let writeChain = Promise.resolve();
+      function safeWrite(chunk: Parameters<typeof writer.write>[0]) {
+        writeChain = writeChain.then(() => writer.write(chunk));
+        return writeChain;
+      }
+
+      await safeWrite({
         type: "data-run-id" as const,
         data: { runId },
       } as Parameters<typeof writer.write>[0]);
@@ -36,30 +42,28 @@ export async function POST(req: Request) {
         // The client (useAgentRun hook) parses these to update the timeline.
         const KEEPALIVE_MS = 30_000;
         const reader = runOutput.fullStream.getReader();
+        const keepaliveTimer = setInterval(
+          () =>
+            safeWrite({
+              type: "data-keepalive" as const,
+              data: {},
+            } as Parameters<typeof writer.write>[0]),
+          KEEPALIVE_MS,
+        );
+
         try {
           while (true) {
-            const result = await Promise.race([
-              reader.read() as Promise<ReadableStreamReadResult<unknown>>,
-              new Promise<null>((resolve) => setTimeout(() => resolve(null), KEEPALIVE_MS)),
-            ]);
-
-            if (result === null) {
-              writer.write({
-                type: "data-keepalive" as const,
-                data: {},
-              } as Parameters<typeof writer.write>[0]);
-              continue;
-            }
-
-            const { done, value } = result;
+            const { done, value } = await reader.read();
             if (done) break;
 
-            writer.write({
+            await safeWrite({
               type: "data-workflow-event" as const,
               data: value,
             } as Parameters<typeof writer.write>[0]);
           }
         } finally {
+          clearInterval(keepaliveTimer);
+          await writeChain;
           reader.releaseLock();
         }
 
@@ -79,7 +83,7 @@ export async function POST(req: Request) {
           });
         }
       } catch (err) {
-        writer.write({
+        await safeWrite({
           type: "error" as const,
           errorText:
             err instanceof Error
