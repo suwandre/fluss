@@ -1,5 +1,19 @@
 # Progress Log
 
+## Task — Fix market data fetching and risk agent evaluation logic (4/22/2026)
+
+**Description:** Risk agent stress tests silently swallowed missing historical data. CoinGecko limits history to 365 days on free tier, which breaks historical scenarios. Agent rejected portfolios despite massive concentration risk reductions.
+
+**Summary:**
+- `src/lib/market/index.ts`: Updated `getHistory` to route all historical requests to Yahoo Finance, bypassing CoinGecko historical limits. Automatically appends `-USD` to crypto tickers if missing. Removed unused `getCryptoHistoricalOHLCV` import.
+- `src/lib/agents/risk.ts`: Updated `runHistoricalStressTest` and `computeVar` to throw an explicit `Error` when historical data is missing (length < 2), preventing silent calculation failures.
+- `src/lib/agents/risk.ts`: Updated Risk Agent prompt to explicitly value diversification and concentration risk reduction, instructing it to lean towards `approved_with_caveats` for improved diversification even if absolute VaR/drawdown numbers are slightly worse.
+
+**Gotchas:**
+- None. Build and typecheck pass clean.
+
+---
+
 ## Task — Make Risk Agent compare proposed vs current portfolio (4/22/2026)
 
 **Description:** Risk Agent always tested the current portfolio because tools read from DB. Need comparative evaluation: pre-compute both current and proposed stress/VaR, then ask the agent to compare and judge delta.

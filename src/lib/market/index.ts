@@ -1,5 +1,5 @@
 import type { PriceSnapshot, OHLCVBar } from "./yahoo";
-import { getBatchCryptoPriceSnapshots, getCryptoHistoricalOHLCV, getCryptoPriceSnapshot } from "./coingecko";
+import { getBatchCryptoPriceSnapshots, getCryptoPriceSnapshot } from "./coingecko";
 import { getBatchPriceSnapshots, getHistoricalOHLCV, getPriceSnapshot } from "./yahoo";
 import type { AssetClass } from "@/lib/types/visual";
 
@@ -36,30 +36,11 @@ export async function getHistory(
   assetClass: AssetClass,
   options?: { period1?: string | Date; period2?: string | Date; interval?: "1d" | "1wk" | "1mo"; days?: number },
 ): Promise<OHLCVBar[] | null> {
-  if (isCrypto(assetClass)) {
-    if (options?.period1 && options?.period2) {
-      const t1 = options.period1 instanceof Date ? options.period1 : new Date(options.period1);
-      const t2 = options.period2 instanceof Date ? options.period2 : new Date(options.period2);
-      const from = Math.floor(t1.getTime() / 1000);
-      const to = Math.floor(t2.getTime() / 1000);
-      try {
-        return await getCryptoHistoricalOHLCV(ticker, undefined, from, to);
-      } catch {
-        return null;
-      }
-    }
-    const days = (options?.days as 1 | 7 | 14 | 30 | 90 | 180 | 365) ?? 30;
-    try {
-      return await getCryptoHistoricalOHLCV(ticker, days);
-    } catch {
-      return null;
-    }
-  }
-
+  const yahooTicker = isCrypto(assetClass) && !ticker.endsWith("-USD") ? `${ticker}-USD` : ticker;
   const period1 = options?.period1 ?? new Date(Date.now() - (options?.days ?? 30) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   try {
-    return await getHistoricalOHLCV(ticker, period1, options?.period2, options?.interval);
+    return await getHistoricalOHLCV(yahooTicker, period1, options?.period2, options?.interval);
   } catch {
     return null;
   }

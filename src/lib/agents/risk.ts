@@ -203,7 +203,9 @@ export const runHistoricalStressTest = createTool({
 					interval: "1d",
 				});
 
-				if (!history || history.length < 2) continue;
+				if (!history || history.length < 2) {
+					throw new Error(`Insufficient historical data for ${pos.ticker} during scenario ${scenario.label}`);
+				}
 
 				// Find max drawdown during period
 				let peak = history[0].close;
@@ -331,8 +333,7 @@ export const computeVar = createTool({
 					{ days: lookbackDays },
 				);
 				if (!history || history.length < 2) {
-					returnsByTicker.set(pos.ticker, []);
-					return;
+					throw new Error(`Insufficient historical data for ${pos.ticker} to compute VaR`);
 				}
 				const dailyReturns: number[] = [];
 				for (let i = 1; i < history.length; i++) {
@@ -464,8 +465,10 @@ You do NOT run calculations. You do NOT fetch prices. Use the pre-computed numbe
 
 Verdict rules (comparative, NOT absolute thresholds):
 - "approved" — proposed is meaningfully better than current (drawdown improved, VaR lower, or 2+ metrics better)
-- "approved_with_caveats" — proposed is slightly better or mixed (not worse overall)
+- "approved_with_caveats" — proposed is slightly better or mixed (not worse overall), OR significantly improves diversification (reduces single-asset concentration risk), even if VaR/drawdown numbers are similar or slightly worse.
 - "rejected" — proposed is WORSE than current in key metrics, OR introduces new catastrophic risk not present in current
+
+CRITICAL: Value diversification. Lean towards "approved_with_caveats" if a proposed portfolio significantly reduces single-asset concentration risk (e.g., moving from 90% BTC to a balanced portfolio), even if the historical VaR or drawdown numbers don't show a massive mathematical improvement.
 
 CRITICAL: For crypto portfolios, absolute drawdowns up to 70% in crypto-native crashes are acceptable IF the current portfolio showed even worse. The delta matters, not perfection.
 
