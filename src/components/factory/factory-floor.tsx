@@ -5,9 +5,9 @@ import {
 	ReactFlow,
 	Background,
 	BackgroundVariant,
-	Controls,
 	useNodesState,
 	useEdgesState,
+	useReactFlow,
 	type Node,
 	type Edge,
 	type NodeTypes,
@@ -19,12 +19,45 @@ import { MachineNode } from "./machine-node";
 import { ConveyorEdge } from "./conveyor-edge";
 import { PortfolioOutputNode } from "./portfolio-output-node";
 import { layoutGraph } from "./layout-engine";
+import { ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
 import type {
 	MachineNodeData,
 	PortfolioOutputData,
 } from "@/hooks/use-holdings";
+
+function ZoomControls() {
+	const { zoomIn, zoomOut, fitView } = useReactFlow();
+	return (
+		<div className="absolute bottom-3 left-3 z-10 flex flex-col gap-1">
+			<button
+				type="button"
+				onClick={() => zoomIn({ duration: 200 })}
+				className="flex items-center justify-center size-8 rounded bg-bg-card/80 border border-border hover:bg-bg-elevated hover:border-border-bright transition-colors"
+				aria-label="Zoom in"
+			>
+				<ZoomIn className="size-4 text-text-dim" />
+			</button>
+			<button
+				type="button"
+				onClick={() => zoomOut({ duration: 200 })}
+				className="flex items-center justify-center size-8 rounded bg-bg-card/80 border border-border hover:bg-bg-elevated hover:border-border-bright transition-colors"
+				aria-label="Zoom out"
+			>
+				<ZoomOut className="size-4 text-text-dim" />
+			</button>
+			<button
+				type="button"
+				onClick={() => fitView({ duration: 200 })}
+				className="flex items-center justify-center size-8 rounded bg-bg-card/80 border border-border hover:bg-bg-elevated hover:border-border-bright transition-colors"
+				aria-label="Fit view"
+			>
+				<Maximize className="size-4 text-text-dim" />
+			</button>
+		</div>
+	);
+}
 
 const nodeTypes: NodeTypes = {
 	machine: MachineNode,
@@ -232,11 +265,11 @@ export function FactoryFloor({
 					size={1}
 					color="#1e1e2e"
 				/>
-				<Controls />
+				<ZoomControls />
 			</ReactFlow>
 
-			{/* Correlation edge legend */}
-			<div className="absolute bottom-3 left-3 z-10 rounded border border-border bg-bg-card/90 px-2.5 py-1.5 text-[10px] font-mono text-text-dim shadow-sm">
+			{/* Correlation edge legend — above zoom buttons */}
+			<div className="absolute bottom-16 left-3 z-10 rounded border border-border bg-bg-card/90 px-2.5 py-1.5 text-[10px] font-mono text-text-dim shadow-sm">
 				<div className="flex items-center gap-1.5 mb-0.5">
 					<span className="inline-block w-4 h-[2px] bg-teal" />
 					<span>Low correlation</span>

@@ -226,3 +226,14 @@ _Total: ~70 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] Market data fetching: always use Yahoo Finance for historical data (append -USD for crypto)
 - [x] Risk Agent tools: throw explicit errors on missing historical data
 - [x] Add Ollama cloud API key support, update Risk Agent models, add quantitative diversification rules
+
+---
+
+## Post-Phase Fixes (4/22/2026) — UX Improvements
+
+- [x] **UX-1** Replace ReactFlow `<Controls />` white box with custom inline icon buttons (ZoomIn, ZoomOut, Maximize) using `useReactFlow()` hooks. Dark-themed, no container background, bottom-left position.
+- [x] **UX-2** Move correlation legend to bottom-left above zoom buttons, ensure no overlap between legend and controls.
+- [x] **UX-3** Fix caveats formatting in `agent-step.tsx`: Risk Agent shows condensed view (verdict + one-line summary + "View Analysis" button) instead of full structured output.
+- [x] **UX-4** Add "View Analysis" button to Risk Agent step in sidebar — opens modal with full details.
+- [x] **UX-5** Create `risk-analysis-modal.tsx` using existing `Dialog` component: verdict banner, VaR 95% metric, caveat pills, improvement checklist, risk summary bullets, stress scenario count.
+- [x] **UX-6** Condense Risk Agent step display in sidebar: show verdict badge + one-line summary only, move detailed structured output to modal.

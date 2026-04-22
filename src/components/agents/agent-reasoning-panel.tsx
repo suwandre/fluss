@@ -5,6 +5,7 @@ import {
 	AgentTimeline,
 	type AgentStepData,
 } from "@/components/agents/agent-timeline";
+import { RiskAnalysisModal } from "@/components/agents/risk-analysis-modal";
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -53,8 +54,10 @@ export function AgentReasoningPanel({
 	onRestoreRun,
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
+	const [riskModalOpen, setRiskModalOpen] = useState(false);
 	const riskDone = steps[3]?.status === "done";
 	const showChart = riskDone && stressResults && stressResults.length > 0;
+	const riskStructuredOutput = (steps[3]?.structuredOutput ?? null) as Record<string, unknown> | null;
 
 	const handleSelectRun = (run: HistoryRun) => {
 		onRestoreRun?.(run);
@@ -62,6 +65,7 @@ export function AgentReasoningPanel({
 	};
 
 	return (
+	<>
 		<aside
 			className="flex flex-col min-w-[340px] max-w-[420px] flex-[3] border-l border-border bg-bg-card overflow-hidden"
 			aria-label="Agent reasoning panel"
@@ -126,7 +130,7 @@ export function AgentReasoningPanel({
 				<ScrollArea className="flex-1 overflow-hidden">
 					<div className="p-4">
 						<RunSummary steps={steps} />
-						<AgentTimeline steps={steps} />
+						<AgentTimeline steps={steps} onRiskViewDetails={() => setRiskModalOpen(true)} />
 
 						{/* Stress test chart — shown after Risk Agent completes */}
 						{showChart && (
@@ -145,6 +149,15 @@ export function AgentReasoningPanel({
 				</div>
 			)}
 		</aside>
+
+		{riskStructuredOutput && (
+			<RiskAnalysisModal
+				open={riskModalOpen}
+				onOpenChange={setRiskModalOpen}
+				structuredOutput={riskStructuredOutput}
+			/>
+		)}
+	</>
 	);
 }
 

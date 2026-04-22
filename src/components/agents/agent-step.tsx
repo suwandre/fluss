@@ -25,6 +25,7 @@ interface AgentStepProps {
 	isStreaming?: boolean;
 	errorMessage?: string;
 	skipReason?: string;
+	onViewDetails?: () => void;
 }
 
 const STATUS_LABEL_MAP: Record<AgentStatus, string> = {
@@ -231,6 +232,7 @@ export function AgentStep({
 	isStreaming = false,
 	errorMessage,
 	skipReason,
+	onViewDetails,
 }: AgentStepProps) {
 	const [reasoningOpen, setReasoningOpen] = useState(false);
 	const reducedMotion = useReducedMotion();
@@ -242,6 +244,13 @@ export function AgentStep({
 
 	const showStructuredOutput = status === "done" || status === "running";
 	const hasReasoning = !!reasoning || isStreaming;
+
+	const isRiskDone = name.toLowerCase().includes("risk") && status === "done" && onViewDetails;
+
+	// Condensed summary for Risk Agent
+	const riskSummaryLine = isRiskDone && structuredOutput?.risk_summary && typeof structuredOutput.risk_summary === "string"
+		? (structuredOutput.risk_summary as string).slice(0, 80)
+		: null;
 
 	return (
 		<div data-slot="agent-step" className="flex gap-3">
@@ -266,19 +275,19 @@ export function AgentStep({
 
                               <span
                                         className={`text-[11px] font-mono font-medium px-2 py-px rounded-full ${BADGE_STYLES[status]}`}
-                                >
+                                  >
                                         {status === "running" && isStreaming
                                                 ? "Streaming…"
                                                 : STATUS_LABEL_MAP[status]}
-                                </span>
+                                  </span>
 
-                                {verdict && (
+                                  {verdict && (
                                         <span
                                                 className={`text-[10px] font-mono font-medium px-1.5 py-px rounded-full ${VERDICT_BADGE_STYLES[verdict.tier]}`}
                                         >
                                                 {verdict.label}
                                         </span>
-                                )}
+                                  )}
 
 					{durationMs != null && (
 						<span className="ml-auto text-[11px] font-mono text-text-dim">
@@ -301,40 +310,59 @@ export function AgentStep({
 					</div>
 				)}
 
-				{/* Structured output */}
-				{showStructuredOutput && structuredOutput && (
-					<div className="mt-1.5 space-y-0.5">
-						{Object.entries(structuredOutput).map(([key, value]) => {
-							const rendered = formatRiskField(key, value);
-							const tip = FIELD_TOOLTIPS[key];
-							return (
-								<div
-									key={key}
-									className="flex gap-1 items-start text-[12px] font-mono leading-snug"
-								>
-									{tip ? (
-										<Tooltip>
-											<TooltipTrigger>
-												<button
-													type="button"
-													className="shrink-0 mt-0.5 text-text-dim hover:text-text transition-colors cursor-help"
-												>
-													<InfoIcon className="size-3" />
-												</button>
-											</TooltipTrigger>
-											<TooltipContent side="right">
-												{tip}
-											</TooltipContent>
-										</Tooltip>
-									) : (
-										<span className="w-3 shrink-0" />
-									)}
-									<span className="text-text-dim shrink-0">{key}:</span>
-									<ExpandableValue value={rendered} />
-								</div>
-							);
-						})}
-					</div>
+				{/* Condensed Risk view: verdict + one-line summary + View Analysis button */}
+				{isRiskDone ? (
+					<>
+						{riskSummaryLine && (
+							<div className="mt-1 text-[12px] font-mono text-text leading-snug">
+								{riskSummaryLine}
+								{(structuredOutput?.risk_summary as string)?.length > 80 && "…"}
+							</div>
+						)}
+						<button
+							type="button"
+							onClick={onViewDetails}
+							className="mt-1.5 px-2 py-0.5 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors cursor-pointer"
+						>
+							View Analysis
+						</button>
+					</>
+				) : (
+					/* Structured output (non-Risk or not done) */
+					showStructuredOutput && structuredOutput && (
+						<div className="mt-1.5 space-y-0.5">
+							{Object.entries(structuredOutput).map(([key, value]) => {
+								const rendered = formatRiskField(key, value);
+								const tip = FIELD_TOOLTIPS[key];
+								return (
+									<div
+										key={key}
+										className="flex gap-1 items-start text-[12px] font-mono leading-snug"
+									>
+										{tip ? (
+											<Tooltip>
+												<TooltipTrigger>
+													<button
+														type="button"
+														className="shrink-0 mt-0.5 text-text-dim hover:text-text transition-colors cursor-help"
+													>
+														<InfoIcon className="size-3" />
+													</button>
+												</TooltipTrigger>
+												<TooltipContent side="right">
+													{tip}
+												</TooltipContent>
+											</Tooltip>
+										) : (
+											<span className="w-3 shrink-0" />
+										)}
+										<span className="text-text-dim shrink-0">{key}:</span>
+										<ExpandableValue value={rendered} />
+									</div>
+								);
+							})}
+						</div>
+					)
 				)}
 
 				{/* Collapsible reasoning */}

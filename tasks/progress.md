@@ -226,5 +226,22 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
-## Hotfix: Agent model fallback chains (4/20/2026)
-... (previous entries preserved)
+## UX Improvements UX-1 through UX-6 (4/22/2026)
+
+**Description:** Replace ReactFlow Controls with custom zoom buttons, move correlation legend, fix caveats formatting by adding Risk Analysis modal, condense sidebar for Risk Agent.
+
+**Summary:**
+- **UX-1:** Created `ZoomControls` component using `useReactFlow()` hook with ZoomIn/ZoomOut/Maximize icons from lucide-react. Bottom-left, stacked vertically, dark-themed icon buttons. Removed `<Controls />` from ReactFlow.
+- **UX-2:** Moved correlation legend from `bottom-3` to `bottom-16` so it sits above the zoom buttons.
+- **UX-3:** Risk Agent step now shows condensed view (verdict badge already in header + one-line risk_summary truncated to 80 chars + "View Analysis" button) instead of full structured output key-value list. Caveats still formatted as pills in the modal.
+- **UX-4+UX-5:** Created `risk-analysis-modal.tsx` using Dialog component. Contains: verdict banner (color-coded), VaR 95% metric card, caveat pills, risk summary bullet points (amber), improvement summary checklist (green), stress test count. Overrides `sm:max-w-lg` on DialogContent.
+- **UX-6:** Wired modal in `agent-reasoning-panel.tsx`: `riskModalOpen` state, `onRiskViewDetails` callback passed via `AgentTimeline` → `AgentStep` (only for step index 3). Modal receives `structuredOutput` from Risk step.
+
+**Verification:**
+- `bun tsc --noEmit` — 0 errors
+- `bun run build` — successful
+
+**Gotchas:**
+- `useReactFlow()` must be called inside a component rendered within `<ReactFlow>`, so `ZoomControls` is a separate child component placed inside `<ReactFlow>`.
+- `structuredOutput` might be undefined in the Risk condensed view, so optional chaining was needed for the truncation check.
+- `Dialog` component default is `sm:max-w-sm`; overridden with `className="sm:max-w-lg"` for the risk modal.
