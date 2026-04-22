@@ -28,6 +28,8 @@ interface IngestResult {
  * Fetch headlines from NewsAPI for a given query or set of tickers.
  * Uses the /v2/everything endpoint with keyword search.
  */
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
 async function fetchNewsHeadlines(
 	tickers?: string[],
 	query?: string,
@@ -52,27 +54,43 @@ async function fetchNewsHeadlines(
 	url.searchParams.set("pageSize", "50");
 	url.searchParams.set("apiKey", NEWS_API_KEY);
 
-	try {
-		const res = await fetch(url.toString());
-		if (!res.ok) {
-			const body = await res.text();
-			console.error(`[news-rag] NewsAPI error ${res.status}: ${body}`);
-			return [];
+	const maxRetries = 3;
+	let lastErr: unknown;
+
+	for (let attempt = 1; attempt <= maxRetries; attempt++) {
+		try {
+			const res = await fetch(url.toString(), {
+				signal: AbortSignal.timeout(10000),
+			});
+			if (!res.ok) {
+				const body = await res.text();
+				console.error(`[news-rag] NewsAPI error ${res.status}: ${body}`);
+				return [];
+			}
+			const data = (await res.json()) as {
+				status: string;
+				totalResults: number;
+				articles: NewsAPIArticle[];
+			};
+			return data.articles ?? [];
+		} catch (err) {
+			lastErr = err;
+			if (attempt < maxRetries) {
+				console.warn(
+					`[news-rag] NewsAPI fetch attempt ${attempt} failed, retrying in 1s...`,
+				);
+				await delay(1000);
+			} else {
+				console.error(
+					"[news-rag] Failed to fetch from NewsAPI after retries:",
+					lastErr instanceof Error ? lastErr.message : lastErr,
+				);
+			}
 		}
-		const data = (await res.json()) as {
-			status: string;
-			totalResults: number;
-			articles: NewsAPIArticle[];
-		};
-		return data.articles ?? [];
-	} catch (err) {
-		console.error(
-			"[news-rag] Failed to fetch from NewsAPI:",
-			err instanceof Error ? err.message : err,
-		);
-		return [];
 	}
+	return [];
 }
+
 
 // ── Ingestion ───────────────────────────────────────────────────────
 
@@ -116,8 +134,20 @@ export async function ingestNewsHeadlines(
 		return { ingested: 0, skipped: validArticles.length };
 
 	// Generate embeddings in batch
-	const texts = newArticles.map((a) => `${a.title}: ${a.description}`);
-	const embeddings = await generateEmbeddings(texts);
+	const texts = newArticles.map(
+		(a) => `${a.title}: ${a.description}`,
+	);
+	let embeddings: number[][] | undefined;
+	try {
+		embeddings = await generateEmbeddings(texts);
+	} catch (err) {
+		console.error(
+			"[news-rag] Failed to generate embeddings:",
+			err instanceof Error ? err.message : err,
+		);
+		return { ingested: 0, skipped: validArticles.length };
+	}
+	if (!embeddings) return { ingested: 0, skipped: validArticles.length };
 
 	// Insert into market_documents
 	let ingested = 0;
