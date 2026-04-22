@@ -138,5 +138,36 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
+---
+
+## Task — Fix three bugs: embeddings timeout, stress test date ranges, risk step portfolio re-normalization (4/22/2026)
+
+**Description:** User reported three issues: (1) news RAG embeddings failing with `fetch failed` even after news fetch fix, (2) every stress test returning identical -9.5% for all historical crypto scenarios, (3) Risk Agent rejecting a "high confidence" redesign because the VaR/stress were computed on a different portfolio than the one proposed.
+
+**Summary:**
+1. **Ollama embedding fetch timeout/retry** (`src/lib/market/embeddings.ts`):
+   - Added `fetchWithRetry` helper wrapping Ollama `/api/embeddings` and `/api/embed` calls.
+   - 3 retries with progressive backoff (1s, 2s, 3s) and `AbortSignal.timeout(15_000)`.
+   - Prevents indefinite hangs when Ollama is unreachable or cold-starting.
+
+2. **Crypto stress test historical date ranges** (`src/lib/market/coingecko.ts`, `src/lib/market/index.ts`):
+   - `getCryptoHistoricalOHLCV` expanded signature with optional `from`/`to` unix timestamps.
+   - Uses CoinGecko `/market_chart/range?from=X&to=Y` when dates provided, instead of rolling `/market_chart?days=N`.
+   - `index.ts:getHistory` now passes `period1`/`period2` to crypto path so historical scenarios (Terra/LUNA, FTX, COVID, etc.) fetch actual period-specific data instead of the same recent 30-day window.
+
+3. **Risk step proposed positions** (`src/lib/orchestrator/workflow.ts`):
+   - Old `proposedPositions` only iterated redesign `actions`, silently dropping any current holdings not mentioned.
+   - Fixed to clone current positions into a map, apply redesign actions as deltas, keep untouched holdings, and normalize weights across the FULL portfolio.
+   - This ensures the VaR95 and stress-test results reflect the actual portfolio the Redesign Agent intended.
+
+**Verification:**
+- `bun tsc --noEmit` passes clean (0 errors).
+- Reviewer flagged dead variable `newPrices` (line 429), removed.
+
+**Gotchas:**
+- `newPrices` set was leftover from original price-fetch loop, now removed.
+
+---
+
 ## Hotfix: Agent model fallback chains (4/20/2026)
 ... (previous entries preserved)

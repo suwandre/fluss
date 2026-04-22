@@ -12,11 +12,33 @@ function checkOllamaError(res: Response): never {
 	);
 }
 
+async function fetchWithRetry(url: string, body: object): Promise<Response> {
+	let lastError: Error | undefined;
+
+	for (let attempt = 1; attempt <= 3; attempt++) {
+		try {
+			const res = await fetch(url, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+				signal: AbortSignal.timeout(15_000),
+			});
+			return res;
+		} catch (err) {
+			lastError = err instanceof Error ? err : new Error(String(err));
+			if (attempt < 3) {
+				await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+			}
+		}
+	}
+
+	throw lastError;
+}
+
 export async function generateEmbedding(text: string): Promise<number[]> {
-	const res = await fetch(`${OLLAMA_BASE_URL}/api/embeddings`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ model: OLLAMA_EMBEDDING_MODEL, prompt: text }),
+	const res = await fetchWithRetry(`${OLLAMA_BASE_URL}/api/embeddings`, {
+		model: OLLAMA_EMBEDDING_MODEL,
+		prompt: text,
 	});
 
 	if (!res.ok) checkOllamaError(res);
@@ -35,13 +57,9 @@ export async function generateEmbeddings(
 ): Promise<number[][]> {
 	if (texts.length === 0) return [];
 
-	const res = await fetch(`${OLLAMA_BASE_URL}/api/embed`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			model: OLLAMA_EMBEDDING_MODEL,
-			input: texts,
-		}),
+	const res = await fetchWithRetry(`${OLLAMA_BASE_URL}/api/embed`, {
+		model: OLLAMA_EMBEDDING_MODEL,
+		input: texts,
 	});
 
 	if (!res.ok) checkOllamaError(res);

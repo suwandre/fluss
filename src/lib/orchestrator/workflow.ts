@@ -414,12 +414,18 @@ const riskStep = createStep({
     const proposedPositions: { ticker: string; weight: number; assetClass: string; quantity: number }[] = [];
 
     if (actions && actions.length > 0 && totalValue > 0) {
+      // 1. Clone current positions into a map keyed by uppercase ticker
+      const proposedMap = new Map<string, { ticker: string; weight: number; assetClass: string; quantity: number }>();
+      for (const pos of currentPositions) {
+        proposedMap.set(pos.ticker.toUpperCase(), { ...pos });
+      }
+
+      // 2. Identify new tickers and fetch prices (reuse existing logic)
       const newTickers = actions
         .map((a) => a.ticker)
         .filter(
           (t) => !portfolioData.some((d) => d.ticker.toUpperCase() === t.toUpperCase()),
         );
-      const newPrices = new Set(newTickers);
       const newPriceMap = newTickers.length > 0
         ? await getBatchPrices(
             newTickers.map((t) => ({
@@ -429,10 +435,18 @@ const riskStep = createStep({
           )
         : new Map<string, { price: number | null }>();
 
+      // 3. Apply redesign actions as deltas to the map
       for (const action of actions) {
-        const dollarValue = (action.target_pct / 100) * totalValue;
+        const upperTicker = action.ticker.toUpperCase();
+
+        if (action.action === "remove") {
+          proposedMap.delete(upperTicker);
+          continue;
+        }
+
+        const targetWeight = action.target_pct / 100;
         const existing = portfolioData.find(
-          (d) => d.ticker.toUpperCase() === action.ticker.toUpperCase(),
+          (d) => d.ticker.toUpperCase() === upperTicker,
         );
         let currentPrice = existing?.currentPrice ?? null;
         if (currentPrice == null) {
@@ -447,14 +461,30 @@ const riskStep = createStep({
           );
           continue;
         }
-        const quantity = dollarValue / currentPrice;
-        proposedPositions.push({
+        const quantity = (targetWeight * totalValue) / currentPrice;
+        proposedMap.set(upperTicker, {
           ticker: action.ticker,
-          weight: action.target_pct / 100,
+          weight: targetWeight,
           assetClass: existing?.assetClass ?? "crypto",
           quantity,
         });
       }
+
+      // 4. Compute total weight of remaining positions
+      let totalWeight = 0;
+      for (const pos of proposedMap.values()) {
+        totalWeight += pos.weight;
+      }
+
+      // 5. Normalize weights to sum to 1.0
+      if (totalWeight > 0) {
+        for (const pos of proposedMap.values()) {
+          pos.weight = pos.weight / totalWeight;
+        }
+      }
+
+      // 6. Convert map back to array
+      proposedPositions.push(...Array.from(proposedMap.values()));
     }
 
     // ── Pre-compute stress + VaR for BOTH portfolios ──────────────────────

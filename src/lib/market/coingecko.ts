@@ -157,17 +157,30 @@ export async function getBatchCryptoPriceSnapshots(tickers: string[]): Promise<M
 
 export async function getCryptoHistoricalOHLCV(
   ticker: string,
-  days: 1 | 7 | 14 | 30 | 90 | 180 | 365 = 30,
+  days?: 1 | 7 | 14 | 30 | 90 | 180 | 365,
+  from?: number,
+  to?: number,
 ): Promise<OHLCVBar[] | null> {
   const coinId = tickerToId(ticker);
   if (!coinId) return null;
 
-  const params = new URLSearchParams({
-    vs_currency: "usd",
-    days: String(days),
-  });
+  let url: string;
+  if (from != null && to != null) {
+    const params = new URLSearchParams({
+      vs_currency: "usd",
+      from: String(from),
+      to: String(to),
+    });
+    url = `${BASE_URL}/coins/${coinId}/market_chart/range?${params}`;
+  } else {
+    const params = new URLSearchParams({
+      vs_currency: "usd",
+      days: String(days ?? 30),
+    });
+    url = `${BASE_URL}/coins/${coinId}/market_chart?${params}`;
+  }
 
-  const res = await fetchWithTimeout(`${BASE_URL}/coins/${coinId}/market_chart?${params}`, {
+  const res = await fetchWithTimeout(url, {
     headers: buildHeaders(),
   });
 
