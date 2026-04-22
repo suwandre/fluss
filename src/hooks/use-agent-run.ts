@@ -65,6 +65,9 @@ function buildStructuredOutput(
 				scenarios: Array.isArray(output.stress_results)
 					? output.stress_results.length
 					: 0,
+				caveats: output.caveats,
+				risk_summary: output.risk_summary,
+				improvement_summary: output.improvement_summary,
 			};
 		default:
 			return undefined;

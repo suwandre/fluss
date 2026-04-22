@@ -140,6 +140,9 @@ function formatRiskField(key: string, value: unknown): string {
 	if (key === "stress_results" && Array.isArray(value)) {
 		return `${value.length} historical stress scenarios tested`;
 	}
+	if (key === "caveats" && Array.isArray(value)) {
+		return value.join(" • ");
+	}
 	return renderValue(value);
 }
 
