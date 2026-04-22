@@ -17,9 +17,14 @@ async function fetchWithRetry(url: string, body: object): Promise<Response> {
 
 	for (let attempt = 1; attempt <= 3; attempt++) {
 		try {
+			const headers: Record<string, string> = { "Content-Type": "application/json" };
+			if (process.env.OLLAMA_API_KEY) {
+				headers["Authorization"] = `Bearer ${process.env.OLLAMA_API_KEY}`;
+			}
+
 			const res = await fetch(url, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers,
 				body: JSON.stringify(body),
 				signal: AbortSignal.timeout(15_000),
 			});

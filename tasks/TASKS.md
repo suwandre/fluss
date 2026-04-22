@@ -225,4 +225,4 @@ _Total: ~70 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] Risk Agent prompt update: evaluate proposed vs current, new verdict enum + `improvement_summary`
 - [x] Market data fetching: always use Yahoo Finance for historical data (append -USD for crypto)
 - [x] Risk Agent tools: throw explicit errors on missing historical data
-- [x] Risk Agent prompt: value diversification and concentration risk reduction
+- [x] Add Ollama cloud API key support, update Risk Agent models, add quantitative diversification rules

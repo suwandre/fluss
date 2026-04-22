@@ -1,5 +1,21 @@
 # Progress Log
 
+## Task — Fix Ollama Authorization & Risk Agent Logic (4/22/2026)
+
+**Description:** The user uses Ollama Cloud, which requires an Authorization header. Also needed to update `riskAgent` models, compute a `concentration_score` (sum of squared weights) in `computeVar`, and add a hard quantitative rule for the riskAgent instructions regarding diversification.
+
+**Summary:**
+- `src/lib/market/embeddings.ts`: Added `OLLAMA_API_KEY` environment variable support to `fetchWithRetry`, injecting `Authorization: Bearer <key>` into headers.
+- `src/lib/agents/risk.ts`: 
+  - Changed `riskAgent` models to `"ollama-cloud/kimi-k2.6:cloud"` and `"ollama-cloud/glm-5.1:cloud"`.
+  - Updated `computeVar` to calculate `concentration_score` using `sum(weight * weight)` and added it to the `outputSchema`.
+  - Updated the `riskAgent` instructions to mandate an `approved_with_caveats` verdict if the `concentration_score` improves and VaR does not increase by >20%, rejecting only if catastrophic risks emerge or VaR increases by >20% without concentration improvement.
+
+**Gotchas:**
+- None. Build and typecheck pass clean.
+
+---
+
 ## Task — Fix Risk Agent insufficient historical data crash (4/22/2026)
 
 **Description:** The `runHistoricalStressTest` and `computeVar` tools threw a hard error when historical data was insufficient (e.g. testing BTC during 2008 GFC), causing the workflow step to crash. Modified them to catch this condition and return a descriptive error object instead, allowing the agent to process the result gracefully.

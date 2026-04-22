@@ -277,6 +277,7 @@ export const computeVar = createTool({
 		portfolio_value: z.number(),
 		confidence_level: z.number(),
 		lookback_days: z.number(),
+		concentration_score: z.number(),
 		error: z.string().optional(),
 	}),
 	execute: async (input) => {
@@ -310,6 +311,7 @@ export const computeVar = createTool({
 					portfolio_value: 0,
 					confidence_level: confidence,
 					lookback_days: lookbackDays,
+					concentration_score: 0,
 				};
 			}
 
@@ -334,6 +336,7 @@ export const computeVar = createTool({
 		}
 
 		// Fetch historical returns for all holdings
+		const concentration_score = positions.reduce((sum, p) => sum + p.weight * p.weight, 0);
 		const returnsByTicker = new Map<string, number[]>();
 		let errorMessage: string | undefined;
 
@@ -368,6 +371,7 @@ export const computeVar = createTool({
 				portfolio_value: Math.round(totalValue * 100) / 100,
 				confidence_level: confidence,
 				lookback_days: lookbackDays,
+				concentration_score,
 				error: errorMessage,
 			};
 		}
@@ -384,6 +388,7 @@ export const computeVar = createTool({
 				portfolio_value: Math.round(totalValue * 100) / 100,
 				confidence_level: confidence,
 				lookback_days: lookbackDays,
+				concentration_score,
 			};
 		}
 
@@ -410,6 +415,7 @@ export const computeVar = createTool({
 			portfolio_value: Math.round(totalValue * 100) / 100,
 			confidence_level: confidence,
 			lookback_days: lookbackDays,
+			concentration_score,
 		};
 		} catch (error: any) {
 			return {
@@ -418,6 +424,7 @@ export const computeVar = createTool({
 				portfolio_value: 0,
 				confidence_level: input.confidenceLevel ?? 0.95,
 				lookback_days: input.days ?? 252,
+				concentration_score: 0,
 				error: `Unexpected error during VaR computation: ${error.message}`,
 			};
 		}
@@ -503,6 +510,8 @@ Verdict rules (comparative, NOT absolute thresholds):
 - "approved_with_caveats" — proposed is slightly better or mixed (not worse overall), OR significantly improves diversification (reduces single-asset concentration risk), even if VaR/drawdown numbers are similar or slightly worse.
 - "rejected" — proposed is WORSE than current in key metrics, OR introduces new catastrophic risk not present in current
 
+If the proposed portfolio's concentration_score is lower than the current portfolio's (better diversification), and VaR does not increase by more than 20% relative to the current VaR, you MUST output approved_with_caveats. ONLY reject if VaR increases by >20% with no concentration improvement, or if it introduces new catastrophic risks.
+
 CRITICAL: Value diversification. Lean towards "approved_with_caveats" if a proposed portfolio significantly reduces single-asset concentration risk (e.g., moving from 90% BTC to a balanced portfolio), even if the historical VaR or drawdown numbers don't show a massive mathematical improvement.
 
 CRITICAL: For crypto portfolios, absolute drawdowns up to 70% in crypto-native crashes are acceptable IF the current portfolio showed even worse. The delta matters, not perfection.
@@ -513,8 +522,8 @@ When prior run context is available, compare current stress test results and VaR
 
 Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.`,
 	model: [
-		{ model: "ollama-cloud/minimax-m2.5:cloud", maxRetries: 2 },
-		{ model: "ollama-cloud/qwen3.5:cloud", maxRetries: 2 },
+		{ model: "ollama-cloud/kimi-k2.6:cloud", maxRetries: 2 },
+		{ model: "ollama-cloud/glm-5.1:cloud", maxRetries: 2 },
 	],
 	tools: { runHistoricalStressTest, computeVar, getMacroContext },
 	memory,
