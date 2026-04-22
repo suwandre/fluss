@@ -5,7 +5,7 @@ const OLLAMA_EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL || "nomic-embe
 
 function checkOllamaError(res: Response): never {
 	console.error(
-		`[embeddings] Ollama request failed: ${res.status} ${res.statusText}`,
+		`[embeddings] Ollama request failed: ${res.status} ${res.statusText} (Auth sent: ${!!process.env.OLLAMA_API_KEY})`,
 	);
 	throw new Error(
 		"Embedding generation failed. Check your local Ollama server and model.",
@@ -20,6 +20,10 @@ async function fetchWithRetry(url: string, body: object): Promise<Response> {
 			const headers: Record<string, string> = { "Content-Type": "application/json" };
 			if (process.env.OLLAMA_API_KEY) {
 				headers["Authorization"] = `Bearer ${process.env.OLLAMA_API_KEY}`;
+			}
+
+			if (!process.env.OLLAMA_API_KEY && OLLAMA_BASE_URL !== "http://localhost:11434") {
+				console.warn("[embeddings] Missing OLLAMA_API_KEY for remote URL");
 			}
 
 			const res = await fetch(url, {
