@@ -1,5 +1,18 @@
 # Progress Log
 
+## Task — Show Risk Agent outputs in UI (4/22/2026)
+
+**Description:** Expose `caveats`, `risk_summary`, and `improvement_summary` in the Agent UI for the Risk Agent step. Gracefully format the `caveats` array.
+
+**Summary:**
+- `src/hooks/use-agent-run.ts`: Added `caveats`, `risk_summary`, and `improvement_summary` properties to `buildStructuredOutput` risk case.
+- `src/components/agents/agent-step.tsx`: Added array formatting for `caveats` in `formatRiskField` (joined with ` • `).
+
+**Gotchas:**
+- None. Built and typechecked successfully.
+
+---
+
 ## Task — Fix Ollama Authorization & Risk Agent Logic (4/22/2026)
 
 **Description:** The user uses Ollama Cloud, which requires an Authorization header. Also needed to update `riskAgent` models, compute a `concentration_score` (sum of squared weights) in `computeVar`, and add a hard quantitative rule for the riskAgent instructions regarding diversification.
