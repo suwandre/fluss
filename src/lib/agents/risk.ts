@@ -123,7 +123,8 @@ export const runHistoricalStressTest = createTool({
 		error: z.string().optional(),
 	}),
 	execute: async (input) => {
-		let positions: { ticker: string; weight: number; assetClass: string }[] = [];
+		try {
+			let positions: { ticker: string; weight: number; assetClass: string }[] = [];
 
 		if (input.positions_override && input.positions_override.length > 0) {
 			const totalWeight = input.positions_override.reduce(
@@ -237,6 +238,9 @@ export const runHistoricalStressTest = createTool({
 		}
 
 		return { stress_results: stressResults };
+		} catch (error: any) {
+			return { stress_results: [], error: `Unexpected error during stress test: ${error.message}` };
+		}
 	},
 });
 
@@ -276,6 +280,7 @@ export const computeVar = createTool({
 		error: z.string().optional(),
 	}),
 	execute: async (input) => {
+		try {
 		const confidence = input.confidenceLevel ?? 0.95;
 		const lookbackDays = input.days ?? 252;
 
@@ -406,6 +411,16 @@ export const computeVar = createTool({
 			confidence_level: confidence,
 			lookback_days: lookbackDays,
 		};
+		} catch (error: any) {
+			return {
+				var_pct: 0,
+				var_dollar: 0,
+				portfolio_value: 0,
+				confidence_level: input.confidenceLevel ?? 0.95,
+				lookback_days: input.days ?? 252,
+				error: `Unexpected error during VaR computation: ${error.message}`,
+			};
+		}
 	},
 });
 
