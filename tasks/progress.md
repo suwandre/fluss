@@ -1,5 +1,19 @@
 # Progress Log
 
+## Task — Fix Risk Agent insufficient historical data crash (4/22/2026)
+
+**Description:** The `runHistoricalStressTest` and `computeVar` tools threw a hard error when historical data was insufficient (e.g. testing BTC during 2008 GFC), causing the workflow step to crash. Modified them to catch this condition and return a descriptive error object instead, allowing the agent to process the result gracefully.
+
+**Summary:**
+- `src/lib/agents/risk.ts`: Updated `runHistoricalStressTest` and `computeVar` output schemas to include an optional `error: z.string()`.
+- `src/lib/agents/risk.ts`: Changed the missing data check in `runHistoricalStressTest` to return an object with the error message instead of throwing an `Error`.
+- `src/lib/agents/risk.ts`: Changed the missing data check in `computeVar` within its `Promise.all` mapping to set an `errorMessage` flag, and early-return an error object.
+
+**Gotchas:**
+- Had to manage `Promise.all` inside `computeVar` carefully with a scoped `errorMessage` variable to prevent multiple resolutions and properly surface the error to the agent. Build and typecheck pass cleanly.
+
+---
+
 ## Task — Fix market data fetching and risk agent evaluation logic (4/22/2026)
 
 **Description:** Risk agent stress tests silently swallowed missing historical data. CoinGecko limits history to 365 days on free tier, which breaks historical scenarios. Agent rejected portfolios despite massive concentration risk reductions.

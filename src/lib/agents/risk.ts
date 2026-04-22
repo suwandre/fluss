@@ -120,6 +120,7 @@ export const runHistoricalStressTest = createTool({
 				recovery_days: z.number().nullable(),
 			}),
 		),
+		error: z.string().optional(),
 	}),
 	execute: async (input) => {
 		let positions: { ticker: string; weight: number; assetClass: string }[] = [];
@@ -204,7 +205,10 @@ export const runHistoricalStressTest = createTool({
 				});
 
 				if (!history || history.length < 2) {
-					throw new Error(`Insufficient historical data for ${pos.ticker} during scenario ${scenario.label}`);
+					return {
+						stress_results: stressResults,
+						error: `Insufficient historical data for ${pos.ticker} during scenario ${scenario.label}. Asset likely did not exist.`,
+					};
 				}
 
 				// Find max drawdown during period
@@ -269,6 +273,7 @@ export const computeVar = createTool({
 		portfolio_value: z.number(),
 		confidence_level: z.number(),
 		lookback_days: z.number(),
+		error: z.string().optional(),
 	}),
 	execute: async (input) => {
 		const confidence = input.confidenceLevel ?? 0.95;
@@ -325,15 +330,19 @@ export const computeVar = createTool({
 
 		// Fetch historical returns for all holdings
 		const returnsByTicker = new Map<string, number[]>();
+		let errorMessage: string | undefined;
+
 		await Promise.all(
 			positions.map(async (pos) => {
+				if (errorMessage) return;
 				const history = await getHistory(
 					pos.ticker,
 					pos.assetClass as AssetClass,
 					{ days: lookbackDays },
 				);
 				if (!history || history.length < 2) {
-					throw new Error(`Insufficient historical data for ${pos.ticker} to compute VaR`);
+					errorMessage = `Insufficient historical data for ${pos.ticker} to compute VaR. Asset likely did not exist.`;
+					return;
 				}
 				const dailyReturns: number[] = [];
 				for (let i = 1; i < history.length; i++) {
@@ -346,6 +355,17 @@ export const computeVar = createTool({
 				returnsByTicker.set(pos.ticker, dailyReturns);
 			}),
 		);
+
+		if (errorMessage) {
+			return {
+				var_pct: 0,
+				var_dollar: 0,
+				portfolio_value: Math.round(totalValue * 100) / 100,
+				confidence_level: confidence,
+				lookback_days: lookbackDays,
+				error: errorMessage,
+			};
+		}
 
 		// Build weighted portfolio returns
 		const minLen = Math.min(
