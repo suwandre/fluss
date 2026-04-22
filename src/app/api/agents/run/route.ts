@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
             await safeWrite({
               type: "data-workflow-event" as const,
-              data: value,
+              data: JSON.parse(JSON.stringify(value)),
             } as Parameters<typeof writer.write>[0]);
           }
         } finally {
