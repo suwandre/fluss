@@ -532,7 +532,8 @@ Verdict rules (strict comparative hierarchy):
 
 CRITICAL: If the proposed portfolio's VaR is higher than the current portfolio's VaR, you MUST output "rejected" regardless of how much concentration improved.
 CRITICAL: If the proposed portfolio's average drawdown across stress scenarios is higher than the current average, you MUST output "rejected" regardless of concentration improvement.
-CRITICAL: improvement_summary MUST explicitly compare current vs proposed with exact numbers (e.g. "Current avg drawdown -29% → Proposed -15%, an improvement of 14pp"). Do not skip this.
+CRITICAL: Double check your math! If a metric goes from 33.62% to 31.05%, that is a DECREASE (improvement), NOT an increase. In \`risk_summary\` and \`improvement_summary\`, correctly state which metrics improved and which worsened. If any risk metric worsened, explicitly say that this increase in risk is a dealbreaker.
+CRITICAL: improvement_summary MUST explicitly compare current vs proposed with exact numbers (e.g. "Current avg drawdown 29% → Proposed 15%, an improvement of 14pp"). Do not skip this.
 CRITICAL: risk_summary should be 2-3 sentences a portfolio manager can act on. Be honest if the proposal is worse.
 
 When prior run context is available, compare current stress test results and VaR to previous assessments. Note if risk has increased or decreased.

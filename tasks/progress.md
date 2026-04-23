@@ -368,3 +368,17 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 - `parseDeltas` and `DeltaCards` fully removed; no regressions because `KeyMetricsComparison` is self-contained.
 
 ---
+
+## Task — Fix VaR 95% mapping and Risk Agent rejection logic (4/24/2026)
+
+**Description:** The UI showed "N/A" for VaR 95% because `use-agent-run.ts` was mapping it as `var95` instead of `var_95`. Also, the Risk Agent synthetic auto-rejection gave misleading messages when metrics improved (e.g. "average drawdown increased from 33.62% to 31.05%").
+
+**Summary:**
+- `src/hooks/use-agent-run.ts`: Renamed `var95` to `var_95` in `buildStructuredOutput` risk case.
+- `src/lib/orchestrator/workflow.ts`: Removed the hardcoded auto-rejection gate from `riskStep`. Updated `riskPrompt` to instruct the LLM to output "rejected" if VaR or average drawdown increases, and to correctly identify directional changes (e.g. decrease vs increase) in `risk_summary` and `improvement_summary`.
+- `src/lib/agents/risk.ts`: Updated instructions to explicitly warn the LLM about directional math (e.g. 33.62% to 31.05% is a decrease/improvement, not an increase).
+
+**Gotchas:**
+- None. Build and typecheck pass clean.
+
+---

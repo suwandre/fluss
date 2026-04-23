@@ -517,27 +517,6 @@ const riskStep = createStep({
     const currentMaxDrawdown = currentDrawdowns.length > 0 ? Math.max(...currentDrawdowns) : 0;
     const proposedMaxDrawdown = proposedDrawdowns.length > 0 ? Math.max(...proposedDrawdowns) : 0;
 
-    // Hard auto-rejection gate: performance-first, diversification secondary
-    if (proposedVaR.var_pct > currentVaR.var_pct || proposedAvgDrawdown > currentAvgDrawdown) {
-      const syntheticResult = {
-        stress_results: proposedStress.stress_results,
-        var_95: proposedVaR.var_pct,
-        verdict: "rejected",
-        caveats: ["Proposed portfolio increases VaR and/or average drawdown. Auto-rejected because performance worsens."],
-        risk_summary: `The proposed rebalancing worsens risk-adjusted performance. VaR increased from ${currentVaR.var_pct}% to ${proposedVaR.var_pct}%, and average drawdown increased from ${currentAvgDrawdown.toFixed(2)}% to ${proposedAvgDrawdown.toFixed(2)}%. No action recommended.`,
-        improvement_summary: "",
-        scenario_comparisons: scenarioComparisons,
-        current_avg_drawdown: currentAvgDrawdown,
-        proposed_avg_drawdown: proposedAvgDrawdown,
-        current_max_drawdown: currentMaxDrawdown,
-        proposed_max_drawdown: proposedMaxDrawdown,
-        current_concentration_score: currentVaR.concentration_score,
-        proposed_concentration_score: proposedVaR.concentration_score,
-        current_var_95: currentVaR.var_pct,
-      } as any;
-      return { ...inputData, risk: syntheticResult };
-    }
-
     const riskPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
@@ -574,9 +553,10 @@ const riskStep = createStep({
       "",
       "Rules:",
       '- "approved" — proposed is meaningfully better: lower VaR, lower avg drawdown, and concentration did not worsen.',
-      '- "rejected" — any key risk metric worsens: higher VaR, higher avg/max drawdown, or higher concentration. NO overrides for diversification alone.',
+      '- "rejected" — any key risk metric worsens: higher VaR, higher avg/max drawdown, or higher concentration. NO overrides for diversification alone. If VaR increases OR average drawdown increases, you MUST output "rejected".',
       '- "approved_with_caveats" — reserved for neutral risk (flat metrics) with non-risk operational benefits. NOT for diversification at cost of performance.',
       "",
+      "CRITICAL: In your `risk_summary` and `improvement_summary`, you must correctly identify which metrics improved (e.g., drawdown decreasing) and which worsened (e.g., VaR increasing). Explain that any worsening of a risk metric makes it a dealbreaker despite other improvements.",
       "improvement_summary MUST explicitly compare current vs proposed top-level metrics ONLY (VaR, concentration, max drawdown across all scenarios). Do NOT list individual scenario-by-scenario drawdowns here — reserve that for the Caveats section.",
       "",
       "Provide your verdict, caveats, risk_summary, and improvement_summary based ONLY on the pre-computed numbers above.",

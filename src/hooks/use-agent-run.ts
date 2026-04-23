@@ -61,7 +61,7 @@ function buildStructuredOutput(
 		case "risk":
 			return {
 				verdict: output.verdict,
-				var95:
+				var_95:
 					typeof output.var_95 === "number"
 						? output.var_95
 						: typeof output.var_95 === "string"

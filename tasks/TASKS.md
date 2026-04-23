@@ -264,3 +264,4 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **UX-4** Add "View Analysis" button to Risk Agent step in sidebar — opens modal with full details.
 - [x] **UX-5** Create `risk-analysis-modal.tsx` using existing `Dialog` component: verdict banner, VaR 95% metric, caveat pills, improvement checklist, risk summary bullets, stress scenario count.
 - [x] **UX-6** Condense Risk Agent step display in sidebar: show verdict badge + one-line summary only, move detailed structured output to modal.
+- [x] Fix VaR 95% mapping and Risk Agent rejection logic (4/24/2026)
