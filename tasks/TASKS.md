@@ -210,13 +210,17 @@
 
 - [x] **UX-9** Redesign `risk-analysis-modal.tsx` from text-heavy layout to visual dashboard: SVG VaR gauge with animated arc + needle, horizontal stress-scenario bars with recovery badges, Before/After delta cards parsed from improvement text, severity-colored risk factor cards, scrollable caveat pills. No new dependencies.
 
+## UX Improvements UX-12 (4/23/2026)
+
+- [x] **UX-12** Override `var_95` with pre-computed `proposedVaR.var_pct` in workflow `riskStep` to prevent LLM from echoing 0 in JSON while writing correct values in prose. Added UI gauge guard: if `var_95 === 0` but stress results exist, render "N/A" instead of "0.00%".
+
 ## UX Improvements UX-11 (4/23/2026)
 
 - [x] **UX-11** Structured stress scenario comparison in Risk Analysis Modal.
 
 ## UX Improvements UX-10 (4/23/2026)
 
-- [x] **UX-10** Redesign Portfolio Changes delta cards in `risk-analysis-modal.tsx` — two-column layout with subtle vertical divider, "Current" and "Proposed" labels, no arrow icon. Keep border + bg + padding. `bun run build` clean.
+- [x] **UX-10** Redesign Portfolio Changes delta cards in `risk-analysis-modal.tsx` — two-column layout with subtle vertical divider, "Current" and "Proposed" labels, no arrow icon. Keep border + bg + padding.
 
 ---
 

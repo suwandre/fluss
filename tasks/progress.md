@@ -293,6 +293,23 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
+## UX-12 — Override var_95 with pre-computed proposedVaR (4/23/2026)
+
+**Description:** LLM sometimes echoes `0` in JSON schema for `var_95` while writing correct value (e.g. 3.78%) in prose. Workflow already pre-computes accurate `proposedVaR.var_pct`. UI gauge showing 0.00% is misleading when caveats reference real numbers.
+
+**Summary:**
+- `src/lib/orchestrator/workflow.ts` (`riskStep`): After agent returns, override `riskResultObj.var_95 = proposedVaR.var_pct` if `proposedVaR.var_pct` is a number. Ensures structured JSON field matches pre-computed reality.
+- `src/components/agents/risk-analysis-modal.tsx` (`VaRGauge`): Added `null` guard. If computed `var95 === 0` and stress results exist, treat as `null` and render "N/A" instead of "0.00%". Added full `null` JSX branch with muted title text.
+
+**Verification:**
+- `npx tsc --noEmit` — clean (0 errors).
+- `npx next build` — clean.
+
+**Gotchas:**
+- None.
+
+---
+
 ## UX-11 — Structured stress scenario comparison in Risk Analysis Modal (4/23/2026)
 
 **Description:** Risk modal previously showed only proposed stress bars. No comparison vs current portfolio per scenario. `improvement_summary` was regex-parsed into unreadable blocks. Fix: compute structured `scenario_comparisons` in workflow, expose in schema, render as table in UI.
