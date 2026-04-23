@@ -1,11 +1,13 @@
 "use client";
 
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+interface StressResult {
+	scenario: string;
+	label: string;
+	simulated_drawdown_pct: number;
+	recovery_days: number | null;
+}
 
 interface RiskAnalysisModalProps {
 	open: boolean;
@@ -21,7 +23,7 @@ function getVerdictConfig(verdict: string) {
 			bg: "bg-[rgba(34,197,94,0.12)]",
 			border: "border-green",
 			text: "text-green",
-			icon: "✅",
+			icon: "\u2705",
 		};
 	}
 	if (lower === "approved_with_caveats" || lower === "approve_with_caveats") {
@@ -30,7 +32,7 @@ function getVerdictConfig(verdict: string) {
 			bg: "bg-[rgba(245,158,11,0.12)]",
 			border: "border-amber",
 			text: "text-amber",
-			icon: "⚠️",
+			icon: "\u26A0\uFE0F",
 		};
 	}
 	return {
@@ -38,7 +40,7 @@ function getVerdictConfig(verdict: string) {
 		bg: "bg-[rgba(239,68,68,0.12)]",
 		border: "border-red",
 		text: "text-red",
-		icon: "❌",
+		icon: "\u274C",
 	};
 }
 
@@ -49,33 +51,232 @@ function splitSentences(text: string): string[] {
 	return sentences;
 }
 
+/* ------------------------------------------------------------------ */
+/*  VaR Gauge — SVG semi-circle                                        */
+/* ------------------------------------------------------------------ */
+
+const GAUGE_R = 48;
+const GAUGE_CENTER_X = 60;
+const GAUGE_CENTER_Y = 60;
+const GAUGE_STROKE = 8;
+const GAUGE_MAX_VAL = 30; // 0–30% arc
+
+function gaugeArcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
+	const start = polar(cx, cy, r, endDeg);
+	const end = polar(cx, cy, r, startDeg);
+	const largeArc = endDeg - startDeg <= 180 ? 0 : 1;
+	return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
+}
+
+function polar(cx: number, cy: number, r: number, angleDeg: number) {
+	const rad = (Math.PI / 180) * angleDeg;
+	return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function VaRGauge({ value }: { value: number | null }) {
+	const val = value ?? 0;
+	const clamped = Math.min(Math.max(val, 0), GAUGE_MAX_VAL);
+	const pct = clamped / GAUGE_MAX_VAL;
+	const endAngle = 180 - pct * 180; // 180° (left) → 0° (right)
+
+	const color = val > 15 ? "var(--red)" : val > 8 ? "var(--amber)" : "var(--teal)";
+
+	const arcPath = gaugeArcPath(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R, endAngle, 180);
+
+	return (
+		<div className="flex flex-col items-center justify-center">
+			<svg
+				viewBox="0 0 120 75"
+				className="w-40 h-auto"
+			>
+				{/* background track */}
+				<path
+					d={gaugeArcPath(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R, 0, 180)}
+					fill="none"
+					stroke="var(--bg-elevated)"
+					strokeWidth={GAUGE_STROKE}
+					strokeLinecap="round"
+				/>
+				{/* animated fill */}
+				<path
+					d={arcPath}
+					fill="none"
+					stroke={color}
+					strokeWidth={GAUGE_STROKE}
+					strokeLinecap="round"
+					className="transition-all duration-1000 ease-out"
+				/>
+				{/* needle */}
+				<line
+					x1={GAUGE_CENTER_X}
+					y1={GAUGE_CENTER_Y}
+					x2={polar(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R - 2, endAngle).x}
+					y2={polar(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R - 2, endAngle).y}
+					stroke="var(--text)"
+					strokeWidth={2}
+					strokeLinecap="round"
+					className="transition-all duration-1000 ease-out"
+				/>
+				{/* center pivot dot */}
+				<circle cx={GAUGE_CENTER_X} cy={GAUGE_CENTER_Y} r={3.5} fill="var(--text)" />
+			</svg>
+
+			<div className="text-center -mt-1">
+				<div className="text-3xl font-mono font-bold text-text">
+					{val.toFixed(2)}%
+				</div>
+				<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mt-0.5">
+					Max Daily Loss (95%)
+				</div>
+				<div className="text-[11px] text-text-muted mt-1">
+					{val > 15
+						? "High risk — consider diversification"
+						: val > 8
+							? "Elevated — monitor closely"
+							: "Within acceptable range"}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Stress Scenario Bars (HTML flex, no external chart lib)            */
+/* ------------------------------------------------------------------ */
+
+function StressBars({ data }: { data: StressResult[] }) {
+	const maxDrawdown = Math.max(...data.map((d) => Math.abs(d.simulated_drawdown_pct || 0)), 1);
+
+	return (
+		<div className="space-y-3">
+			{data.map((res, i) => {
+				const drawdown = Math.abs(res.simulated_drawdown_pct || 0);
+				const isSevere = drawdown > 15;
+				const barWidth = (drawdown / maxDrawdown) * 100;
+				const recovery = res.recovery_days != null ? `${res.recovery_days}d` : "—";
+
+				return (
+					<div key={i} className="flex items-center gap-3 text-[12px]">
+						<span className="w-32 shrink-0 truncate text-text/80 font-medium" title={res.scenario}>
+							{res.label || res.scenario}
+						</span>
+
+						<div className="flex-1 h-2.5 bg-bg-card rounded-full overflow-hidden">
+							<div
+								className="h-full rounded-full transition-all duration-700 ease-out"
+								style={{
+									width: `${barWidth}%`,
+									backgroundColor: isSevere ? "var(--red)" : "var(--amber)",
+								}}
+							/>
+						</div>
+
+						<span className={`w-12 text-right font-mono font-semibold shrink-0 ${isSevere ? "text-red" : "text-amber"}`}>
+							-{drawdown.toFixed(1)}%
+						</span>
+
+						<span className="w-10 text-right font-mono text-text-muted shrink-0">
+							{recovery}
+						</span>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Before/After Delta                                                 */
+/* ------------------------------------------------------------------ */
+
+interface DeltaPair {
+	before: string;
+	after: string;
+}
+
+function parseDeltas(text: string): DeltaPair[] {
+	if (!text) return [];
+	const pairs: DeltaPair[] = [];
+	const sentences = splitSentences(text);
+	for (const s of sentences) {
+		const match = s.match(/Current\s+(.+?)\s*→\s*Proposed\s+(.+)/i);
+		if (match) {
+			pairs.push({ before: match[1].trim(), after: match[2].trim() });
+		}
+	}
+	return pairs;
+}
+
+function DeltaCards({ text }: { text: string }) {
+	const deltas = parseDeltas(text);
+	if (deltas.length === 0) {
+		return <div className="text-[12px] text-text-dim italic">{text || "No improvements data."}</div>;
+	}
+
+	return (
+		<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+			{deltas.map((d, i) => (
+				<div
+					key={i}
+					className="rounded border border-border bg-bg-card p-2.5 flex items-center justify-between gap-2"
+				>
+					<div className="text-[11px] text-text-dim truncate">{d.before}</div>
+					<div className="text-text-muted font-mono text-[11px] shrink-0">↦</div>
+					<div className="text-[11px] text-teal font-medium truncate text-right">{d.after}</div>
+				</div>
+			))}
+		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Risk Factor Cards                                                */
+/* ------------------------------------------------------------------ */
+
+function RiskCards({ text }: { text: string }) {
+	const sentences = splitSentences(text);
+	if (sentences.length === 0) {
+		return <div className="text-[12px] text-text-dim italic">No risks specified.</div>;
+	}
+
+	const severity = (s: string) => {
+		const bad = /reject|catastrophic|critical|severe|excessive/i;
+		return bad.test(s) ? { icon: "\u274C", border: "border-l-red", text: "text-red" } : { icon: "\u26A0\uFE0F", border: "border-l-amber", text: "text-amber" };
+	};
+
+	return (
+		<div className="space-y-2">
+			{sentences.map((s, i) => {
+				const sev = severity(s);
+				return (
+					<div
+						key={i}
+						className={`rounded bg-[rgba(239,68,68,0.04)] border-l-3 ${sev.border} px-3 py-2 text-[12px] text-text/90 leading-snug flex items-start gap-2`}
+					>
+						<span className="shrink-0 mt-0.5">{sev.icon}</span>
+						<span>{s}</span>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                   */
+/* ------------------------------------------------------------------ */
+
 export function RiskAnalysisModal({
 	open,
 	onOpenChange,
 	structuredOutput,
 }: RiskAnalysisModalProps) {
-	const verdict =
-		typeof structuredOutput.verdict === "string"
-			? structuredOutput.verdict
-			: "";
-	const caveats = Array.isArray(structuredOutput.caveats)
-		? (structuredOutput.caveats as string[])
-		: [];
-	const riskSummary =
-		typeof structuredOutput.risk_summary === "string"
-			? structuredOutput.risk_summary
-			: "";
-	const improvementSummary =
-		typeof structuredOutput.improvement_summary === "string"
-			? structuredOutput.improvement_summary
-			: "";
-	const var95 =
-		typeof structuredOutput.var_95 === "number"
-			? structuredOutput.var_95
-			: null;
-	const stressResults = Array.isArray(structuredOutput.stress_results)
-		? structuredOutput.stress_results
-		: [];
+	const verdict = typeof structuredOutput.verdict === "string" ? structuredOutput.verdict : "";
+	const caveats = Array.isArray(structuredOutput.caveats) ? (structuredOutput.caveats as string[]) : [];
+	const riskSummary = typeof structuredOutput.risk_summary === "string" ? structuredOutput.risk_summary : "";
+	const improvementSummary = typeof structuredOutput.improvement_summary === "string" ? structuredOutput.improvement_summary : "";
+	const var95 = typeof structuredOutput.var_95 === "number" ? structuredOutput.var_95 : null;
+	const stressResults = Array.isArray(structuredOutput.stress_results) ? (structuredOutput.stress_results as StressResult[]) : [];
 
 	const verdictConfig = verdict ? getVerdictConfig(verdict) : null;
 
@@ -86,146 +287,80 @@ export function RiskAnalysisModal({
 					<DialogTitle>Risk Analysis Dashboard</DialogTitle>
 				</DialogHeader>
 
-				<div className="space-y-4 overflow-y-auto max-h-[80vh] pr-2">
+				<div className="space-y-5 overflow-y-auto max-h-[80vh] pr-2">
 					{/* Verdict Banner */}
 					{verdictConfig && (
-						<div
-							className={`rounded-md border-l-4 px-3 py-2.5 ${verdictConfig.bg} ${verdictConfig.border}`}
-						>
-							<div className="flex items-center gap-2">
-								<span className="text-lg">{verdictConfig.icon}</span>
-								<span className={`font-semibold text-sm ${verdictConfig.text}`}>
-									{verdictConfig.label}
-								</span>
+						<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>
+							<span className="text-2xl">{verdictConfig.icon}</span>
+							<div>
+								<div className={`font-bold text-sm ${verdictConfig.text}`}>{verdictConfig.label}</div>
+								<div className="text-[11px] text-text-dim mt-0.5">
+									{verdictConfig.label === "Approved"
+										? "Portfolio passes all risk thresholds."
+										: verdictConfig.label === "Approved with Caveats"
+											? "Portfolio is acceptable but watch flagged areas."
+											: "Portfolio exceeds risk limits. Review changes."}
+								</div>
 							</div>
 						</div>
 					)}
 
-					{/* Top Metrics Row */}
-					<div className="grid grid-cols-2 gap-4">
-						{/* VaR 95% KPI */}
-						<div className="rounded-md border border-border bg-bg-elevated p-3 flex flex-col justify-center">
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2 flex items-center justify-between">
-								<span>Value at Risk (95%)</span>
-								<span className="text-text-dim">Max Daily Loss</span>
-							</div>
-							<div className="flex items-end gap-3 mb-2">
-								<div className="text-3xl font-mono font-semibold text-text leading-none">
-									{var95 !== null ? `${var95}%` : "N/A"}
-								</div>
-							</div>
-							{var95 !== null && (
-								<div className="h-1.5 w-full bg-bg-card rounded-full overflow-hidden mt-1">
-									<div 
-										className={`h-full rounded-full transition-all duration-500 ${var95 > 15 ? 'bg-red' : var95 > 8 ? 'bg-amber' : 'bg-teal'}`} 
-										style={{ width: `${Math.min(var95 * 2, 100)}%` }}
-									/>
-								</div>
-							)}
-						</div>
-
-						{/* Concentration / Caveats */}
-						<div className="rounded-md border border-border bg-bg-elevated p-3 flex flex-col justify-center">
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2">
-								Risk Concentration & Caveats
-							</div>
-							{caveats.length > 0 ? (
-								<div className="flex flex-wrap gap-1.5 max-h-[60px] overflow-y-auto">
-									{caveats.map((caveat: string, i: number) => (
-										<span key={i} className="bg-amber/10 border border-amber/20 text-amber rounded px-2 py-0.5 text-[11px] leading-tight">
-											{caveat}
-										</span>
-									))}
-								</div>
-							) : (
-								<div className="text-sm text-text-dim italic flex items-center h-full">No major concentration risks identified.</div>
-							)}
-						</div>
+					{/* VaR Gauge */}
+					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+						<VaRGauge value={var95} />
 					</div>
-
-					{/* Split View: Current vs Proposed */}
-					{(riskSummary || improvementSummary) && (
-						<div className="grid grid-cols-2 gap-4">
-							<div className="rounded-md border border-red/20 bg-[rgba(239,68,68,0.03)] p-3">
-								<div className="text-[11px] font-mono text-red uppercase tracking-wide mb-2 pb-1 border-b border-red/10">
-									Current Risks
-								</div>
-								{riskSummary ? (
-									<ul className="space-y-2">
-										{splitSentences(riskSummary).map((sentence, i) => (
-											<li key={i} className="text-[12px] text-text leading-snug flex gap-2">
-												<span className="text-red shrink-0 mt-0.5">✕</span>
-												<span className="text-text/90">{sentence}</span>
-											</li>
-										))}
-									</ul>
-								) : (
-									<div className="text-[12px] text-text-dim">No current risks specified.</div>
-								)}
-							</div>
-
-							<div className="rounded-md border border-teal/20 bg-[rgba(20,184,166,0.03)] p-3">
-								<div className="text-[11px] font-mono text-teal uppercase tracking-wide mb-2 pb-1 border-b border-teal/10">
-									Proposed Improvements
-								</div>
-								{improvementSummary ? (
-									<ul className="space-y-2">
-										{splitSentences(improvementSummary).map((sentence, i) => (
-											<li key={i} className="text-[12px] text-text leading-snug flex gap-2">
-												<span className="text-teal shrink-0 mt-0.5">✓</span>
-												<span className="text-text/90">{sentence}</span>
-											</li>
-										))}
-									</ul>
-								) : (
-									<div className="text-[12px] text-text-dim">No improvements identified.</div>
-								)}
-							</div>
-						</div>
-					)}
 
 					{/* Stress Scenarios */}
 					{stressResults.length > 0 && (
-						<div className="rounded-md border border-border bg-bg-elevated p-3">
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 flex items-center justify-between pb-2 border-b border-border">
+						<div className="rounded-lg border border-border bg-bg-elevated p-4">
+							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
 								<span>Stress Scenarios</span>
-								<span className="text-text-dim">Drawdown & Recovery KPIs</span>
+								<span className="text-text-muted text-[10px] font-sans normal-case">Drawdown &rarr; Recovery</span>
 							</div>
-							<div className="space-y-4 mt-2">
-								{stressResults.map((res: any, i: number) => {
-									const drawdown = Math.abs(res.simulated_drawdown_pct || 0);
-									const recovery = res.recovery_days;
-									const isSevere = drawdown > 15;
-									
-									return (
-										<div key={i} className="flex flex-col gap-1.5">
-											<div className="flex justify-between items-end">
-												<span className="text-[13px] text-text/90 font-medium">{res.scenario || `Scenario ${i+1}`}</span>
-												<div className="flex items-center gap-4">
-													{recovery !== null && recovery !== undefined && (
-														<span className="font-mono text-[11px] text-amber flex items-center gap-1 bg-amber/10 px-1.5 py-0.5 rounded">
-															<span>↺</span> {recovery}d recovery
-														</span>
-													)}
-													<span className={`font-mono text-sm font-semibold ${isSevere ? 'text-red' : 'text-amber'}`}>
-														-{drawdown.toFixed(1)}%
-													</span>
-												</div>
-											</div>
-											<div className="h-2 w-full bg-bg-card rounded-full overflow-hidden flex">
-												<div 
-													className={`h-full rounded-r-sm transition-all duration-500 ${isSevere ? 'bg-red' : 'bg-amber'}`}
-													style={{ width: `${Math.min(drawdown * 2, 100)}%` }}
-												/>
-											</div>
-										</div>
-									);
-								})}
-							</div>
+							<StressBars data={stressResults} />
 						</div>
 					)}
-				</div>
-			</DialogContent>
-		</Dialog>
-	);
-}
+
+					{/* Before / After Deltas */}
+					{improvementSummary && (
+						<div className="rounded-lg border border-teal/15 bg-[rgba(20,184,166,0.04)] p-4">
+							<div className="text-[11px] font-mono text-teal uppercase tracking-wide mb-3 pb-1 border-b border-teal/10">
+								Portfolio Changes
+							</div>
+							<DeltaCards text={improvementSummary} />
+						</div>
+					)}
+
+					{/* Risk Factors */}
+					{riskSummary && (
+						<div className="rounded-lg border border-red/15 bg-[rgba(239,68,68,0.03)] p-4">
+							<div className="text-[11px] font-mono text-red uppercase tracking-wide mb-3 pb-1 border-b border-red/10">
+								Risk Factors
+							</div>
+							<RiskCards text={riskSummary} />
+						</div>
+					)}
+
+					{/* Caveats */}
+					{caveats.length > 0 && (
+						<div className="rounded-lg border border-border bg-bg-elevated p-4">
+							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2">
+								Caveats
+							</div>
+							<div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+								{caveats.map((c, i) => (
+									<span
+										key={i}
+										className="bg-amber/10 border border-amber/20 text-amber rounded-full px-3 py-1 text-[11px] whitespace-nowrap shrink-0"
+									>
+										{c}
+									</span>
+									))}
+								</div>
+							</div>
+						)}
+					</div>
+				</DialogContent>
+			</Dialog>
+		);
+	}

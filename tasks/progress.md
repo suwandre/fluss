@@ -263,3 +263,24 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 **Verification:**
 - `bun run build` — successful (0 TypeScript/build errors).
+
+---
+
+## UX Improvement UX-9 — Visual Risk Analysis Modal Redesign (4/23/2026)
+
+**Description:** Redesigned the Risk Analysis Dashboard modal from a dense text-based layout to a visual, analytics-style dashboard.
+
+**Summary:**
+- Replaced text paragraphs with:
+  - **SVG VaR Gauge**: Semi-circular animated arc with color-coded needle (teal < 8%, amber 8–15%, red > 15%). Animated `stroke-dashoffset` and needle rotation on mount. Centered big number with contextual subtitle.
+  - **Stress Scenario Bars**: Custom HTML bars auto-scaled to max drawdown. Color-coded red > 15%, amber otherwise. Recovery days shown as a compact column. No Recharts dependency.
+  - **Before/After Delta Cards**: Regex-parses `improvement_summary` for "Current X → Proposed Y" patterns and renders split Before/After comparison cards.
+  - **Risk Factor Cards**: Split `risk_summary` into individual sentence cards with severity-colored left border and auto-detected icon (❌ for critical/catastrophic, ⚠️ otherwise).
+  - **Scrollable Caveat Pills**: Horizontal scrollable row of rounded pills instead of wrapped text block.
+- File: `src/components/agents/risk-analysis-modal.tsx` (rewritten, no new npm deps).
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).
+
+**Gotchas:**
+- No new dependencies added. Gauge is pure SVG + CSS transitions.

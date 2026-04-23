@@ -206,9 +206,13 @@
 - [x] Harden `computePortfolioMetrics` equity curve: per-item try-catch, allow partial data per date
 - [x] Make Risk Agent compare proposed vs current portfolio: tools support `positions_override`, workflow pre-computes both stress+VaR sets, agent judges comparative delta
 
+## UX Improvements UX-9 (4/23/2026) — Visual Risk Analysis Modal Redesign
+
+- [x] **UX-9** Redesign `risk-analysis-modal.tsx` from text-heavy layout to visual dashboard: SVG VaR gauge with animated arc + needle, horizontal stress-scenario bars with recovery badges, Before/After delta cards parsed from improvement text, severity-colored risk factor cards, scrollable caveat pills. No new dependencies.
+
 ---
 
-_Total: ~70 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIGN_V1.md_
+_Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIGN_V1.md_
 
 ---
 
