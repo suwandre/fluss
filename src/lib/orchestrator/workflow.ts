@@ -584,6 +584,17 @@ const riskStep = createStep({
       );
     }
 
+    if (!riskResultObj) {
+      riskResultObj = {
+        stress_results: proposedStress?.stress_results || [],
+        var_95: proposedVaR?.var_pct || 0,
+        verdict: "rejected",
+        caveats: ["LLM risk analysis failed to generate. Portfolio rejected by default."],
+        risk_summary: "System fallback: Rejected due to internal LLM failure.",
+        improvement_summary: "N/A - Auto-rejected.",
+      } as any;
+    }
+
     // Attach structured scenario comparisons for the UI
     riskResultObj.scenario_comparisons = scenarioComparisons;
 
