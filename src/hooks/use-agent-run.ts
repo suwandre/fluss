@@ -282,10 +282,8 @@ export function useAgentRun(): UseAgentRunReturn {
 						continue; // skip malformed JSON
 					}
 
-					// Only reset activity timer on real events, not keepalives
-					if (event.type !== "data-keepalive") {
-						lastActivity = Date.now();
-					}
+					// Reset activity timer on any valid JSON event, including keepalives
+					lastActivity = Date.now();
 
 					// Extract runId from custom data part
 					if (

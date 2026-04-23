@@ -382,3 +382,13 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 - None. Build and typecheck pass clean.
 
 ---
+
+## Task — Fix Risk Agent Stream Timeout (4/24/2026)
+
+**Description:** Agent streams timed out for long-running agents because the client-side inactivity timer ignored `data-keepalive` events.
+
+**Summary:**
+- `src/hooks/use-agent-run.ts`: Removed the condition `if (event.type !== "data-keepalive")` so that the `lastActivity` timestamp is updated for all valid SSE events, including keepalives. This prevents the 90s timeout from firing prematurely while the server is still sending keepalive pulses.
+
+**Gotchas:**
+- None. Build successful.
