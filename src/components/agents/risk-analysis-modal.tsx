@@ -57,7 +57,7 @@ function splitSentences(text: string): string[] {
 
 const GAUGE_R = 48;
 const GAUGE_CENTER_X = 60;
-const GAUGE_CENTER_Y = 60;
+const GAUGE_CENTER_Y = 50;
 const GAUGE_STROKE = 8;
 const GAUGE_MAX_VAL = 30; // 0–30% arc
 
@@ -86,7 +86,7 @@ function VaRGauge({ value }: { value: number | null }) {
 	return (
 		<div className="flex flex-col items-center justify-center">
 			<svg
-				viewBox="0 0 120 75"
+				viewBox="0 0 120 70"
 				className="w-40 h-auto"
 			>
 				{/* background track */}
@@ -214,15 +214,17 @@ function DeltaCards({ text }: { text: string }) {
 	}
 
 	return (
-		<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+		<div className="flex flex-col gap-2">
 			{deltas.map((d, i) => (
 				<div
 					key={i}
-					className="rounded border border-border bg-bg-card p-2.5 flex items-center justify-between gap-2"
+					className="rounded border border-border bg-bg-card px-4 py-3 flex flex-col gap-1.5"
 				>
-					<div className="text-[11px] text-text-dim truncate">{d.before}</div>
-					<div className="text-text-muted font-mono text-[11px] shrink-0">↦</div>
-					<div className="text-[11px] text-teal font-medium truncate text-right">{d.after}</div>
+					<div className="flex items-center justify-between gap-2">
+						<span className="text-[11px] text-text-dim">{d.before}</span>
+						<span className="text-text-muted font-mono text-[11px] shrink-0">↦</span>
+						<span className="text-[11px] text-teal font-medium text-right">{d.after}</span>
+					</div>
 				</div>
 			))}
 		</div>
@@ -234,7 +236,21 @@ function DeltaCards({ text }: { text: string }) {
 /* ------------------------------------------------------------------ */
 
 function RiskCards({ text }: { text: string }) {
-	const sentences = splitSentences(text);
+	const sentences = splitSentences(text).filter((s) => {
+		const lower = s.trim().toLowerCase();
+		// skip verdict sentences
+		if (
+			lower === "approved" ||
+			lower === "rejected" ||
+			lower === "approve" ||
+			lower === "reject" ||
+			lower.startsWith("approve with caveats") ||
+			lower.startsWith("approved with caveats")
+		) {
+			return false;
+		}
+		return true;
+	});
 	if (sentences.length === 0) {
 		return <div className="text-[12px] text-text-dim italic">No risks specified.</div>;
 	}
@@ -275,7 +291,13 @@ export function RiskAnalysisModal({
 	const caveats = Array.isArray(structuredOutput.caveats) ? (structuredOutput.caveats as string[]) : [];
 	const riskSummary = typeof structuredOutput.risk_summary === "string" ? structuredOutput.risk_summary : "";
 	const improvementSummary = typeof structuredOutput.improvement_summary === "string" ? structuredOutput.improvement_summary : "";
-	const var95 = typeof structuredOutput.var_95 === "number" ? structuredOutput.var_95 : null;
+	const rawVar = structuredOutput.var_95;
+	const var95 =
+		typeof rawVar === "number"
+			? rawVar
+			: typeof rawVar === "string"
+				? parseFloat(rawVar) || null
+				: null;
 	const stressResults = Array.isArray(structuredOutput.stress_results) ? (structuredOutput.stress_results as StressResult[]) : [];
 
 	const verdictConfig = verdict ? getVerdictConfig(verdict) : null;
@@ -287,7 +309,7 @@ export function RiskAnalysisModal({
 					<DialogTitle>Risk Analysis Dashboard</DialogTitle>
 				</DialogHeader>
 
-				<div className="space-y-5 overflow-y-auto max-h-[80vh] pr-2">
+				<div className="space-y-5 overflow-y-auto max-h-[80vh] pr-2 custom-scrollbar">
 					{/* Verdict Banner */}
 					{verdictConfig && (
 						<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>
@@ -306,7 +328,7 @@ export function RiskAnalysisModal({
 					)}
 
 					{/* VaR Gauge */}
-					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+					<div className="rounded-lg border border-border bg-bg-elevated p-3">
 						<VaRGauge value={var95} />
 					</div>
 
@@ -347,18 +369,18 @@ export function RiskAnalysisModal({
 							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2">
 								Caveats
 							</div>
-							<div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+							<div className="flex flex-col gap-2">
 								{caveats.map((c, i) => (
-									<span
+									<div
 										key={i}
-										className="bg-amber/10 border border-amber/20 text-amber rounded-full px-3 py-1 text-[11px] whitespace-nowrap shrink-0"
+										className="bg-amber/10 border border-amber/20 text-amber rounded px-3 py-1.5 text-[11px]"
 									>
 										{c}
-									</span>
-									))}
-								</div>
+									</div>
+								))}
 							</div>
-						)}
+						</div>
+					)}
 					</div>
 				</DialogContent>
 			</Dialog>

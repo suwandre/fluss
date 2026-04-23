@@ -61,7 +61,12 @@ function buildStructuredOutput(
 		case "risk":
 			return {
 				verdict: output.verdict,
-				var95: output.var_95,
+				var95:
+					typeof output.var_95 === "number"
+						? output.var_95
+						: typeof output.var_95 === "string"
+							? parseFloat(output.var_95 as string) || null
+							: null,
 				scenarios: Array.isArray(output.stress_results)
 					? output.stress_results.length
 					: 0,
