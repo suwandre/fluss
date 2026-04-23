@@ -276,11 +276,19 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
   - **Stress Scenario Bars**: Custom HTML bars auto-scaled to max drawdown. Color-coded red > 15%, amber otherwise. Recovery days shown as a compact column. No Recharts dependency.
   - **Before/After Delta Cards**: Regex-parses `improvement_summary` for "Current X → Proposed Y" patterns and renders split Before/After comparison cards.
   - **Risk Factor Cards**: Split `risk_summary` into individual sentence cards with severity-colored left border and auto-detected icon (❌ for critical/catastrophic, ⚠️ otherwise).
-  - **Scrollable Caveat Pills**: Horizontal scrollable row of rounded pills instead of wrapped text block.
-- File: `src/components/agents/risk-analysis-modal.tsx` (rewritten, no new npm deps).
+
+**Bugs fixed (follow-up):**
+- `var_95` shows `0.00%` when agent outputs it as string: added `parseFloat` coercion in `use-agent-run.ts` `buildStructuredOutput` and in modal's `RiskAnalysisModal`.
+- Portfolio Changes truncation: removed 2-column grid and `truncate`, now single-column full-width cards with natural wrap.
+- Caveats layout: horizontal scrollable → vertical stacked full-width badge rows.
+- White scrollbar: added `.custom-scrollbar` CSS in `globals.css` with dark thumb/rail, applied to modal overflow container.
+- Gauge whitespace: tightened SVG viewBox `120 70`, reduced `GAUGE_CENTER_Y` to 50, card padding from `p-4` to `p-3`.
+- Verdict sentence in Risk Factors: `RiskCards` now filters out exact-match verdict sentences.
+- File: `src/components/agents/risk-analysis-modal.tsx` (rewritten), `src/hooks/use-agent-run.ts` (var95 coerce), `src/app/globals.css` (scrollbar).
 
 **Verification:**
 - `bun run build` — successful (0 TypeScript/build errors).
 
 **Gotchas:**
 - No new dependencies added. Gauge is pure SVG + CSS transitions.
+- `var_95` string coercion is a backward-compat fix until Risk Agent consistently outputs numbers.
