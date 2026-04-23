@@ -81,16 +81,16 @@ export function RiskAnalysisModal({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-lg">
+			<DialogContent className="sm:max-w-3xl">
 				<DialogHeader>
-					<DialogTitle>Risk Analysis</DialogTitle>
+					<DialogTitle>Risk Analysis Dashboard</DialogTitle>
 				</DialogHeader>
 
-				<div className="space-y-4">
+				<div className="space-y-4 overflow-y-auto max-h-[80vh] pr-2">
 					{/* Verdict Banner */}
 					{verdictConfig && (
 						<div
-							className={`rounded-md border-l-4 px-3 py-2 ${verdictConfig.bg} ${verdictConfig.border}`}
+							className={`rounded-md border-l-4 px-3 py-2.5 ${verdictConfig.bg} ${verdictConfig.border}`}
 						>
 							<div className="flex items-center gap-2">
 								<span className="text-lg">{verdictConfig.icon}</span>
@@ -101,90 +101,127 @@ export function RiskAnalysisModal({
 						</div>
 					)}
 
-					{/* VaR 95% */}
-					{var95 !== null && (
-						<div className="rounded-md border border-border bg-bg-elevated px-3 py-2">
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide">
-								VaR 95%
+					{/* Top Metrics Row */}
+					<div className="grid grid-cols-2 gap-4">
+						{/* VaR 95% KPI */}
+						<div className="rounded-md border border-border bg-bg-elevated p-3 flex flex-col justify-center">
+							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2 flex items-center justify-between">
+								<span>Value at Risk (95%)</span>
+								<span className="text-text-dim">Max Daily Loss</span>
 							</div>
-							<div className="text-xl font-mono font-semibold text-text">
-								{var95}%
+							<div className="flex items-end gap-3 mb-2">
+								<div className="text-3xl font-mono font-semibold text-text leading-none">
+									{var95 !== null ? `${var95}%` : "N/A"}
+								</div>
 							</div>
-							<div className="text-[11px] text-text-dim">
-								Maximum expected daily loss at 95% confidence
-							</div>
-						</div>
-					)}
-
-					{/* Caveats */}
-					{caveats.length > 0 && (
-						<div>
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-1.5">
-								Caveats
-							</div>
-							<div className="flex flex-wrap gap-1">
-								{caveats.map((caveat: string, i: number) => (
-									<span
-										key={i}
-										className="bg-bg-elevated border border-border rounded px-2 py-0.5 text-[12px] text-text"
-									>
-										{caveat}
-									</span>
-								))}
-							</div>
-						</div>
-					)}
-
-					{/* Risk Summary */}
-					{riskSummary && (
-						<div>
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-1.5">
-								Risk Summary
-							</div>
-							<ul className="space-y-1">
-								{splitSentences(riskSummary).map((sentence, i) => (
-									<li
-										key={i}
-										className="text-[13px] text-text leading-snug flex gap-1.5"
-									>
-										<span className="text-amber shrink-0">•</span>
-										<span>{sentence}</span>
-									</li>
-								))}
-							</ul>
-						</div>
-					)}
-
-					{/* Improvement Summary */}
-					{(improvementSummary || null) && (
-						<div>
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-1.5">
-								Improvements
-							</div>
-							{improvementSummary ? (
-								<ul className="space-y-1">
-									{splitSentences(improvementSummary).map((sentence, i) => (
-										<li
-											key={i}
-											className="text-[13px] text-text leading-snug flex gap-1.5"
-										>
-											<span className="text-green shrink-0">✓</span>
-											<span>{sentence}</span>
-										</li>
-									))}
-								</ul>
-							) : (
-								<div className="text-[12px] text-text-dim">
-									No improvements identified
+							{var95 !== null && (
+								<div className="h-1.5 w-full bg-bg-card rounded-full overflow-hidden mt-1">
+									<div 
+										className={`h-full rounded-full transition-all duration-500 ${var95 > 15 ? 'bg-red' : var95 > 8 ? 'bg-amber' : 'bg-teal'}`} 
+										style={{ width: `${Math.min(var95 * 2, 100)}%` }}
+									/>
 								</div>
 							)}
 						</div>
+
+						{/* Concentration / Caveats */}
+						<div className="rounded-md border border-border bg-bg-elevated p-3 flex flex-col justify-center">
+							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2">
+								Risk Concentration & Caveats
+							</div>
+							{caveats.length > 0 ? (
+								<div className="flex flex-wrap gap-1.5 max-h-[60px] overflow-y-auto">
+									{caveats.map((caveat: string, i: number) => (
+										<span key={i} className="bg-amber/10 border border-amber/20 text-amber rounded px-2 py-0.5 text-[11px] leading-tight">
+											{caveat}
+										</span>
+									))}
+								</div>
+							) : (
+								<div className="text-sm text-text-dim italic flex items-center h-full">No major concentration risks identified.</div>
+							)}
+						</div>
+					</div>
+
+					{/* Split View: Current vs Proposed */}
+					{(riskSummary || improvementSummary) && (
+						<div className="grid grid-cols-2 gap-4">
+							<div className="rounded-md border border-red/20 bg-[rgba(239,68,68,0.03)] p-3">
+								<div className="text-[11px] font-mono text-red uppercase tracking-wide mb-2 pb-1 border-b border-red/10">
+									Current Risks
+								</div>
+								{riskSummary ? (
+									<ul className="space-y-2">
+										{splitSentences(riskSummary).map((sentence, i) => (
+											<li key={i} className="text-[12px] text-text leading-snug flex gap-2">
+												<span className="text-red shrink-0 mt-0.5">✕</span>
+												<span className="text-text/90">{sentence}</span>
+											</li>
+										))}
+									</ul>
+								) : (
+									<div className="text-[12px] text-text-dim">No current risks specified.</div>
+								)}
+							</div>
+
+							<div className="rounded-md border border-teal/20 bg-[rgba(20,184,166,0.03)] p-3">
+								<div className="text-[11px] font-mono text-teal uppercase tracking-wide mb-2 pb-1 border-b border-teal/10">
+									Proposed Improvements
+								</div>
+								{improvementSummary ? (
+									<ul className="space-y-2">
+										{splitSentences(improvementSummary).map((sentence, i) => (
+											<li key={i} className="text-[12px] text-text leading-snug flex gap-2">
+												<span className="text-teal shrink-0 mt-0.5">✓</span>
+												<span className="text-text/90">{sentence}</span>
+											</li>
+										))}
+									</ul>
+								) : (
+									<div className="text-[12px] text-text-dim">No improvements identified.</div>
+								)}
+							</div>
+						</div>
 					)}
 
-					{/* Stress Results count */}
+					{/* Stress Scenarios */}
 					{stressResults.length > 0 && (
-						<div className="text-[11px] font-mono text-text-dim">
-							{stressResults.length} historical stress scenarios tested
+						<div className="rounded-md border border-border bg-bg-elevated p-3">
+							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 flex items-center justify-between pb-2 border-b border-border">
+								<span>Stress Scenarios</span>
+								<span className="text-text-dim">Drawdown & Recovery KPIs</span>
+							</div>
+							<div className="space-y-4 mt-2">
+								{stressResults.map((res: any, i: number) => {
+									const drawdown = Math.abs(res.simulated_drawdown_pct || 0);
+									const recovery = res.recovery_days;
+									const isSevere = drawdown > 15;
+									
+									return (
+										<div key={i} className="flex flex-col gap-1.5">
+											<div className="flex justify-between items-end">
+												<span className="text-[13px] text-text/90 font-medium">{res.scenario || `Scenario ${i+1}`}</span>
+												<div className="flex items-center gap-4">
+													{recovery !== null && recovery !== undefined && (
+														<span className="font-mono text-[11px] text-amber flex items-center gap-1 bg-amber/10 px-1.5 py-0.5 rounded">
+															<span>↺</span> {recovery}d recovery
+														</span>
+													)}
+													<span className={`font-mono text-sm font-semibold ${isSevere ? 'text-red' : 'text-amber'}`}>
+														-{drawdown.toFixed(1)}%
+													</span>
+												</div>
+											</div>
+											<div className="h-2 w-full bg-bg-card rounded-full overflow-hidden flex">
+												<div 
+													className={`h-full rounded-r-sm transition-all duration-500 ${isSevere ? 'bg-red' : 'bg-amber'}`}
+													style={{ width: `${Math.min(drawdown * 2, 100)}%` }}
+												/>
+											</div>
+										</div>
+									);
+								})}
+							</div>
 						</div>
 					)}
 				</div>

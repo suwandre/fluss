@@ -245,3 +245,21 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 - `useReactFlow()` must be called inside a component rendered within `<ReactFlow>`, so `ZoomControls` is a separate child component placed inside `<ReactFlow>`.
 - `structuredOutput` might be undefined in the Risk condensed view, so optional chaining was needed for the truncation check.
 - `Dialog` component default is `sm:max-w-sm`; overridden with `className="sm:max-w-lg"` for the risk modal.
+
+---
+
+## UX Improvements UX-7 and UX-8 (4/23/2026)
+
+**Description:** Adjust legend position to avoid blocking zoom controls, and visually refactor Risk Analysis modal.
+
+**Summary:**
+- **UX-7:** Moved correlation legend in `src/components/factory/factory-floor.tsx` to `top-4 left-4` so it doesn't block bottom-left zoom controls.
+- **UX-8:** Refactored `RiskAnalysisModal` (`src/components/agents/risk-analysis-modal.tsx`) to a visual dashboard layout:
+  - Split view for Current Risks vs Proposed Improvements.
+  - Visual VaR 95% progress bar with dynamic colors (`bg-red`/`bg-amber`/`bg-teal`).
+  - Stress Scenarios rendered as horizontal comparison bars mapped to `simulated_drawdown_pct`.
+  - Recovery Days displayed as a KPI with an icon next to the drawdown percentage.
+  - Max width increased to `sm:max-w-3xl` for better split view presentation.
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).

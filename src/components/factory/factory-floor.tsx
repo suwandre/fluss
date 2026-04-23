@@ -268,8 +268,8 @@ export function FactoryFloor({
 				<ZoomControls />
 			</ReactFlow>
 
-			{/* Correlation edge legend — above zoom buttons */}
-			<div className="absolute bottom-16 left-3 z-10 rounded border border-border bg-bg-card/90 px-2.5 py-1.5 text-[10px] font-mono text-text-dim shadow-sm">
+			{/* Correlation edge legend — top left */}
+			<div className="absolute top-4 left-4 z-10 rounded border border-border bg-bg-card/90 px-2.5 py-1.5 text-[10px] font-mono text-text-dim shadow-sm">
 				<div className="flex items-center gap-1.5 mb-0.5">
 					<span className="inline-block w-4 h-[2px] bg-teal" />
 					<span>Low correlation</span>
