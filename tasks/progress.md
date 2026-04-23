@@ -392,3 +392,17 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 **Gotchas:**
 - None. Build successful.
+
+---
+
+## Task — Optimize Risk Agent Schema & Embeddings API (4/24/2026)
+
+**Description:** Support OpenAI-compatible embeddings and prevent LLM from generating precomputed risk metrics.
+
+**Summary:**
+- `src/lib/market/embeddings.ts`: Added support for OpenAI-compatible endpoints if `OLLAMA_BASE_URL` ends with `/v1`.
+- `src/lib/agents/risk.ts`: Made `stress_results` and `var_95` optional in `RiskOutput` Zod schema.
+- `src/lib/orchestrator/workflow.ts`: Removed `stress_results` and `var_95` from `riskPrompt` JSON schema. Removed prompt instructions forcing LLM to list scenarios in caveats. Hard-assigned precomputed `stress_results` and `var_95` to `riskResultObj` after LLM completes.
+
+**Gotchas:**
+- None. `bun run build` clean.

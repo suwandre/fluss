@@ -45,20 +45,31 @@ async function fetchWithRetry(url: string, body: object): Promise<Response> {
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
-	const res = await fetchWithRetry(`${OLLAMA_BASE_URL}/api/embeddings`, {
-		model: OLLAMA_EMBEDDING_MODEL,
-		prompt: text,
-	});
+	const isV1 = OLLAMA_BASE_URL.endsWith("/v1");
+	const endpoint = isV1 ? `${OLLAMA_BASE_URL}/embeddings` : `${OLLAMA_BASE_URL}/api/embeddings`;
+	const payload = isV1
+		? { model: OLLAMA_EMBEDDING_MODEL, input: text }
+		: { model: OLLAMA_EMBEDDING_MODEL, prompt: text };
+
+	const res = await fetchWithRetry(endpoint, payload);
 
 	if (!res.ok) checkOllamaError(res);
 
-	const data = (await res.json()) as { embedding?: number[] };
-	if (!Array.isArray(data.embedding)) {
-		throw new Error(
-			"Embedding generation failed. Check your local Ollama server and model.",
-		);
+	if (isV1) {
+		const data = (await res.json()) as { data?: { embedding: number[] }[] };
+		if (!data.data || !Array.isArray(data.data) || !data.data[0]?.embedding) {
+			throw new Error("Embedding generation failed. Check your OpenAI-compatible server and model.");
+		}
+		return data.data[0].embedding;
+	} else {
+		const data = (await res.json()) as { embedding?: number[] };
+		if (!Array.isArray(data.embedding)) {
+			throw new Error(
+				"Embedding generation failed. Check your local Ollama server and model.",
+			);
+		}
+		return data.embedding;
 	}
-	return data.embedding;
 }
 
 export async function generateEmbeddings(
@@ -66,18 +77,27 @@ export async function generateEmbeddings(
 ): Promise<number[][]> {
 	if (texts.length === 0) return [];
 
-	const res = await fetchWithRetry(`${OLLAMA_BASE_URL}/api/embed`, {
-		model: OLLAMA_EMBEDDING_MODEL,
-		input: texts,
-	});
+	const isV1 = OLLAMA_BASE_URL.endsWith("/v1");
+	const endpoint = isV1 ? `${OLLAMA_BASE_URL}/embeddings` : `${OLLAMA_BASE_URL}/api/embed`;
+	const payload = { model: OLLAMA_EMBEDDING_MODEL, input: texts };
+
+	const res = await fetchWithRetry(endpoint, payload);
 
 	if (!res.ok) checkOllamaError(res);
 
-	const data = (await res.json()) as { embeddings?: number[][] };
-	if (!Array.isArray(data.embeddings)) {
-		throw new Error(
-			"Embedding generation failed. Check your local Ollama server and model.",
-		);
+	if (isV1) {
+		const data = (await res.json()) as { data?: { embedding: number[] }[] };
+		if (!data.data || !Array.isArray(data.data)) {
+			throw new Error("Embedding generation failed. Check your OpenAI-compatible server and model.");
+		}
+		return data.data.map((d) => d.embedding);
+	} else {
+		const data = (await res.json()) as { embeddings?: number[][] };
+		if (!Array.isArray(data.embeddings)) {
+			throw new Error(
+				"Embedding generation failed. Check your local Ollama server and model.",
+			);
+		}
+		return data.embeddings;
 	}
-	return data.embeddings;
 }

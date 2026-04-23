@@ -522,8 +522,6 @@ const riskStep = createStep({
       "",
       "CRITICAL: Output ONLY raw valid JSON matching this exact schema:",
       "{",
-      '  "stress_results": [{ "scenario": string, "simulated_drawdown_pct": number, "recovery_days": number|null }, ...],',
-      '  "var_95": number,',
       '  "verdict": "approved"|"approved_with_caveats"|"rejected",',
       '  "caveats": [string, ...],',
       '  "risk_summary": string,',
@@ -557,7 +555,7 @@ const riskStep = createStep({
       '- "approved_with_caveats" — reserved for neutral risk (flat metrics) with non-risk operational benefits. NOT for diversification at cost of performance.',
       "",
       "CRITICAL: In your `risk_summary` and `improvement_summary`, you must correctly identify which metrics improved (e.g., drawdown decreasing) and which worsened (e.g., VaR increasing). Explain that any worsening of a risk metric makes it a dealbreaker despite other improvements.",
-      "improvement_summary MUST explicitly compare current vs proposed top-level metrics ONLY (VaR, concentration, max drawdown across all scenarios). Do NOT list individual scenario-by-scenario drawdowns here — reserve that for the Caveats section.",
+      "improvement_summary MUST explicitly compare current vs proposed top-level metrics ONLY (VaR, concentration, max drawdown across all scenarios).",
       "",
       "Provide your verdict, caveats, risk_summary, and improvement_summary based ONLY on the pre-computed numbers above.",
     ].join("\n");
@@ -598,9 +596,10 @@ const riskStep = createStep({
     // Attach structured scenario comparisons for the UI
     riskResultObj.scenario_comparisons = scenarioComparisons;
 
-    // Override var_95 with pre-computed proposedVaR to prevent LLM from echoing 0.00%
-    if (riskResultObj && typeof proposedVaR?.var_pct === "number") {
-      riskResultObj.var_95 = proposedVaR.var_pct;
+    // Override var_95 and stress_results with pre-computed proposed metrics
+    if (riskResultObj) {
+      riskResultObj.stress_results = proposedStress?.stress_results || [];
+      riskResultObj.var_95 = proposedVaR?.var_pct || 0;
     }
 
     // Attach computed aggregate metrics for UI

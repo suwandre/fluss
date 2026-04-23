@@ -266,3 +266,4 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **UX-6** Condense Risk Agent step display in sidebar: show verdict badge + one-line summary only, move detailed structured output to modal.
 - [x] Fix VaR 95% mapping and Risk Agent rejection logic (4/24/2026)
 - [x] Fix Risk Agent Stream Timeout (4/24/2026)
+- [x] Optimize Risk Agent Schema & Embeddings API (4/24/2026)

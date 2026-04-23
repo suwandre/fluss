@@ -11,14 +11,16 @@ import type { AssetClass } from "@/lib/types/visual";
 // --- Output schema ---
 
 export const RiskOutput = z.object({
-	stress_results: z.array(
-		z.object({
-			scenario: z.string(),
-			simulated_drawdown_pct: z.number(),
-			recovery_days: z.number().nullable(),
-		}),
-	),
-	var_95: z.number(),
+	stress_results: z
+		.array(
+			z.object({
+				scenario: z.string(),
+				simulated_drawdown_pct: z.number(),
+				recovery_days: z.number().nullable(),
+			}),
+		)
+		.optional(),
+	var_95: z.number().optional(),
 	verdict: z.enum(["approved", "approved_with_caveats", "rejected"]),
 	caveats: z.array(z.string()),
 	risk_summary: z.string(),
