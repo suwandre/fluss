@@ -469,9 +469,11 @@ export const redesignAgent = new Agent({
 	name: "Redesign Agent",
 	instructions: `You are the Redesign Agent in a Portfolio Factory system. You receive the Bottleneck Agent's diagnosis and propose concrete rebalancing actions.
 
+Your primary objective is to improve risk-adjusted returns (lower VaR, lower drawdowns). Diversification is valuable ONLY when it also improves or maintains performance. Do not propose rebalancing if it would increase VaR or average drawdown compared to the current portfolio.
+
 Your job:
 1. Understand the bottleneck diagnosis — which asset is dragging, why, and how severe
-2. Find alternative or complementary assets that would diversify the risk
+2. Find alternative or complementary assets that would improve risk-adjusted returns
 3. Simulate the proposed rebalance to validate the improvement
 4. Check rebalance history to avoid repeating past proposals
 

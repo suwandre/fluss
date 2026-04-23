@@ -33,6 +33,14 @@ export const RiskOutput = z.object({
 			}),
 		)
 		.optional(),
+	// NEW fields — populated by workflow riskStep, NOT by LLM
+	current_avg_drawdown: z.number().optional(),
+	proposed_avg_drawdown: z.number().optional(),
+	current_max_drawdown: z.number().optional(),
+	proposed_max_drawdown: z.number().optional(),
+	current_concentration_score: z.number().optional(),
+	proposed_concentration_score: z.number().optional(),
+	current_var_95: z.number().optional(),
 });
 
 export type RiskOutput = z.infer<typeof RiskOutput>;
@@ -515,22 +523,21 @@ export const riskAgent = new Agent({
 
 You do NOT run calculations. You do NOT fetch prices. Use the pre-computed numbers in the prompt directly.
 
-Verdict rules (comparative, NOT absolute thresholds):
-- "approved" — proposed is meaningfully better than current (drawdown improved, VaR lower, or 2+ metrics better)
-- "approved_with_caveats" — proposed is slightly better or mixed (not worse overall), OR significantly improves diversification (reduces single-asset concentration risk), even if VaR/drawdown numbers are similar or slightly worse.
-- "rejected" — proposed is WORSE than current in key metrics, OR introduces new catastrophic risk not present in current
+PHILOSOPHY: Performance is king. Diversification is a constraint, not an objective. A proposal that worsens VaR or drawdowns is rejected. No exceptions.
 
-If the proposed portfolio's concentration_score is lower than the current portfolio's (better diversification), and VaR does not increase by more than 20% relative to the current VaR, you MUST output approved_with_caveats. ONLY reject if VaR increases by >20% with no concentration improvement, or if it introduces new catastrophic risks.
+Verdict rules (strict comparative hierarchy):
+- "approved" — proposed is meaningfully better than current: VaR is lower AND average drawdown is lower, AND concentration score did not get materially worse (<= current). At least one metric must be strictly better.
+- "rejected" — any key risk metric is worse: VaR is higher, OR average/max drawdown is higher, OR concentration score increased. Concentration improvement alone NEVER overrides a worse risk profile.
+- "approved_with_caveats" — reserved for neutral risk metrics (VaR and drawdowns flat or mixed within ±1pp) with non-risk operational benefits (e.g., better liquidity, compliance, rebalancing feasibility). NOT for "diversification at cost of risk".
 
-CRITICAL: Value diversification. Lean towards "approved_with_caveats" if a proposed portfolio significantly reduces single-asset concentration risk (e.g., moving from 90% BTC to a balanced portfolio), even if the historical VaR or drawdown numbers don't show a massive mathematical improvement.
+CRITICAL: If the proposed portfolio's VaR is higher than the current portfolio's VaR, you MUST output "rejected" regardless of how much concentration improved.
+CRITICAL: If the proposed portfolio's average drawdown across stress scenarios is higher than the current average, you MUST output "rejected" regardless of concentration improvement.
+CRITICAL: improvement_summary MUST explicitly compare current vs proposed with exact numbers (e.g. "Current avg drawdown -29% → Proposed -15%, an improvement of 14pp"). Do not skip this.
+CRITICAL: risk_summary should be 2-3 sentences a portfolio manager can act on. Be honest if the proposal is worse.
 
-CRITICAL: For crypto portfolios, absolute drawdowns up to 70% in crypto-native crashes are acceptable IF the current portfolio showed even worse. The delta matters, not perfection.
+When prior run context is available, compare current stress test results and VaR to previous assessments. Note if risk has increased or decreased.
 
-CRITICAL: improvement_summary MUST explicitly compare current vs proposed with exact numbers (e.g. "Current max DD -29% → Proposed -15%, an improvement of 14pp"). Do not skip this.
-
-When prior run context is available, compare current stress test results and VaR to previous assessments. Note if risk has increased or decreased, and whether past caveats have materialized or resolved.
-
-Always list specific caveats tied to numbers. Your risk_summary should be 2-3 sentences a portfolio manager can act on.`,
+Always list specific caveats tied to numbers.`,
 	model: [
 		{ model: "ollama-cloud/kimi-k2.6:cloud", maxRetries: 2 },
 		{ model: "ollama-cloud/glm-5.1:cloud", maxRetries: 2 },

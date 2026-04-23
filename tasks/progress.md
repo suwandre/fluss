@@ -334,3 +334,37 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 - None.
 
 ---
+
+## UX Improvement UX-13 — KeyMetricsComparison + Performance-first auto-rejection (4/23/2026)
+
+**Description:** Replace misleading regex-parsed DeltaCards with a symmetric Key Metrics Comparison table. Add hard auto-rejection gate in workflow before the Risk Agent LLM is called if proposed VaR or average drawdown worsens. Update agent prompts to performance-first philosophy.
+
+**Summary:**
+- `src/lib/agents/risk.ts`:
+  - Extended `RiskOutput` Zod schema with 7 new aggregate fields (`current_avg_drawdown`, `proposed_avg_drawdown`, `current_max_drawdown`, `proposed_max_drawdown`, `current_concentration_score`, `proposed_concentration_score`, `current_var_95`).
+  - Rewrote `riskAgent.instructions`: strict comparative hierarchy. `approved` only if proposed VaR lower AND avg drawdown lower AND concentration not worse. `rejected` if ANY key metric worsens. `approved_with_caveats` reserved for neutral risk with non-risk operational benefits. Explicit critical rules: worse VaR → always rejected; worse avg drawdown → always rejected; improvement_summary must compare exact numbers.
+- `src/lib/orchestrator/workflow.ts` (`riskStep`):
+  - Added hard auto-rejection gate BEFORE LLM call. Computes `currentAvgDrawdown` and `proposedAvgDrawdown` from pre-computed stress results. If `proposedVaR.var_pct > currentVaR.var_pct` OR `proposedAvgDrawdown > currentAvgDrawdown`, immediately returns synthetic `RiskOutput` with `verdict: "rejected"` and explanatory `caveats`/`risk_summary`.
+  - Updated prompt "Rules" section to match new strict verdict rules.
+  - After agent returns (non-rejected path), attaches all 7 computed aggregate metrics to `riskResultObj`.
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - Removed `parseDeltas` regex helper and `DeltaCards` component entirely.
+  - Added `MetricRow` and `KeyMetricsComparison` components: clean 4-row table with left "Current" and right "Proposed" columns + delta in percentage points (pp). Color-coded: red if proposed worse, teal if better, muted if same.
+  - Rows: VaR 95%, Avg Stress Drawdown, Max Stress Drawdown, Concentration Score.
+  - Graceful fallback to "N/A" for any missing new-field values (backward-compatible with old persisted runs).
+  - `improvement_summary` rendered as plain italic paragraph below the metrics table, not split into cards.
+- `src/hooks/use-agent-run.ts`:
+  - Updated `buildStructuredOutput` risk case to forward all 7 new aggregate fields.
+- `src/lib/agents/redesign.ts`:
+  - Updated `redesignAgent.instructions` to add performance-first sentence at top: primary objective is improving risk-adjusted returns (lower VaR, lower drawdowns); diversification valuable only when it also improves or maintains performance.
+
+**Verification:**
+- `npx tsc --noEmit` — clean (0 errors).
+- `npx next build` — clean.
+
+**Gotchas:**
+- Synthetic `rejected` result skips LLM entirely, so `riskResultObj.improvement_summary` is "". UI renders it as empty italic paragraph — acceptable.
+- New aggregate fields are `optional()` in Zod schema so old persisted runs still deserialize without errors.
+- `parseDeltas` and `DeltaCards` fully removed; no regressions because `KeyMetricsComparison` is self-contained.
+
+---

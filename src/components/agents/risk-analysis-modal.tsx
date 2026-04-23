@@ -198,53 +198,106 @@ function StressBars({ data }: { data: StressResult[] }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Before/After Delta                                                 */
+/*  Key Metrics Comparison                                             */
 /* ------------------------------------------------------------------ */
 
-interface DeltaPair {
-	before: string;
-	after: string;
-}
+function MetricRow({
+	label,
+	currentValue,
+	proposedValue,
+	unit,
+	isBetterWhenLower,
+}: {
+	label: string;
+	currentValue: number | undefined;
+	proposedValue: number | undefined;
+	unit: string;
+	isBetterWhenLower: boolean;
+}) {
+	const curr = typeof currentValue === "number" ? currentValue : null;
+	const prop = typeof proposedValue === "number" ? proposedValue : null;
 
-function parseDeltas(text: string): DeltaPair[] {
-	if (!text) return [];
-	const pairs: DeltaPair[] = [];
-	const sentences = splitSentences(text);
-	for (const s of sentences) {
-		const match = s.match(/Current\s+(.+?)\s*→\s*Proposed\s+(.+)/i);
-		if (match) {
-			pairs.push({ before: match[1].trim(), after: match[2].trim() });
-		}
+	if (curr === null || prop === null) {
+		return (
+			<div className="flex items-center justify-between px-1 py-1.5">
+				<span className="text-[11px] text-text-dim font-medium">{label}</span>
+				<span className="text-[11px] text-text-muted italic">N/A</span>
+			</div>
+		);
 	}
-	return pairs;
-}
 
-function DeltaCards({ text }: { text: string }) {
-	const deltas = parseDeltas(text);
-	if (deltas.length === 0) {
-		return <div className="text-[12px] text-text-dim italic">{text || "No improvements data."}</div>;
-	}
+	const delta = prop - curr;
+	const better = isBetterWhenLower ? delta < 0 : delta > 0;
+	const worse = isBetterWhenLower ? delta > 0 : delta < 0;
+	const color = worse ? "text-red" : better ? "text-teal" : "text-text-muted";
+	const deltaSign = delta > 0 ? "+" : "";
 
 	return (
-		<div className="flex flex-col gap-2">
-			{deltas.map((d, i) => (
-				<div
-					key={i}
-					className="rounded border border-border bg-bg-card px-4 py-3 flex flex-col gap-1.5"
-				>
-					<div className="flex items-stretch gap-3">
-						<div className="flex-1 text-left flex flex-col gap-0.5">
-							<span className="text-[10px] text-text-muted">Current</span>
-							<span className="text-[11px] text-text-dim">{d.before}</span>
-						</div>
-						<div className="w-px bg-border self-stretch" />
-						<div className="flex-1 text-right flex flex-col gap-0.5">
-							<span className="text-[10px] text-teal/60">Proposed</span>
-							<span className="text-[11px] text-teal font-medium">{d.after}</span>
-						</div>
+		<div className="flex items-center justify-between px-1 py-1.5 border-b border-border/40 last:border-0">
+			<span className="text-[11px] text-text-dim font-medium">{label}</span>
+			<div className="flex items-center gap-3">
+				<div className="text-right">
+					<div className="text-[10px] text-text-muted">Current</div>
+					<div className="text-[11px] font-mono text-text">{curr.toFixed(2)}{unit}</div>
+				</div>
+				<div className="text-right">
+					<div className="text-[10px] text-teal/60">Proposed</div>
+					<div className="text-[11px] font-mono text-teal font-medium">{prop.toFixed(2)}{unit}</div>
+				</div>
+				<div className="w-16 text-right">
+					<div className={`text-[11px] font-mono font-semibold ${color}`}>
+						{deltaSign}{delta.toFixed(2)}pp
 					</div>
 				</div>
-			))}
+			</div>
+		</div>
+	);
+}
+
+function KeyMetricsComparison({
+	structuredOutput,
+}: {
+	structuredOutput: Record<string, unknown>;
+}) {
+	const currentVar95 = typeof structuredOutput.current_var_95 === "number" ? structuredOutput.current_var_95 : undefined;
+	const proposedVar95 = typeof structuredOutput.var_95 === "number" ? structuredOutput.var_95 : undefined;
+	const currentAvg = typeof structuredOutput.current_avg_drawdown === "number" ? structuredOutput.current_avg_drawdown : undefined;
+	const proposedAvg = typeof structuredOutput.proposed_avg_drawdown === "number" ? structuredOutput.proposed_avg_drawdown : undefined;
+	const currentMax = typeof structuredOutput.current_max_drawdown === "number" ? structuredOutput.current_max_drawdown : undefined;
+	const proposedMax = typeof structuredOutput.proposed_max_drawdown === "number" ? structuredOutput.proposed_max_drawdown : undefined;
+	const currentConc = typeof structuredOutput.current_concentration_score === "number" ? structuredOutput.current_concentration_score : undefined;
+	const proposedConc = typeof structuredOutput.proposed_concentration_score === "number" ? structuredOutput.proposed_concentration_score : undefined;
+
+	return (
+		<div className="space-y-0">
+			<MetricRow
+				label="VaR 95%"
+				currentValue={currentVar95}
+				proposedValue={proposedVar95}
+				unit="%"
+				isBetterWhenLower={true}
+			/>
+			<MetricRow
+				label="Avg Stress Drawdown"
+				currentValue={currentAvg}
+				proposedValue={proposedAvg}
+				unit="%"
+				isBetterWhenLower={true}
+			/>
+			<MetricRow
+				label="Max Stress Drawdown"
+				currentValue={currentMax}
+				proposedValue={proposedMax}
+				unit="%"
+				isBetterWhenLower={true}
+			/>
+			<MetricRow
+				label="Concentration Score"
+				currentValue={currentConc}
+				proposedValue={proposedConc}
+				unit=""
+				isBetterWhenLower={true}
+			/>
 		</div>
 	);
 }
@@ -432,13 +485,18 @@ export function RiskAnalysisModal({
 						</div>
 					)}
 
-					{/* Before / After Deltas */}
-					{improvementSummary && (
+					{/* Before / After Metrics — Key Metrics Comparison */}
+					{(typeof structuredOutput.current_var_95 === "number" || improvementSummary) && (
 						<div className="rounded-lg border border-teal/15 bg-[rgba(20,184,166,0.04)] p-4">
 							<div className="text-[11px] font-mono text-teal uppercase tracking-wide mb-3 pb-1 border-b border-teal/10">
 								Portfolio Changes
 							</div>
-							<DeltaCards text={improvementSummary} />
+							<KeyMetricsComparison structuredOutput={structuredOutput} />
+							{improvementSummary && (
+								<p className="text-[12px] text-text-dim italic mt-3 pt-2 border-t border-teal/10">
+									{improvementSummary}
+								</p>
+							)}
 						</div>
 					)}
 

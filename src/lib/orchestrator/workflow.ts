@@ -509,6 +509,35 @@ const riskStep = createStep({
       };
     });
 
+    // Compute aggregate drawdown metrics for auto-rejection gate and UI
+    const currentDrawdowns = currentStress.stress_results.map((r: any) => r.simulated_drawdown_pct);
+    const proposedDrawdowns = proposedStress.stress_results.map((r: any) => r.simulated_drawdown_pct);
+    const currentAvgDrawdown = currentDrawdowns.length > 0 ? currentDrawdowns.reduce((a: number, b: number) => a + b, 0) / currentDrawdowns.length : 0;
+    const proposedAvgDrawdown = proposedDrawdowns.length > 0 ? proposedDrawdowns.reduce((a: number, b: number) => a + b, 0) / proposedDrawdowns.length : 0;
+    const currentMaxDrawdown = currentDrawdowns.length > 0 ? Math.max(...currentDrawdowns) : 0;
+    const proposedMaxDrawdown = proposedDrawdowns.length > 0 ? Math.max(...proposedDrawdowns) : 0;
+
+    // Hard auto-rejection gate: performance-first, diversification secondary
+    if (proposedVaR.var_pct > currentVaR.var_pct || proposedAvgDrawdown > currentAvgDrawdown) {
+      const syntheticResult = {
+        stress_results: proposedStress.stress_results,
+        var_95: proposedVaR.var_pct,
+        verdict: "rejected",
+        caveats: ["Proposed portfolio increases VaR and/or average drawdown. Auto-rejected because performance worsens."],
+        risk_summary: `The proposed rebalancing worsens risk-adjusted performance. VaR increased from ${currentVaR.var_pct}% to ${proposedVaR.var_pct}%, and average drawdown increased from ${currentAvgDrawdown.toFixed(2)}% to ${proposedAvgDrawdown.toFixed(2)}%. No action recommended.`,
+        improvement_summary: "",
+        scenario_comparisons: scenarioComparisons,
+        current_avg_drawdown: currentAvgDrawdown,
+        proposed_avg_drawdown: proposedAvgDrawdown,
+        current_max_drawdown: currentMaxDrawdown,
+        proposed_max_drawdown: proposedMaxDrawdown,
+        current_concentration_score: currentVaR.concentration_score,
+        proposed_concentration_score: proposedVaR.concentration_score,
+        current_var_95: currentVaR.var_pct,
+      } as any;
+      return { ...inputData, risk: syntheticResult };
+    }
+
     const riskPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
@@ -544,11 +573,9 @@ const riskStep = createStep({
       JSON.stringify(portfolioData, null, 2),
       "",
       "Rules:",
-      '- "approved" — proposed is meaningfully better than current (drawdown improved, VaR lower, or 2+ metrics better)',
-      '- "approved_with_caveats" — proposed is slightly better or mixed (not worse overall)',
-      '- "rejected" — proposed is WORSE than current in key metrics, OR introduces new catastrophic risk not present in current',
-      "",
-      "For crypto portfolios: absolute drawdowns up to 70% in crypto-native crashes are acceptable IF current portfolio showed even worse. The delta matters, not perfection.",
+      '- "approved" — proposed is meaningfully better: lower VaR, lower avg drawdown, and concentration did not worsen.',
+      '- "rejected" — any key risk metric worsens: higher VaR, higher avg/max drawdown, or higher concentration. NO overrides for diversification alone.',
+      '- "approved_with_caveats" — reserved for neutral risk (flat metrics) with non-risk operational benefits. NOT for diversification at cost of performance.',
       "",
       "improvement_summary MUST explicitly compare current vs proposed top-level metrics ONLY (VaR, concentration, max drawdown across all scenarios). Do NOT list individual scenario-by-scenario drawdowns here — reserve that for the Caveats section.",
       "",
@@ -584,6 +611,15 @@ const riskStep = createStep({
     if (riskResultObj && typeof proposedVaR?.var_pct === "number") {
       riskResultObj.var_95 = proposedVaR.var_pct;
     }
+
+    // Attach computed aggregate metrics for UI
+    riskResultObj.current_avg_drawdown = currentAvgDrawdown;
+    riskResultObj.proposed_avg_drawdown = proposedAvgDrawdown;
+    riskResultObj.current_max_drawdown = currentMaxDrawdown;
+    riskResultObj.proposed_max_drawdown = proposedMaxDrawdown;
+    riskResultObj.current_concentration_score = currentVaR.concentration_score;
+    riskResultObj.proposed_concentration_score = proposedVaR.concentration_score;
+    riskResultObj.current_var_95 = currentVaR.var_pct;
 
     return { ...inputData, risk: riskResultObj };
   },

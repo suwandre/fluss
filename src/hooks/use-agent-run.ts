@@ -73,6 +73,13 @@ function buildStructuredOutput(
 				caveats: output.caveats,
 				risk_summary: output.risk_summary,
 				improvement_summary: output.improvement_summary,
+				current_avg_drawdown: output.current_avg_drawdown,
+				proposed_avg_drawdown: output.proposed_avg_drawdown,
+				current_max_drawdown: output.current_max_drawdown,
+				proposed_max_drawdown: output.proposed_max_drawdown,
+				current_concentration_score: output.current_concentration_score,
+				proposed_concentration_score: output.proposed_concentration_score,
+				current_var_95: output.current_var_95,
 			};
 		default:
 			return undefined;

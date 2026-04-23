@@ -224,6 +224,17 @@
 
 ---
 
+## Post-Phase Fixes (4/23/2026)
+
+- [x] **Risk Dashboard — Replace DeltaCards regex with KeyMetricsComparison + Performance-first auto-rejection**
+  - Extend `RiskOutput` schema with `current_avg_drawdown`, `proposed_avg_drawdown`, `current_max_drawdown`, `proposed_max_drawdown`, `current_concentration_score`, `proposed_concentration_score`, `current_var_95`.
+  - Rewrite `riskAgent.instructions` to performance-first: reject any proposal that worsens VaR or drawdowns, diversification never overrides worse risk.
+  - Add hard auto-rejection gate in `riskStep` (workflow) before LLM call if proposed VaR or avg drawdown is worse.
+  - Replace `DeltaCards` regex parsing with `KeyMetricsComparison` 4-row table (VaR, avg drawdown, max drawdown, concentration). Keep `improvement_summary` as plain text below table.
+  - Update `redesignAgent.instructions` to prioritize risk-adjusted performance over pure diversification.
+
+---
+
 _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIGN_V1.md_
 
 ---
