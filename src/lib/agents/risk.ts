@@ -23,6 +23,16 @@ export const RiskOutput = z.object({
 	caveats: z.array(z.string()),
 	risk_summary: z.string(),
 	improvement_summary: z.string(),
+	scenario_comparisons: z
+		.array(
+			z.object({
+				scenario: z.string(),
+				current_drawdown: z.number(),
+				proposed_drawdown: z.number(),
+				delta_pp: z.number(),
+			}),
+		)
+		.optional(),
 });
 
 export type RiskOutput = z.infer<typeof RiskOutput>;

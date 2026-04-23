@@ -74,7 +74,19 @@ function polar(cx: number, cy: number, r: number, angleDeg: number) {
 }
 
 function VaRGauge({ value }: { value: number | null }) {
-	const val = value ?? 0;
+	if (value === null) {
+		return (
+			<div className="flex flex-col items-center justify-center py-6">
+				<div className="text-3xl font-mono font-bold text-text-dim">N/A</div>
+				<div className="text-[11px] font-mono text-text-muted uppercase tracking-wide mt-0.5">
+					Max Daily Loss (95%)
+				</div>
+				<div className="text-[11px] text-text-muted mt-1">Could not compute VaR</div>
+			</div>
+		);
+	}
+
+	const val = value;
 	const clamped = Math.min(Math.max(val, 0), GAUGE_MAX_VAL);
 	const pct = clamped / GAUGE_MAX_VAL;
 	const endAngle = 180 - pct * 180; // 180° (left) → 0° (right)
@@ -220,10 +232,16 @@ function DeltaCards({ text }: { text: string }) {
 					key={i}
 					className="rounded border border-border bg-bg-card px-4 py-3 flex flex-col gap-1.5"
 				>
-					<div className="flex items-center justify-between gap-2">
-						<span className="text-[11px] text-text-dim">{d.before}</span>
-						<span className="text-text-muted font-mono text-[11px] shrink-0">↦</span>
-						<span className="text-[11px] text-teal font-medium text-right">{d.after}</span>
+					<div className="flex items-stretch gap-3">
+						<div className="flex-1 text-left flex flex-col gap-0.5">
+							<span className="text-[10px] text-text-muted">Current</span>
+							<span className="text-[11px] text-text-dim">{d.before}</span>
+						</div>
+						<div className="w-px bg-border self-stretch" />
+						<div className="flex-1 text-right flex flex-col gap-0.5">
+							<span className="text-[10px] text-teal/60">Proposed</span>
+							<span className="text-[11px] text-teal font-medium">{d.after}</span>
+						</div>
 					</div>
 				</div>
 			))}
@@ -279,6 +297,63 @@ function RiskCards({ text }: { text: string }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Scenario Comparison Table                                        */
+/* ------------------------------------------------------------------ */
+
+interface ScenarioComparison {
+	scenario: string;
+	current_drawdown: number;
+	proposed_drawdown: number;
+	delta_pp: number;
+}
+
+function ScenarioComparisonTable({ data }: { data: ScenarioComparison[] }) {
+	if (data.length === 0) return null;
+
+	return (
+		<div className="space-y-2">
+			{data.map((row, i) => {
+				const delta = row.delta_pp;
+				const color =
+					delta > 0
+						? "text-red" // proposed worse (higher drawdown)
+						: delta < 0
+							? "text-teal" // proposed better
+							: "text-text-muted"; // unchanged
+				const bgColor =
+					delta > 0
+						? "bg-red/5"
+						: delta < 0
+							? "bg-teal/5"
+							: "bg-bg-card";
+
+				return (
+					<div
+						key={i}
+						className={`flex items-center gap-3 px-3 py-2 rounded border border-border/40 text-[11px] ${bgColor}`}
+					>
+						<span className="w-28 shrink-0 truncate text-text/80 font-medium" title={row.scenario}>
+							{row.scenario}
+						</span>
+						<span className="w-14 text-right font-mono text-text-dim">
+							{row.current_drawdown.toFixed(1)}%
+						</span>
+						<span className="w-14 text-right font-mono text-text">→</span>
+						<span className="w-14 text-right font-mono text-text">
+							{row.proposed_drawdown.toFixed(1)}%
+						</span>
+						<span className={`w-16 text-right font-mono font-semibold ${color}`}>
+							{delta > 0 ? "+" : ""}
+							{delta.toFixed(1)}pp
+						</span>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main Component                                                   */
 /* ------------------------------------------------------------------ */
 
@@ -291,14 +366,17 @@ export function RiskAnalysisModal({
 	const caveats = Array.isArray(structuredOutput.caveats) ? (structuredOutput.caveats as string[]) : [];
 	const riskSummary = typeof structuredOutput.risk_summary === "string" ? structuredOutput.risk_summary : "";
 	const improvementSummary = typeof structuredOutput.improvement_summary === "string" ? structuredOutput.improvement_summary : "";
-	const rawVar = structuredOutput.var_95;
-	const var95 =
-		typeof rawVar === "number"
-			? rawVar
-			: typeof rawVar === "string"
-				? parseFloat(rawVar) || null
-				: null;
 	const stressResults = Array.isArray(structuredOutput.stress_results) ? (structuredOutput.stress_results as StressResult[]) : [];
+	const scenarioComparisons = Array.isArray(structuredOutput.scenario_comparisons)
+		? (structuredOutput.scenario_comparisons as { scenario: string; current_drawdown: number; proposed_drawdown: number; delta_pp: number }[])
+		: [];
+
+	const rawVar = structuredOutput.var_95;
+	let var95 = typeof rawVar === "number" ? rawVar : typeof rawVar === "string" ? parseFloat(rawVar) || null : null;
+	if (var95 === 0 && stressResults.length > 0) {
+		// Gauge guard: 0% with stress data present is almost certainly a parsing failure
+		var95 = null;
+	}
 
 	const verdictConfig = verdict ? getVerdictConfig(verdict) : null;
 
@@ -340,6 +418,17 @@ export function RiskAnalysisModal({
 								<span className="text-text-muted text-[10px] font-sans normal-case">Drawdown &rarr; Recovery</span>
 							</div>
 							<StressBars data={stressResults} />
+						</div>
+					)}
+
+					{/* Scenario Comparison */}
+					{scenarioComparisons.length > 0 && (
+						<div className="rounded-lg border border-border bg-bg-elevated p-4">
+							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
+								<span>Scenario Comparison</span>
+								<span className="text-text-muted text-[10px] font-sans normal-case">Current → Proposed</span>
+							</div>
+							<ScenarioComparisonTable data={scenarioComparisons} />
 						</div>
 					)}
 

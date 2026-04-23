@@ -499,6 +499,16 @@ const riskStep = createStep({
         : Promise.resolve({ var_pct: 0, var_dollar: 0, portfolio_value: 0, confidence_level: 0.95, lookback_days: 252 }),
     ]);
 
+    const scenarioComparisons = currentStress.stress_results.map((curr: any) => {
+      const prop = proposedStress.stress_results.find((p: any) => p.scenario === curr.scenario);
+      return {
+        scenario: curr.scenario,
+        current_drawdown: curr.simulated_drawdown_pct,
+        proposed_drawdown: prop ? prop.simulated_drawdown_pct : curr.simulated_drawdown_pct,
+        delta_pp: prop ? parseFloat((prop.simulated_drawdown_pct - curr.simulated_drawdown_pct).toFixed(2)) : 0,
+      };
+    });
+
     const riskPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
       "",
@@ -527,6 +537,9 @@ const riskStep = createStep({
       `Redesign confidence: ${inputData.redesign.confidence}`,
       `Expected improvement: ${inputData.redesign.expected_improvement.narrative}`,
       "",
+      "Scenario-by-scenario comparison (DO NOT repeat in improvement_summary):",
+      JSON.stringify(scenarioComparisons, null, 2),
+      "",
       "Current portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
       "",
@@ -537,7 +550,7 @@ const riskStep = createStep({
       "",
       "For crypto portfolios: absolute drawdowns up to 70% in crypto-native crashes are acceptable IF current portfolio showed even worse. The delta matters, not perfection.",
       "",
-      "improvement_summary MUST explicitly compare current vs proposed (e.g. 'Current max DD -29% -> Proposed -15%, an improvement of 14pp').",
+      "improvement_summary MUST explicitly compare current vs proposed top-level metrics ONLY (VaR, concentration, max drawdown across all scenarios). Do NOT list individual scenario-by-scenario drawdowns here — reserve that for the Caveats section.",
       "",
       "Provide your verdict, caveats, risk_summary, and improvement_summary based ONLY on the pre-computed numbers above.",
     ].join("\n");
@@ -562,6 +575,14 @@ const riskStep = createStep({
         (r) => r,
         { memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID } },
       );
+    }
+
+    // Attach structured scenario comparisons for the UI
+    riskResultObj.scenario_comparisons = scenarioComparisons;
+
+    // Override var_95 with pre-computed proposedVaR to prevent LLM from echoing 0.00%
+    if (riskResultObj && typeof proposedVaR?.var_pct === "number") {
+      riskResultObj.var_95 = proposedVaR.var_pct;
     }
 
     return { ...inputData, risk: riskResultObj };

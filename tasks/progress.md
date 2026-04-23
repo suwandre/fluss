@@ -195,8 +195,6 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
----
-
 ## Task — Fix three bugs: embeddings timeout, stress test date ranges, risk step portfolio re-normalization (4/22/2026)
 
 **Description:** User reported three issues: (1) news RAG embeddings failing with `fetch failed` even after news fetch fix, (2) every stress test returning identical -9.5% for all historical crypto scenarios, (3) Risk Agent rejecting a "high confidence" redesign because the VaR/stress were computed on a different portfolio than the one proposed.
@@ -234,7 +232,7 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 - **UX-1:** Created `ZoomControls` component using `useReactFlow()` hook with ZoomIn/ZoomOut/Maximize icons from lucide-react. Bottom-left, stacked vertically, dark-themed icon buttons. Removed `<Controls />` from ReactFlow.
 - **UX-2:** Moved correlation legend from `bottom-3` to `bottom-16` so it sits above the zoom buttons.
 - **UX-3:** Risk Agent step now shows condensed view (verdict badge already in header + one-line risk_summary truncated to 80 chars + "View Analysis" button) instead of full structured output key-value list. Caveats still formatted as pills in the modal.
-- **UX-4+UX-5:** Created `risk-analysis-modal.tsx` using Dialog component. Contains: verdict banner (color-coded), VaR 95% metric card, caveat pills, risk summary bullet points (amber), improvement summary checklist (green), stress test count. Overrides `sm:max-w-lg` on DialogContent.
+- **UX-4+UX-5:** Created `risk-analysis-modal.tsx` using Dialog component. Contains: verdict banner (color-coded), VaR 95% metric card, caveat pills, risk summary bullet points (amber), improvement summary checklist (green), stress scenario count. Overrides `sm:max-w-lg` on DialogContent.
 - **UX-6:** Wired modal in `agent-reasoning-panel.tsx`: `riskModalOpen` state, `onRiskViewDetails` callback passed via `AgentTimeline` → `AgentStep` (only for step index 3). Modal receives `structuredOutput` from Risk step.
 
 **Verification:**
@@ -248,7 +246,7 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
-## UX Improvements UX-7 and UX-8 (4/23/2026)
+## UX Improvements UX-7 and UX-8 (4/22-23/2026)
 
 **Description:** Adjust legend position to avoid blocking zoom controls, and visually refactor Risk Analysis modal.
 
@@ -292,3 +290,30 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 **Gotchas:**
 - No new dependencies added. Gauge is pure SVG + CSS transitions.
 - `var_95` string coercion is a backward-compat fix until Risk Agent consistently outputs numbers.
+
+---
+
+## UX-11 — Structured stress scenario comparison in Risk Analysis Modal (4/23/2026)
+
+**Description:** Risk modal previously showed only proposed stress bars. No comparison vs current portfolio per scenario. `improvement_summary` was regex-parsed into unreadable blocks. Fix: compute structured `scenario_comparisons` in workflow, expose in schema, render as table in UI.
+
+**Summary:**
+- `src/lib/agents/risk.ts`: Added `scenario_comparisons?: { scenario: string; current_drawdown: number; proposed_drawdown: number; delta_pp: number }[]` to `RiskOutput`. Optional, non-breaking.
+- `src/lib/orchestrator/workflow.ts` (`riskStep`):
+  - Computed `scenarioComparisons` by mapping `currentStress.stress_results` and matching `proposedStress` by scenario name.
+  - Injected `scenarioComparisons` into prompt + added hard instruction: "Scenario-by-scenario comparison (DO NOT repeat in improvement_summary)".
+  - Updated `improvement_summary` rule to restrict it to top-level metrics only (VaR, concentration, max drawdown across scenarios).
+  - After agent returns, attached `scenarioComparisons` to `riskResultObj.scenario_comparisons`.
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - Added `ScenarioComparisonTable` component. Rows show scenario name (truncated), current drawdown %, proposed drawdown %, delta in pp.
+  - Delta color-coded: red if worse (proposed higher drawdown), teal if better, muted if unchanged.
+  - Table placed after Stress Scenarios block, before Portfolio Changes.
+
+**Verification:**
+- `npx tsc --noEmit` — clean (0 errors).
+- `npx next build` — clean.
+
+**Gotchas:**
+- None.
+
+---

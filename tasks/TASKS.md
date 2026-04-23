@@ -210,6 +210,14 @@
 
 - [x] **UX-9** Redesign `risk-analysis-modal.tsx` from text-heavy layout to visual dashboard: SVG VaR gauge with animated arc + needle, horizontal stress-scenario bars with recovery badges, Before/After delta cards parsed from improvement text, severity-colored risk factor cards, scrollable caveat pills. No new dependencies.
 
+## UX Improvements UX-11 (4/23/2026)
+
+- [x] **UX-11** Structured stress scenario comparison in Risk Analysis Modal.
+
+## UX Improvements UX-10 (4/23/2026)
+
+- [x] **UX-10** Redesign Portfolio Changes delta cards in `risk-analysis-modal.tsx` — two-column layout with subtle vertical divider, "Current" and "Proposed" labels, no arrow icon. Keep border + bg + padding. `bun run build` clean.
+
 ---
 
 _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIGN_V1.md_
