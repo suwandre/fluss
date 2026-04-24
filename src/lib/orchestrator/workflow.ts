@@ -33,6 +33,13 @@ const MEMORY_THREADS = {
 } as const;
 const MEMORY_RESOURCE_ID = "portfolio-factory";
 
+const PreferencesSchema = z.object({
+  sectorConstraint: z.enum(["same_sector", "diversify"]).default("same_sector"),
+  riskAppetite: z.enum(["aggressive", "conservative"]).default("aggressive"),
+  maxTurnoverPct: z.number().default(30),
+  excludedTickers: z.array(z.string()).default([]),
+});
+
 // ── Shared schemas ──────────────────────────────────────────────────
 
 const PortfolioDataEntry = z.object({
@@ -50,6 +57,7 @@ const MarketSnapshotSchema = z.object({
   totalValue: z.number(),
   totalCost: z.number(),
   tickers: z.array(z.string()),
+  preferences: PreferencesSchema.default({ sectorConstraint: "same_sector", riskAppetite: "aggressive", maxTurnoverPct: 30, excludedTickers: [] }),
 });
 
 const CorrelationPairSchema = z.object({
@@ -91,12 +99,12 @@ const WorkflowOutputSchema = z.object({
 const fetchMarketSnapshot = createStep({
   id: "fetch-market-snapshot",
   description: "Pull live prices for all holdings from DB + market data APIs",
-  inputSchema: z.object({}),
+  inputSchema: PreferencesSchema,
   outputSchema: MarketSnapshotSchema,
-  execute: async () => {
+  execute: async ({ inputData }) => {
     const rows = await db.select().from(holdings);
     if (rows.length === 0) {
-      return { portfolioData: [], totalValue: 0, totalCost: 0, tickers: [] };
+      return { portfolioData: [], totalValue: 0, totalCost: 0, tickers: [], preferences: inputData };
     }
 
     const priceMap = await getBatchPrices(
@@ -134,6 +142,7 @@ const fetchMarketSnapshot = createStep({
       totalValue,
       totalCost,
       tickers: rows.map((r) => r.ticker),
+      preferences: inputData,
     };
   },
 });
@@ -328,7 +337,12 @@ const redesignStep = createStep({
     const marketSnapshot = getStepResult(fetchMarketSnapshot) as z.infer<
       typeof MarketSnapshotSchema
     >;
-    const { portfolioData } = marketSnapshot;
+    const { portfolioData, preferences } = marketSnapshot;
+
+    const currentSectorSet = new Set(portfolioData.map((d) => d.assetClass));
+    const allowedAssetClasses = preferences.sectorConstraint === "same_sector"
+      ? Array.from(currentSectorSet)
+      : ["equity", "crypto", "bond", "etf", "fx"];
 
     const redesignPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
@@ -348,6 +362,15 @@ const redesignStep = createStep({
       "",
       "Original portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
+      "",
+      "User preferences:",
+      `- Sector constraint: ${preferences.sectorConstraint === "same_sector" ? "Stay within current sectors only" : "Allow cross-sector diversification (ETFs, bonds, FX, equities)"}`,
+      `- Risk appetite: ${preferences.riskAppetite === "aggressive" ? "Aggressive — higher potential reward" : "Conservative — stable returns, capital preservation"}`,
+      `- Max turnover: ${preferences.maxTurnoverPct}%`,
+      preferences.excludedTickers.length > 0 ? `- Excluded tickers: ${preferences.excludedTickers.join(", ")}` : "",
+      "",
+      "Allowed asset classes for alternatives:",
+      JSON.stringify(allowedAssetClasses),
       "",
       "Propose concrete rebalancing actions. Analyze the holdings data above and recommend specific changes with target percentages.",
     ].join("\n");
@@ -509,13 +532,17 @@ const riskStep = createStep({
       };
     });
 
-    // Compute aggregate drawdown metrics for auto-rejection gate and UI
+    // Compute aggregate drawdown metrics and weighted risk score
     const currentDrawdowns = currentStress.stress_results.map((r: any) => r.simulated_drawdown_pct);
     const proposedDrawdowns = proposedStress.stress_results.map((r: any) => r.simulated_drawdown_pct);
     const currentAvgDrawdown = currentDrawdowns.length > 0 ? currentDrawdowns.reduce((a: number, b: number) => a + b, 0) / currentDrawdowns.length : 0;
     const proposedAvgDrawdown = proposedDrawdowns.length > 0 ? proposedDrawdowns.reduce((a: number, b: number) => a + b, 0) / proposedDrawdowns.length : 0;
     const currentMaxDrawdown = currentDrawdowns.length > 0 ? Math.max(...currentDrawdowns) : 0;
     const proposedMaxDrawdown = proposedDrawdowns.length > 0 ? Math.max(...proposedDrawdowns) : 0;
+
+    const currentScore = 0.30 * (currentVaR.var_pct ?? 0) + 0.45 * currentMaxDrawdown + 0.25 * (currentVaR.concentration_score ?? 0);
+    const proposedScore = 0.30 * (proposedVaR.var_pct ?? 0) + 0.45 * proposedMaxDrawdown + 0.25 * (proposedVaR.concentration_score ?? 0);
+    const deltaScore = parseFloat((proposedScore - currentScore).toFixed(2));
 
     const riskPrompt = [
       "CRITICAL: You must output ONLY raw, valid JSON matching the requested schema. Do not use markdown formatting. Do not wrap in ```json ... ```. No conversational text.",
@@ -533,10 +560,16 @@ const riskStep = createStep({
       "Current portfolio pre-computed stress results:",
       JSON.stringify(currentStress.stress_results, null, 2),
       `Current portfolio VaR 95%: ${currentVaR.var_pct}%`,
+      `Current portfolio average drawdown across all stress scenarios: ${currentAvgDrawdown.toFixed(2)}%`,
+      `Current portfolio max drawdown across all stress scenarios: ${currentMaxDrawdown.toFixed(2)}%`,
+      `Current portfolio concentration score: ${currentVaR.concentration_score.toFixed(4)}`,
       "",
       "Proposed portfolio pre-computed stress results:",
       JSON.stringify(proposedStress.stress_results, null, 2),
       `Proposed portfolio VaR 95%: ${proposedVaR.var_pct}%`,
+      `Proposed portfolio average drawdown across all stress scenarios: ${proposedAvgDrawdown.toFixed(2)}%`,
+      `Proposed portfolio max drawdown across all stress scenarios: ${proposedMaxDrawdown.toFixed(2)}%`,
+      `Proposed portfolio concentration score: ${proposedVaR.concentration_score.toFixed(4)}`,
       "",
       "Proposed actions:",
       `${actions?.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ") ?? "none"}`,
@@ -549,13 +582,20 @@ const riskStep = createStep({
       "Current portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
       "",
-      "Rules:",
-      '- "approved" — proposed is meaningfully better: lower VaR, lower avg drawdown, and concentration did not worsen.',
-      '- "rejected" — any key risk metric worsens: higher VaR, higher avg/max drawdown, or higher concentration. NO overrides for diversification alone. If VaR increases OR average drawdown increases, you MUST output "rejected".',
-      '- "approved_with_caveats" — reserved for neutral risk (flat metrics) with non-risk operational benefits. NOT for diversification at cost of performance.',
+      "Weighted risk score (lower is better):",
+      `Current portfolio risk score: ${currentScore.toFixed(2)}`,
+      `Proposed portfolio risk score: ${proposedScore.toFixed(2)}`,
+      `Score delta (proposed - current): ${deltaScore.toFixed(2)}`,
       "",
-      "CRITICAL: In your `risk_summary` and `improvement_summary`, you must correctly identify which metrics improved (e.g., drawdown decreasing) and which worsened (e.g., VaR increasing). Explain that any worsening of a risk metric makes it a dealbreaker despite other improvements.",
-      "improvement_summary MUST explicitly compare current vs proposed top-level metrics ONLY (VaR, concentration, max drawdown across all scenarios).",
+      "Rules:",
+      '- "approved" — deltaScore < -0.05 (meaningful net improvement).',
+      '- "approved_with_caveats" — |deltaScore| <= 0.05 (trade-off zone, mixed signals).',
+      '- "rejected" — deltaScore > +0.05 (meaningful net worsening).',
+      "",
+      "CRITICAL: Do NOT compute average drawdown, max drawdown, or concentration score yourself. Use ONLY the pre-computed values stated explicitly above.",
+      "CRITICAL: Copy the following exact line into your improvement_summary (fill in the numbers from above):",
+      `"Current avg drawdown ${currentAvgDrawdown.toFixed(2)}% → Proposed avg drawdown ${proposedAvgDrawdown.toFixed(2)}%, an improvement of ${(currentAvgDrawdown - proposedAvgDrawdown).toFixed(2)}pp."`,
+      "Then add similar exact lines for VaR, max drawdown, and concentration using the pre-computed numbers.",
       "",
       "Provide your verdict, caveats, risk_summary, and improvement_summary based ONLY on the pre-computed numbers above.",
     ].join("\n");
@@ -621,7 +661,12 @@ export const portfolioFactoryWorkflow = createWorkflow({
   id: "portfolio-factory",
   description:
     "Full agent pipeline: fetch market data → Monitor → conditional escalation (Bottleneck → Redesign → Risk) or status update",
-  inputSchema: z.object({}),
+  inputSchema: z.object({
+    sectorConstraint: z.enum(["same_sector", "diversify"]).default("same_sector"),
+    riskAppetite: z.enum(["aggressive", "conservative"]).default("aggressive"),
+    maxTurnoverPct: z.number().default(30),
+    excludedTickers: z.array(z.string()).default([]),
+  }),
   outputSchema: WorkflowOutputSchema,
 })
   .then(fetchMarketSnapshot)

@@ -94,12 +94,19 @@ export interface UseAgentRunReturn {
 	monitorOutput: MonitorOutput | null;
 	workflowOutput: Record<string, unknown> | null;
 	lastRunAt: Date | null;
-	startRun: () => Promise<void>;
+	startRun: (preferences?: UserPreferences) => Promise<void>;
 	setMonitorOutput: (v: MonitorOutput | null) => void;
 	setWorkflowOutput: (v: Record<string, unknown> | null) => void;
 	setRunId: (v: string | null) => void;
 	setLastRunAt: (v: Date | null) => void;
 	rebuildStepsFromOutput: (output: Record<string, unknown>) => void;
+}
+
+export interface UserPreferences {
+	sectorConstraint?: "same_sector" | "diversify";
+	riskAppetite?: "aggressive" | "conservative";
+	maxTurnoverPct?: number;
+	excludedTickers?: string[];
 }
 
 /**
@@ -203,7 +210,7 @@ export function useAgentRun(): UseAgentRunReturn {
 		};
 	}, []);
 
-	const startRun = useCallback(async () => {
+	const startRun = useCallback(async (preferences?: UserPreferences) => {
 		// Abort any in-flight run
 		abortRef.current?.abort();
 		const controller = new AbortController();
@@ -227,6 +234,8 @@ export function useAgentRun(): UseAgentRunReturn {
 		try {
 			const response = await fetch("/api/agents/run", {
 				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(preferences ?? {}),
 				signal: controller.signal,
 			});
 

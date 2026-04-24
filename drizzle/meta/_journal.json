@@ -22,6 +22,13 @@
       "when": 1776801601284,
       "tag": "0002_slippery_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777053411531,
+      "tag": "0003_open_sleeper",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,22 @@ import { db } from "@/lib/db";
 import { agentRuns, holdings } from "@/lib/db/schema";
 
 export async function POST(req: Request) {
+  // Parse preferences from client payload
+  let preferences: {
+    sectorConstraint?: "same_sector" | "diversify";
+    riskAppetite?: "aggressive" | "conservative";
+    maxTurnoverPct?: number;
+    excludedTickers?: string[];
+  } = {};
+  try {
+    const body = await req.json();
+    if (body && typeof body === "object") {
+      preferences = body as typeof preferences;
+    }
+  } catch {
+    // Body may be empty — use defaults
+  }
+
   // Quick check — workflow's fetchMarketSnapshot step also checks, but this
   // gives an immediate 400 instead of a long-running stream that fails late.
   const rows = await db.select().from(holdings);
@@ -22,7 +38,14 @@ export async function POST(req: Request) {
   // Create and start the full portfolio factory workflow
   const workflow = mastra.getWorkflow("portfolioFactoryWorkflow");
   const run = await workflow.createRun({ runId });
-  const runOutput = run.stream({ inputData: {} });
+  const runOutput = run.stream({
+    inputData: {
+      sectorConstraint: preferences.sectorConstraint ?? "same_sector",
+      riskAppetite: preferences.riskAppetite ?? "aggressive",
+      maxTurnoverPct: preferences.maxTurnoverPct ?? 30,
+      excludedTickers: Array.isArray(preferences.excludedTickers) ? preferences.excludedTickers : [],
+    },
+  });
 
   const uiMessageStream = createUIMessageStream({
     execute: async ({ writer }) => {

@@ -75,3 +75,22 @@ export const marketDocuments = pgTable(
 		),
 	],
 );
+
+export const userPreferences = pgTable("user_preferences", (t) => ({
+	id: t.serial().primaryKey(),
+	userId: t.text("user_id").notNull().default("default"),
+	sectorConstraint: t
+		.text("sector_constraint")
+		.notNull()
+		.default("same_sector"), // 'same_sector' | 'diversify'
+	riskAppetite: t
+		.text("risk_appetite")
+		.notNull()
+		.default("aggressive"), // 'aggressive' | 'conservative'
+	maxTurnoverPct: t
+		.numeric("max_turnover_pct", { precision: 5, scale: 2, mode: "number" })
+		.default(30),
+	excludedTickers: t.text("excluded_tickers").array().default([]),
+	createdAt: t.timestamp("created_at", { withTimezone: true }).defaultNow(),
+	updatedAt: t.timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}));

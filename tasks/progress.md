@@ -406,3 +406,98 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 **Gotchas:**
 - None. `bun run build` clean.
+
+---
+
+## Phase 1 — Fix Average Drawdown Discrepancy (4/24/2026)
+
+**Description:** Risk Analysis Dashboard text showed hallucinated average drawdown (38.20%) conflicting with table (31.05%). LLM computed averages itself from raw JSON arrays. Conflicting instructions existed between workflow.ts prompt and risk.ts instructions.
+
+**Summary:**
+- `src/lib/orchestrator/workflow.ts` (`riskStep`):
+  - Added explicit pre-computed aggregate values for BOTH current and proposed portfolios: `average drawdown`, `max drawdown`, `concentration score` alongside existing `VaR 95%`.
+  - Removed the conflicting instruction that told the LLM to reject if average drawdown increases (that is its own decision now, not a hard rule).
+  - Added explicit instruction: "Do NOT compute average drawdown, max drawdown, or concentration score yourself. Use ONLY the pre-computed values stated explicitly above."
+  - Pre-filled a template line in the prompt: `Current avg drawdown X% → Proposed avg drawdown Y%, an improvement of Zpp.` Instructed LLM to copy this verbatim into `improvement_summary`.
+- `src/lib/agents/risk.ts`:
+  - Rewrote `riskAgent.instructions` to remove the restriction that improvement_summary must be "top-level metrics ONLY" (which accidentally excluded avg drawdown).
+  - Made the improvement_summary instruction general: "MUST explicitly compare current vs proposed with exact numbers. Do NOT omit the average drawdown comparison."
+  - Kept strict verdict rules but removed the contradictory hard-veto language.
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).
+
+**Gotchas:**
+- None. No UI changes needed; `risk-analysis-modal.tsx` already renders table correctly from structured fields.
+
+---
+
+## Phase 2 — Replace Hard Veto with Weighted Risk Score (4/24/2026)
+
+**Description:** Replace per-metric hard vetos in Risk Agent with a weighted composite risk score. Slightly worse VaR (+0.53pp) should be acceptable when max drawdown improves massively (-24.61pp) and concentration halves (-0.39pp).
+
+**Files:** `src/lib/orchestrator/workflow.ts`, `src/lib/agents/risk.ts`, `src/components/agents/risk-analysis-modal.tsx`
+
+**Summary:**
+- `src/lib/orchestrator/workflow.ts` (`riskStep`):
+  - Added `computeRiskScore` logic in-place: `score = 0.30 * varPct + 0.45 * maxDrawdownPct + 0.25 * concentrationScore` for both current and proposed portfolios.
+  - Computed `currentScore`, `proposedScore`, `deltaScore = proposedScore - currentScore`.
+  - Injected computed scores into `riskPrompt` with explicit labels.
+  - Replaced per-metric veto rules with score-based verdict rules:
+    - `approved` if `deltaScore < -0.05`
+    - `approved_with_caveats` if `|deltaScore| <= 0.05`
+    - `rejected` if `deltaScore > +0.05`
+- `src/lib/agents/risk.ts`:
+  - Rewrote `riskAgent.instructions` to use score-based logic. Instructions now say "The verdict is driven by the NET delta, not by any single metric."
+  - Removed hard per-metric vetos ("If VaR higher → MUST reject", "If avg drawdown higher → MUST reject").
+  - Kept explicit grounding: "Use the pre-computed risk scores provided in the prompt. Do NOT compute your own score."
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - Verified existing `getVerdictConfig` already renders `approved_with_caveats` as amber (⚠️). No changes needed.
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).
+
+**Gotchas:**
+- None. UI already handles `approved_with_caveats`.
+
+---
+
+## Phase 3 — User Preference Modal + DB + Workflow Wiring (4/24/2026)
+
+**Description:** Add a preference modal before rebalancing so the user can choose sector constraints and risk appetite. Persist preferences in DB, wire through workflow, and guide the Redesign Agent accordingly.
+
+**Files:** `src/lib/db/schema.ts`, `src/lib/orchestrator/workflow.ts`, `src/lib/agents/redesign.ts`, `src/app/api/agents/run/route.ts`, `src/components/agents/rebalance-preferences-modal.tsx`, `src/hooks/use-agent-run.ts`, `src/components/agents/agent-reasoning-panel.tsx`
+
+**Summary:**
+- `src/lib/db/schema.ts`:
+  - Added `user_preferences` table with `id`, `userId`, `sectorConstraint`, `riskAppetite`, `maxTurnoverPct`, `excludedTickers`, `createdAt`, `updatedAt`.
+- `src/lib/orchestrator/workflow.ts`:
+  - Defined `PreferencesSchema` with `sectorConstraint`, `riskAppetite`, `maxTurnoverPct`, `excludedTickers`.
+  - Updated `portfolioFactoryWorkflow.inputSchema` from `z.object({})` to accept preferences.
+  - Updated `fetchMarketSnapshot` `inputSchema` to `PreferencesSchema` and returned `preferences` in its output.
+  - Updated `redesignStep` prompt to inject preferences (sector constraint, risk appetite, max turnover, excluded tickers) and compute `allowedAssetClasses` based on `sectorConstraint`.
+- `src/lib/agents/redesign.ts`:
+  - Rewrote `redesignAgent.instructions` with a "SECTOR CONSTRAINTS" and "RISK APPETITE" section. LLM reads these from the user preferences in the prompt context.
+  - Added rule: respect `excludedTickers` and `maxTurnoverPct` from preferences.
+- `src/app/api/agents/run/route.ts`:
+  - Parse preferences from JSON body. Pass them into `workflow.execute({ inputData: preferences })`.
+- `src/hooks/use-agent-run.ts`:
+  - Added `UserPreferences` interface. Changed `startRun` signature to accept optional `preferences`.
+  - POSTs preferences as JSON body to `/api/agents/run`.
+- `src/components/agents/rebalance-preferences-modal.tsx` (new):
+  - Dialog with sector dropdown, risk appetite dropdown, max turnover slider (5–100%).
+  - Calls `onConfirm(prefs)` which triggers the agent run.
+- `src/components/agents/agent-reasoning-panel.tsx`:
+  - Replaced direct `onRun` call with modal open. Added `prefsModalOpen` state.
+  - "Run" button opens preference modal; confirming inside modal triggers `onRun(prefs)`.
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).
+
+**Gotchas:**
+- `PreferencesSchema` needed to be injected into `MarketSnapshotSchema` so `fetchMarketSnapshot` output carries preferences for later steps to retrieve via `getStepResult`.
+- API route needed explicit type annotation for `preferences` so `sectorConstraint` typed correctly and avoided `Record<string, unknown>` assignability error.
+
+---
+
+(End of file - total 408 lines)

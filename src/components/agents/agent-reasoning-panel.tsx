@@ -10,6 +10,10 @@ import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import {
+	RebalancePreferencesModal,
+	type RebalancePreferences,
+} from "@/components/agents/rebalance-preferences-modal";
 
 interface StressResult {
 	scenario: string;
@@ -31,7 +35,7 @@ interface AgentReasoningPanelProps {
 	runId?: string | null;
 	isRunning?: boolean;
 	error?: string | null;
-	onRun?: () => void;
+	onRun?: (preferences?: RebalancePreferences) => void;
 	stressResults?: StressResult[] | null;
 	onRestoreRun?: (run: HistoryRun) => void;
 }
@@ -55,6 +59,7 @@ export function AgentReasoningPanel({
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
 	const [riskModalOpen, setRiskModalOpen] = useState(false);
+	const [prefsModalOpen, setPrefsModalOpen] = useState(false);
 	const riskDone = steps[3]?.status === "done";
 	const showChart = riskDone && stressResults && stressResults.length > 0;
 	const riskStructuredOutput = (steps[3]?.structuredOutput ?? null) as Record<string, unknown> | null;
@@ -108,7 +113,7 @@ export function AgentReasoningPanel({
 				{/* Run trigger */}
 				{onRun && tab === "current" && (
 					<button
-						onClick={onRun}
+						onClick={() => setPrefsModalOpen(true)}
 						disabled={isRunning}
 						className="px-2.5 py-1 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
 						type="button"
@@ -155,6 +160,14 @@ export function AgentReasoningPanel({
 				open={riskModalOpen}
 				onOpenChange={setRiskModalOpen}
 				structuredOutput={riskStructuredOutput}
+			/>
+		)}
+
+		{onRun && (
+			<RebalancePreferencesModal
+				open={prefsModalOpen}
+				onOpenChange={setPrefsModalOpen}
+				onConfirm={(prefs) => onRun(prefs)}
 			/>
 		)}
 	</>
