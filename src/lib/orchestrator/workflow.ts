@@ -20,6 +20,7 @@ import { getBatchPrices } from "@/lib/market";
 import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 import { computePortfolioMetrics } from "@/lib/orchestrator/compute-metrics";
 import { syncTickerMetadataForHoldings } from "@/lib/market/ticker-metadata";
+import { assetClassForTicker } from "@/lib/agents/redesign";
 
 // ── Memory context ──────────────────────────────────────────────────
 // Per-agent thread IDs prevent schema contamination: shared memory ends
@@ -463,7 +464,7 @@ const riskStep = createStep({
         ? await getBatchPrices(
             newTickers.map((t) => ({
               ticker: t,
-              assetClass: "crypto" as const,
+              assetClass: assetClassForTicker(t),
             })),
           )
         : new Map<string, { price: number | null }>();
@@ -498,7 +499,7 @@ const riskStep = createStep({
         proposedMap.set(upperTicker, {
           ticker: action.ticker,
           weight: targetWeight,
-          assetClass: existing?.assetClass ?? "crypto",
+          assetClass: existing?.assetClass ?? assetClassForTicker(action.ticker),
           quantity,
         });
       }

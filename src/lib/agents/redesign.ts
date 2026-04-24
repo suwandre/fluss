@@ -32,7 +32,7 @@ export type RedesignOutput = z.infer<typeof RedesignOutput>;
 
 // --- Helpers ---
 
-function assetClassForTicker(ticker: string): AssetClass {
+export function assetClassForTicker(ticker: string): AssetClass {
 	if (ticker.includes("-")) return "crypto";
 	return "equity";
 }
