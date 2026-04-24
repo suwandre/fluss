@@ -19,6 +19,7 @@ import { holdings } from "@/lib/db/schema";
 import { getBatchPrices } from "@/lib/market";
 import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 import { computePortfolioMetrics } from "@/lib/orchestrator/compute-metrics";
+import { syncTickerMetadataForHoldings } from "@/lib/market/ticker-metadata";
 
 // ── Memory context ──────────────────────────────────────────────────
 // Per-agent thread IDs prevent schema contamination: shared memory ends
@@ -108,6 +109,11 @@ const fetchMarketSnapshot = createStep({
     }
 
     const priceMap = await getBatchPrices(
+      rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
+    );
+
+    // Sync ticker metadata for sector heatmap
+    await syncTickerMetadataForHoldings(
       rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
     );
 

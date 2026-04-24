@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
-import { holdings } from "@/lib/db/schema";
+import { holdings, tickerMetadata } from "@/lib/db/schema";
 import { getBatchPrices } from "@/lib/market";
 import { ASSET_CLASSES } from "@/lib/types/visual";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 const createHoldingSchema = z.object({
@@ -28,12 +28,25 @@ export async function GET() {
       allHoldings.map((h) => ({ ticker: h.ticker, assetClass: h.assetClass })),
     );
 
+    const tickers = allHoldings.map((h) => h.ticker);
+    const metaRows =
+      tickers.length > 0
+        ? await db
+            .select()
+            .from(tickerMetadata)
+            .where(inArray(tickerMetadata.ticker, tickers))
+        : [];
+    const metaMap = new Map(metaRows.map((m) => [m.ticker, m]));
+
     const enriched = allHoldings.map((holding) => {
       const snapshot = snapshots.get(holding.ticker);
+      const meta = metaMap.get(holding.ticker);
       return {
         ...holding,
         currentPrice: snapshot?.price ?? null,
         changePercent24h: snapshot?.changePercent1d ?? null,
+        sector: meta?.sector ?? holding.assetClass,
+        industry: meta?.industry ?? null,
       };
     });
 
