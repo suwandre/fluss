@@ -321,6 +321,32 @@ export function AgentStep({
 								{(structuredOutput?.risk_summary as string)?.length > 80 && "…"}
 							</div>
 						)}
+						{/* Final Verdict */}
+						{(() => {
+							const v = String(structuredOutput?.verdict ?? "").toLowerCase();
+							if (v === "approved" || v === "approve") {
+								return (
+									<div className="mt-1 text-[12px] font-mono text-green leading-snug">
+										✅ Changes approved. Ready to apply.
+									</div>
+								);
+							}
+							if (v === "rejected" || v === "reject") {
+								return (
+									<div className="mt-1 text-[12px] font-mono text-red leading-snug">
+										❌ Changes rejected. Current portfolio retained.
+									</div>
+								);
+							}
+							if (v === "approved_with_caveats" || v === "approve_with_caveats") {
+								return (
+									<div className="mt-1 text-[12px] font-mono text-amber leading-snug">
+										⚠️ Approved with conditions. Review caveats.
+									</div>
+								);
+							}
+							return null;
+						})()}
 						<button
 							type="button"
 							onClick={onViewDetails}
@@ -330,13 +356,23 @@ export function AgentStep({
 						</button>
 					</>
 				) : isRedesignDone ? (
-					<button
-						type="button"
-						onClick={onViewDetails}
-						className="mt-1.5 px-2 py-0.5 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors cursor-pointer"
-					>
-						View Allocation
-					</button>
+					<>
+						<div className="mt-1 flex items-center gap-2 text-[12px] font-mono text-text leading-snug">
+							<span>{(structuredOutput?.actions as number) ?? 0} actions proposed</span>
+							{verdict && (
+								<span className={`text-[10px] font-mono font-medium px-1.5 py-px rounded-full ${VERDICT_BADGE_STYLES[verdict.tier]}`}>
+									{verdict.label}
+								</span>
+							)}
+						</div>
+						<button
+							type="button"
+							onClick={onViewDetails}
+							className="mt-1.5 px-2 py-0.5 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors cursor-pointer"
+						>
+							View Proposal
+						</button>
+					</>
 				) : (
 					/* Structured output (non-Risk or not done) */
 					showStructuredOutput && structuredOutput && (

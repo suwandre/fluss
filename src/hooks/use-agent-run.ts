@@ -56,6 +56,10 @@ function buildStructuredOutput(
 					: 0,
 				confidence: output.confidence,
 				improvement: ei?.narrative,
+				proposal_summary: output.proposal_summary,
+				proposed_actions: output.proposed_actions,
+				sharpe_delta: ei?.sharpe_delta,
+				volatility_delta_pct: ei?.volatility_delta_pct,
 			};
 		}
 		case "risk":

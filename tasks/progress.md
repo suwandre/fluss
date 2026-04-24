@@ -500,7 +500,28 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
-## Sector Risk Heatmap Infrastructure (4/24/2026)
+## UX Prototype — Portfolio Redesign UX Overhaul (4/24/2026)
+
+**Description:** Users see a long text block from the Redesign Agent and don't know what the final portfolio looks like. The Risk Agent just says "approved" but doesn't show the approved changes. No pipeline progress indicator. Agents keep suggesting SPY and GLD only.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx` (NEW): Dialog modal `sm:max-w-3xl` with header + confidence badge, proposed allocation table (Current vs Proposed with delta), 3 expected-improvement delta cards (Sharpe, Volatility, Max Drawdown), narrative summary, and "View Risk Analysis →" footer button.
+- `src/components/agents/agent-step.tsx`: Redesign step now shows condensed "X actions proposed" + confidence badge, followed by "View Proposal" button. Risk step now renders a "Final Verdict" line (✅ approved / ❌ rejected / ⚠️ caveats) above the "View Analysis" button.
+- `src/components/agents/agent-reasoning-panel.tsx`: Added `PipelineStatusBar` at the top of the panel body — 5-step horizontal status (Monitor → Bottleneck → Redesign → Risk → Final) with green done dots, amber pulse for running, hollow gray for future. Added `FinalActionState`: when all agents are done and risk verdict is approved/caveats, shows "Apply Redesign" primary button + "Keep Current Portfolio" secondary. If rejected, shows amber box with "Try Again" button. Added `onRedesignViewDetails` prop pass-through to `AgentTimeline`.
+- `src/hooks/use-agent-run.ts`: Expanded `buildStructuredOutput` "redesign" case to forward `proposal_summary`, `proposed_actions`, `sharpe_delta`, `volatility_delta_pct` to the UI.
+- `src/app/page.tsx`: Added `redesignModalOpen` state. Computed `currentAllocations` and `redesignData` via `useMemo`. Passed `onRedesignViewDetails` to `AgentReasoningPanel`. Rendered `<RedesignProposalModal>` with all required props at page level.
+- `src/lib/agents/redesign.ts`: Expanded `ALTERNATIVE_UNIVERSE` with `international`, `commodities`, `reits`, `fixed_income` categories. Added optional `max_drawdown_delta_pct` to `expected_improvement` schema. Added two strict diversification rules to agent instructions (≥3 asset classes, quantitative justification for >20% positions).
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).
+- `npx tsc --noEmit` — 0 errors.
+
+**Gotchas:**
+- `AgentTimeline` already had `onRedesignViewDetails` prop from prior sector heatmap work — no structural change needed there.
+- `RedesignProposalModal` delta values: Sharpe higher = good (green ▲), Volatility lower = good (green ▼), Max Drawdown lower = good (green ▼).
+- Max Drawdown delta field is optional in schema and currently shows "—" until the agent populates it.
+
+---
 
 **Description:** Build infrastructure for real sector analysis: `ticker_metadata` DB table, Yahoo Finance + crypto fallback metadata fetcher, sync function wired into workflow, and sector heatmap modal comparing current vs proposed portfolio allocation.
 

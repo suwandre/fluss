@@ -7,6 +7,7 @@ import {
 } from "@/components/agents/agent-timeline";
 import { RiskAnalysisModal } from "@/components/agents/risk-analysis-modal";
 import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
+import { RedesignProposalModal } from "@/components/agents/redesign-proposal-modal";
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +41,7 @@ interface AgentReasoningPanelProps {
 	stressResults?: StressResult[] | null;
 	onRestoreRun?: (run: HistoryRun) => void;
 	onSectorViewDetails?: () => void;
+	onRedesignViewDetails?: () => void;
 }
 
 type PanelTab = "current" | "history";
@@ -59,6 +61,7 @@ export function AgentReasoningPanel({
 	stressResults,
 	onRestoreRun,
 	onSectorViewDetails,
+	onRedesignViewDetails,
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
 	const [riskModalOpen, setRiskModalOpen] = useState(false);
@@ -71,6 +74,13 @@ export function AgentReasoningPanel({
 		onRestoreRun?.(run);
 		setTab("current");
 	};
+
+	const allDone = steps.length > 0 && steps.every((s) => s.status === "done");
+	const riskVerdict = typeof steps[3]?.structuredOutput?.verdict === "string"
+		? steps[3].structuredOutput.verdict.toLowerCase()
+		: null;
+	const isApproved = allDone && (riskVerdict === "approved" || riskVerdict === "approved_with_caveats" || riskVerdict === "approve" || riskVerdict === "approve_with_caveats");
+	const isRejected = allDone && (riskVerdict === "rejected" || riskVerdict === "reject");
 
 	return (
 	<>
@@ -137,8 +147,39 @@ export function AgentReasoningPanel({
 			{tab === "current" ? (
 				<ScrollArea className="flex-1 overflow-hidden">
 					<div className="p-4">
-						<RunSummary steps={steps} />
-						<AgentTimeline steps={steps} onRiskViewDetails={() => setRiskModalOpen(true)} />
+						<PipelineStatusBar steps={steps} />
+						{isApproved ? (
+							<div className="mb-4 space-y-2">
+								<button
+									type="button"
+									className="w-full py-2 rounded bg-green/20 border border-green/30 text-green font-mono text-[13px] font-medium hover:bg-green/30 transition-colors cursor-pointer"
+								>
+									Apply Redesign
+								</button>
+								<button
+									type="button"
+									className="w-full py-1.5 rounded border border-border bg-bg-elevated text-text-dim font-mono text-[12px] hover:text-text hover:border-border-bright transition-colors cursor-pointer"
+								>
+									Keep Current Portfolio
+								</button>
+							</div>
+						) : isRejected ? (
+							<div className="mb-4 rounded border-l-2 border-amber bg-bg-elevated px-3 py-2 text-[12px] font-sans text-text">
+								⚠️ Redesign rejected. No changes needed.
+								<div className="mt-2 block">
+									<button
+										type="button"
+										onClick={() => onRun?.()}
+										className="px-2 py-1 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text transition-colors cursor-pointer"
+									>
+										Try Again
+									</button>
+								</div>
+							</div>
+						) : (
+							<RunSummary steps={steps} />
+						)}
+						<AgentTimeline steps={steps} onRiskViewDetails={() => setRiskModalOpen(true)} onRedesignViewDetails={onRedesignViewDetails} />
 
 						{/* Stress test chart — shown after Risk Agent completes */}
 						{showChart && (
@@ -177,6 +218,65 @@ export function AgentReasoningPanel({
 	);
 }
 
+
+function PipelineStatusBar({ steps }: { steps: AgentStepData[] }) {
+	const labels = ["Monitor", "Bottleneck", "Redesign", "Risk", "Final"];
+	return (
+		<div className="flex items-center gap-3 mb-4 py-2 px-3 rounded border border-border bg-bg-elevated overflow-x-auto">
+			{labels.map((label, i) => {
+				const step = steps[i];
+				const isDone = step?.status === "done";
+				const isRunning = step?.status === "running";
+				const isError = step?.status === "error";
+				const isLast = i === 4;
+
+				let finalGreen = false;
+				if (isLast) {
+					const allDone = steps.length >= 4 && steps.slice(0, 4).every(s => s.status === "done");
+					const riskVerdict = String(steps[3]?.structuredOutput?.verdict ?? "").toLowerCase();
+					finalGreen = allDone && (riskVerdict === "approved" || riskVerdict === "approved_with_caveats" || riskVerdict === "approve" || riskVerdict === "approve_with_caveats");
+				}
+
+				let dotClass = "bg-bg-card border-text-muted";
+				let labelColor = "text-text-dim";
+				if (isLast) {
+					if (finalGreen) {
+						dotClass = "bg-green border-green";
+						labelColor = "text-green";
+					} else {
+						dotClass = "bg-bg-card border-text-muted";
+						labelColor = "text-text-dim";
+					}
+				} else if (isDone) {
+					dotClass = "bg-green border-green";
+					labelColor = "text-green";
+				} else if (isRunning) {
+					dotClass = "bg-amber border-amber animate-pulse";
+					labelColor = "text-amber";
+				} else if (isError) {
+					dotClass = "bg-red border-red";
+					labelColor = "text-red";
+				}
+
+				return (
+					<div key={label} className="flex items-center gap-1.5 shrink-0">
+						<div className={`size-4 rounded-full border flex items-center justify-center ${dotClass}`}>
+							{(isDone || (isLast && finalGreen)) && (
+								<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+									<path d="M2 5L4.5 7.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+								</svg>
+							)}
+						</div>
+						<span className={`text-[10px] font-mono uppercase tracking-wide ${labelColor}`}>{label}</span>
+						{i < labels.length - 1 && (
+							<span className="mx-1 text-text-muted text-[10px]">→</span>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
 
 function RunSummary({ steps }: { steps: AgentStepData[] }) {
 	const allDone = steps.length > 0 && steps.every((s) => s.status === "done");

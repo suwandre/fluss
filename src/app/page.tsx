@@ -13,6 +13,7 @@ import { useHoldings, type PortfolioOutputData } from "@/hooks/use-holdings";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
 import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
+import { RedesignProposalModal } from "@/components/agents/redesign-proposal-modal";
 import { useSectorExposure } from "@/hooks/use-sector-exposure";
 import type { MonitorOutput } from "@/lib/agents/monitor";
 
@@ -33,6 +34,7 @@ interface HistoryRun {
 
 export default function Home() {
 	const [holdingsInputOpen, setHoldingsInputOpen] = useState(false);
+	const [redesignModalOpen, setRedesignModalOpen] = useState(false);
 	const {
 		steps,
 		runId,
@@ -193,7 +195,35 @@ export default function Home() {
 		return risk.stress_results as StressResult[];
 	}, [workflowOutput]);
 
-	// Sector heatmap state
+	// Compute current allocations for redesign modal
+	const currentAllocations = useMemo(() => {
+		const totalValue = holdingsList.reduce((sum, h) => {
+			const price = h.currentPrice ?? h.avgCost;
+			return sum + price * h.quantity;
+		}, 0);
+		if (totalValue <= 0) return [];
+		return holdingsList.map(h => ({
+			ticker: h.ticker,
+			weight: ((h.currentPrice ?? h.avgCost) * h.quantity) / totalValue * 100,
+		}));
+	}, [holdingsList]);
+
+	// Extract full redesign data for proposal modal
+	const redesignData = useMemo(() => {
+		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
+		if (!redesign) return undefined;
+		return {
+			confidence: typeof redesign.confidence === "string" ? redesign.confidence : undefined,
+			proposal_summary: typeof redesign.proposal_summary === "string" ? redesign.proposal_summary : undefined,
+			proposed_actions: Array.isArray(redesign.proposed_actions) ? redesign.proposed_actions : undefined,
+			expected_improvement: redesign.expected_improvement as {
+				sharpe_delta?: number | null;
+				volatility_delta_pct?: number | null;
+				max_drawdown_delta_pct?: number | null;
+				narrative?: string;
+			} | undefined,
+		};
+	}, [workflowOutput]);
 	const [sectorModalOpen, setSectorModalOpen] = useState(false);
 
 	// Extract proposed actions from workflow redesign output
@@ -252,23 +282,38 @@ export default function Home() {
 						correlationMatrix={correlationMatrix}
 					/>
 				</div>
-				<AgentReasoningPanel
-					steps={steps}
-					runId={runId}
-					isRunning={isRunning}
-					error={error}
-					onRun={startRun}
-					stressResults={stressResults}
-					onRestoreRun={handleRestoreRun}
-					onSectorViewDetails={() => setSectorModalOpen(true)}
-				/>
-			</div>
-
-			<SectorHeatmapModal
-				open={sectorModalOpen}
-				onOpenChange={setSectorModalOpen}
-				data={sectorExposure}
+			<AgentReasoningPanel
+				steps={steps}
+				runId={runId}
+				isRunning={isRunning}
+				error={error}
+				onRun={startRun}
+				stressResults={stressResults}
+				onRestoreRun={handleRestoreRun}
+				onSectorViewDetails={() => setSectorModalOpen(true)}
+				onRedesignViewDetails={() => setRedesignModalOpen(true)}
 			/>
 		</div>
-	);
+
+		<SectorHeatmapModal
+			open={sectorModalOpen}
+			onOpenChange={setSectorModalOpen}
+			data={sectorExposure}
+		/>
+
+		<RedesignProposalModal
+			open={redesignModalOpen}
+			onOpenChange={setRedesignModalOpen}
+			confidence={redesignData?.confidence}
+			proposal_summary={redesignData?.proposal_summary}
+			proposed_actions={redesignData?.proposed_actions}
+			expected_improvement={redesignData?.expected_improvement}
+			currentAllocations={currentAllocations}
+			onViewRiskAnalysis={() => {
+				setRedesignModalOpen(false);
+				// Could open risk modal too if desired
+			}}
+		/>
+	</div>
+);
 }

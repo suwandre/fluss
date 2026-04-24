@@ -268,6 +268,17 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] Fix Risk Agent Stream Timeout (4/24/2026)
 - [x] Optimize Risk Agent Schema & Embeddings API (4/24/2026)
 
+## UX Prototype — Portfolio Redesign UX Overhaul (4/24/2026)
+
+- [x] **Redesign Proposal Modal** (`redesign-proposal-modal.tsx`) — Dialog with allocation table, improvement delta cards, confidence badge, proposal summary, and View Risk Analysis navigation.
+- [x] **AgentStep redesign/risk updates** — Condensed redesign view with "X actions proposed" + confidence badge. Risk step final verdict line (approved/rejected/caveats).
+- [x] **AgentReasoningPanel pipeline bar + final actions** — Horizontal pipeline status (Monitor→Bottleneck→Redesign→Risk→Final). Final action buttons (Apply Redesign / Keep Current) on approval; rejected state with Try Again.
+- [x] **use-agent-run.ts buildStructuredOutput** — Redesign case now forwards `proposal_summary`, `proposed_actions`, `sharpe_delta`, `volatility_delta_pct`.
+- [x] **page.tsx wiring** — State, data extraction, callback passing, modal rendering.
+- [x] **AgentTimeline prop** — Already existed from prior sector heatmap work; verified.
+- [x] **Asset universe expansion** — Added international, commodities, REITs, fixed-income categories to `ALTERNATIVE_UNIVERSE`.
+- [x] **Redesign agent instructions** — Two strict diversification rules added.
+
 ---
 
 ## Post-Phase Fixes & snip Features (4/24/2026)

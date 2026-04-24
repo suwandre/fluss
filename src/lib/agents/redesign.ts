@@ -22,6 +22,7 @@ export const RedesignOutput = z.object({
 	expected_improvement: z.object({
 		sharpe_delta: z.number().nullable(),
 		volatility_delta_pct: z.number().nullable(),
+		max_drawdown_delta_pct: z.number().nullable().optional(),
 		narrative: z.string(),
 	}),
 	confidence: z.enum(["low", "medium", "high"]),
@@ -63,7 +64,31 @@ const ALTERNATIVE_UNIVERSE: Record<
 		{ ticker: "IWM", name: "iShares Russell 2000 ETF", assetClass: "etf" },
 		{ ticker: "XLK", name: "Technology Select Sector SPDR", assetClass: "etf" },
 		{ ticker: "XLF", name: "Financial Select Sector SPDR", assetClass: "etf" },
+	],
+	international: [
+		{ ticker: "VXUS", name: "Vanguard Total International Stock ETF", assetClass: "etf" },
+		{ ticker: "VEA", name: "Vanguard Developed Markets ETF", assetClass: "etf" },
+		{ ticker: "VWO", name: "Vanguard Emerging Markets ETF", assetClass: "etf" },
+		{ ticker: "EWJ", name: "iShares MSCI Japan ETF", assetClass: "etf" },
+		{ ticker: "EWG", name: "iShares MSCI Germany ETF", assetClass: "etf" },
+	],
+	commodities: [
+		{ ticker: "GLD", name: "SPDR Gold Shares", assetClass: "etf" },
+		{ ticker: "SLV", name: "iShares Silver Trust", assetClass: "etf" },
+		{ ticker: "USO", name: "United States Oil Fund", assetClass: "etf" },
+		{ ticker: "DBC", name: "Invesco DB Commodity Index Tracking Fund", assetClass: "etf" },
+	],
+	reits: [
 		{ ticker: "VNQ", name: "Vanguard Real Estate ETF", assetClass: "etf" },
+		{ ticker: "SCHH", name: "Schwab US REIT ETF", assetClass: "etf" },
+	],
+	fixed_income: [
+		{ ticker: "BND", name: "Vanguard Total Bond Market ETF", assetClass: "etf" },
+		{ ticker: "TLT", name: "iShares 20+ Year Treasury Bond ETF", assetClass: "etf" },
+		{ ticker: "SHY", name: "iShares 1-3 Year Treasury Bond ETF", assetClass: "etf" },
+		{ ticker: "LQD", name: "iShares Investment Grade Corporate Bond ETF", assetClass: "etf" },
+		{ ticker: "TIP", name: "iShares TIPS Bond ETF", assetClass: "etf" },
+		{ ticker: "HYG", name: "iShares iBoxx $ High Yield Corporate Bond ETF", assetClass: "etf" },
 	],
 	crypto: [
 		{ ticker: "BTC-USD", name: "Bitcoin", assetClass: "crypto" },
@@ -493,6 +518,10 @@ Rules:
 - Classify confidence: "high" (simulation confirms improvement), "medium" (improvement likely but uncertain), "low" (limited data or conflicting signals)
 - Be specific with target percentages, not vague "consider reducing"
 - Respect excludedTickers list from user preferences — never suggest those tickers
+
+Strict quantitative rules:
+- You MUST diversify across at least 3 distinct asset classes in your final proposal. Avoid over-concentrating in US large-cap equities (SPY, VOO, QQQ) and gold (GLD) as a default pair.
+- If any single asset exceeds 20% of the portfolio, you MUST provide a specific quantitative justification tied to risk-adjusted return improvement.
 
 When prior run context is available, reference past proposals and their outcomes.
 Avoid repeating rejected or low-confidence proposals. Note whether previously
