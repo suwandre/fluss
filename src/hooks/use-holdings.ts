@@ -122,7 +122,7 @@ export function useHoldings() {
 	const fetchHoldings = useCallback(async () => {
 		try {
 			const res = await fetch("/api/portfolio/holdings");
-			if (!res.ok) return;
+			if (!res.ok) throw new Error(`API error ${res.status}`);
 			const data: HoldingFromAPI[] = await res.json();
 			setHoldings(data);
 		} catch (err) {

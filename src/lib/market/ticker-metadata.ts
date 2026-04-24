@@ -104,30 +104,34 @@ export async function syncTickerMetadataForHoldings(
 
   const now = new Date();
 
-  await Promise.all(
-    unique.map(async (h) => {
-      const meta = await fetchTickerMetadata(h.ticker, h.assetClass);
+  try {
+    await Promise.all(
+      unique.map(async (h) => {
+        const meta = await fetchTickerMetadata(h.ticker, h.assetClass);
 
-      await db
-        .insert(tickerMetadata)
-        .values({
-          ticker: meta.ticker.toUpperCase(),
-          name: meta.name,
-          sector: meta.sector,
-          industry: meta.industry,
-          assetClass: meta.assetClass,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: tickerMetadata.ticker,
-          set: {
+        await db
+          .insert(tickerMetadata)
+          .values({
+            ticker: meta.ticker.toUpperCase(),
             name: meta.name,
             sector: meta.sector,
             industry: meta.industry,
             assetClass: meta.assetClass,
             updatedAt: now,
-          },
-        });
-    }),
-  );
+          })
+          .onConflictDoUpdate({
+            target: tickerMetadata.ticker,
+            set: {
+              name: meta.name,
+              sector: meta.sector,
+              industry: meta.industry,
+              assetClass: meta.assetClass,
+              updatedAt: now,
+            },
+          });
+      }),
+    );
+  } catch (err) {
+    console.warn("Failed to sync ticker metadata (table missing?):", err);
+  }
 }

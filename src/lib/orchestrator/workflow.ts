@@ -112,10 +112,14 @@ const fetchMarketSnapshot = createStep({
       rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
     );
 
-    // Sync ticker metadata for sector heatmap
-    await syncTickerMetadataForHoldings(
-      rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
-    );
+    // Sync ticker metadata for sector heatmap (non-critical — guard against missing table)
+    try {
+      await syncTickerMetadataForHoldings(
+        rows.map((r) => ({ ticker: r.ticker, assetClass: r.assetClass })),
+      );
+    } catch (syncErr) {
+      console.warn("syncTickerMetadataForHoldings failed (table missing?), continuing:", syncErr);
+    }
 
     let totalValue = 0;
     let totalCost = 0;
