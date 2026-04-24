@@ -25,6 +25,7 @@ export interface HoldingFromAPI {
 	createdAt: string;
 	currentPrice: number | null;
 	changePercent24h: number | null;
+	sector?: string | null;
 }
 
 export interface MachineNodeData {

@@ -500,4 +500,30 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
+## Sector Risk Heatmap Infrastructure (4/24/2026)
+
+**Description:** Build infrastructure for real sector analysis: `ticker_metadata` DB table, Yahoo Finance + crypto fallback metadata fetcher, sync function wired into workflow, and sector heatmap modal comparing current vs proposed portfolio allocation.
+
+**Summary:**
+- `src/lib/db/schema.ts`: Added `ticker_metadata` table (`id`, `ticker` unique, `name`, `sector`, `industry`, `assetClass`, `updatedAt`). Generated migration `drizzle/0004_redundant_prodigy.sql`.
+- `src/lib/market/ticker-metadata.ts` (NEW): `fetchTickerMetadata(ticker, assetClass)` — hardcoded crypto maps (Layer 1, DeFi, Stablecoin, Other), Yahoo Finance `quoteSummary` with `assetProfile` module for non-crypto, fallback to `ETF`/`Equity` + `Unknown`. `syncTickerMetadataForHoldings(holdings)` dedupes tickers, fetches metadata, upserts via `onConflictDoUpdate`.
+- `src/lib/orchestrator/workflow.ts`: After `fetchMarketSnapshot`, added `syncTickerMetadataForHoldings` call with unique tickers from holdings.
+- `src/app/api/ticker-metadata/route.ts` (NEW): GET endpoint returning all ticker metadata. `GET /api/portfolio/holdings` enriched to return `sector` and `industry` from joining `ticker_metadata`.
+- `src/hooks/use-sector-exposure.ts` (NEW): Computes sector exposure for current portfolio (from holdings + live prices) and proposed (from redesign actions). Groups by sector, normalizes to 100%. Returns `{ current: Record<string, number>, proposed: Record<string, number> }`.
+- `src/components/agents/sector-heatmap-modal.tsx` (NEW): Two-column modal (Current vs Proposed). Vertical teal blocks sized proportionally to weight%, opacity `min(0.2 + weight*0.8, 1)`. Hover tooltips show exact %. Alphabetically sorted. Gray placeholder for missing sectors. Fallback message when no redesign data.
+- `src/components/agents/agent-step.tsx`: Redesign step (index 2) shows "View Allocation" button when done.
+- `src/components/agents/agent-timeline.tsx`: Added `onRedesignViewDetails` prop, passed through to Redesign step.
+- `src/components/agents/agent-reasoning-panel.tsx`: Manages `sectorModalOpen` state, passes callback to `AgentTimeline`.
+- `src/app/page.tsx`: Imports `SectorHeatmapModal`, manages open state, feeds current holdings + proposed actions into modal.
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).
+- `npx tsc --noEmit` — 0 errors.
+
+**Gotchas:**
+- `yahoo-finance2` `quoteSummary` module API requires version check; TypeScript types may not expose `assetProfile` depending on package version. Fallback handles missing data gracefully.
+- Crypto tickers rely on hardcoded suffix parsing; unknown ones grouped into "Cryptocurrency / Other".
+
+---
+
 (End of file - total 408 lines)

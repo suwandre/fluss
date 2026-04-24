@@ -6,6 +6,7 @@ import {
 	type AgentStepData,
 } from "@/components/agents/agent-timeline";
 import { RiskAnalysisModal } from "@/components/agents/risk-analysis-modal";
+import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,6 +39,7 @@ interface AgentReasoningPanelProps {
 	onRun?: (preferences?: RebalancePreferences) => void;
 	stressResults?: StressResult[] | null;
 	onRestoreRun?: (run: HistoryRun) => void;
+	onSectorViewDetails?: () => void;
 }
 
 type PanelTab = "current" | "history";
@@ -56,6 +58,7 @@ export function AgentReasoningPanel({
 	onRun,
 	stressResults,
 	onRestoreRun,
+	onSectorViewDetails,
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
 	const [riskModalOpen, setRiskModalOpen] = useState(false);

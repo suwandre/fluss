@@ -272,6 +272,13 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 
 ## Post-Phase Fixes & snip Features (4/24/2026)
 
+### Sector Risk Heatmap
+
+- [x] **Task 1: DB Schema `ticker_metadata`** — Added table to `src/lib/db/schema.ts` with `id`, `ticker` unique, `name`, `sector`, `industry`, `assetClass`, `updatedAt`. Generated migration `drizzle/0004_redundant_prodigy.sql`.
+- [x] **Task 2: `fetchTickerMetadata(ticker, assetClass)`** — Created `src/lib/market/ticker-metadata.ts` with hardcoded crypto maps (Layer 1, DeFi, Stablecoin, Other), Yahoo Finance `quoteSummary` fallback for non-crypto, returns `{ticker, name, sector, industry, assetClass}`.
+- [x] **Task 3: Sync function `syncTickerMetadataForHoldings`** — Same file, deduplicates by ticker, fetches metadata per ticker, upserts into DB via `onConflictDoUpdate`.
+- [x] **Task 4: Sector Heatmap Component** — Created `sector-heatmap-modal.tsx` (2-column modal, Current vs Proposed, vertical blocks per sector, teal opacity proportional to weight%, tooltips, sorted alphabetically, gray placeholder for missing). Created `use-sector-exposure.ts` hook grouping by sector with weight normalization. Wired in `workflow.ts` (sync after `fetchMarketSnapshot`), `agent-step.tsx` (View Allocation button for redesign step), `agent-timeline.tsx` (`onRedesignViewDetails`), `agent-reasoning-panel.tsx` (passes callback), `page.tsx` (manages modal open state + computes inputs). Also added `/api/ticker-metadata` GET and enriched `/api/portfolio/holdings` GET with sector/industry.
+
 - [x] **Fix Average Drawdown Discrepancy**
 - [x] **Replace Hard Veto with Weighted Risk Score**
 - [x] **User Preference Modal + DB + Workflow Wiring**

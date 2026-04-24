@@ -247,6 +247,8 @@ export function AgentStep({
 
 	const isRiskDone = name.toLowerCase().includes("risk") && status === "done" && onViewDetails;
 
+	const isRedesignDone = name.toLowerCase().includes("redesign") && status === "done" && onViewDetails;
+
 	// Condensed summary for Risk Agent
 	const riskSummaryLine = isRiskDone && structuredOutput?.risk_summary && typeof structuredOutput.risk_summary === "string"
 		? (structuredOutput.risk_summary as string).slice(0, 80)
@@ -310,7 +312,7 @@ export function AgentStep({
 					</div>
 				)}
 
-				{/* Condensed Risk view: verdict + one-line summary + View Analysis button */}
+				{/* Condensed Risk / Redesign views */}
 				{isRiskDone ? (
 					<>
 						{riskSummaryLine && (
@@ -327,6 +329,14 @@ export function AgentStep({
 							View Analysis
 						</button>
 					</>
+				) : isRedesignDone ? (
+					<button
+						type="button"
+						onClick={onViewDetails}
+						className="mt-1.5 px-2 py-0.5 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors cursor-pointer"
+					>
+						View Allocation
+					</button>
 				) : (
 					/* Structured output (non-Risk or not done) */
 					showStructuredOutput && structuredOutput && (
@@ -360,10 +370,10 @@ export function AgentStep({
 										<ExpandableValue value={rendered} />
 									</div>
 								);
-							})}
-						</div>
-					)
-				)}
+								})}
+							</div>
+						)
+					)}
 
 				{/* Collapsible reasoning */}
 				{hasReasoning && (

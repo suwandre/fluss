@@ -12,6 +12,8 @@ import { useAgentRun } from "@/hooks/use-agent-run";
 import { useHoldings, type PortfolioOutputData } from "@/hooks/use-holdings";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
+import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
+import { useSectorExposure } from "@/hooks/use-sector-exposure";
 import type { MonitorOutput } from "@/lib/agents/monitor";
 
 interface StressResult {
@@ -191,6 +193,38 @@ export default function Home() {
 		return risk.stress_results as StressResult[];
 	}, [workflowOutput]);
 
+	// Sector heatmap state
+	const [sectorModalOpen, setSectorModalOpen] = useState(false);
+
+	// Extract proposed actions from workflow redesign output
+	const proposedActions = useMemo(() => {
+		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
+		if (!redesign || !Array.isArray(redesign.proposed_actions)) return null;
+		return (redesign.proposed_actions as { ticker: string; target_pct: number }[]).map((a) => ({
+			ticker: a.ticker,
+			target_pct: a.target_pct,
+			sector: null as string | null,
+			assetClass: "equity" as string,
+		}));
+	}, [workflowOutput]);
+
+	// Compute current holdings with sector info from API
+	const currentHoldingsForHeatmap = useMemo(() => {
+		const totalValue = holdingsList.reduce((sum, h) => {
+			const price = h.currentPrice ?? h.avgCost;
+			return sum + price * h.quantity;
+		}, 0);
+		if (totalValue <= 0) return [];
+		return holdingsList.map((h) => ({
+			ticker: h.ticker,
+			weight: ((h.currentPrice ?? h.avgCost) * h.quantity) / totalValue * 100,
+			sector: h.sector ?? h.assetClass,
+			assetClass: h.assetClass,
+		}));
+	}, [holdingsList]);
+
+	const sectorExposure = useSectorExposure(currentHoldingsForHeatmap, proposedActions);
+
 	return (
 		<div className="flex flex-col h-screen overflow-hidden bg-[--bg-primary]">
 			<HoldingsInput
@@ -226,8 +260,15 @@ export default function Home() {
 					onRun={startRun}
 					stressResults={stressResults}
 					onRestoreRun={handleRestoreRun}
+					onSectorViewDetails={() => setSectorModalOpen(true)}
 				/>
 			</div>
+
+			<SectorHeatmapModal
+				open={sectorModalOpen}
+				onOpenChange={setSectorModalOpen}
+				data={sectorExposure}
+			/>
 		</div>
 	);
 }

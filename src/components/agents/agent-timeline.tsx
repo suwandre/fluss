@@ -18,13 +18,14 @@ export interface AgentStepData {
 interface AgentTimelineProps {
 	steps: AgentStepData[];
 	onRiskViewDetails?: () => void;
+	onRedesignViewDetails?: () => void;
 }
 
 /**
  * Vertical timeline with 4 agent step slots, connector lines,
  * and dimming for steps after the currently running agent.
  */
-export function AgentTimeline({ steps, onRiskViewDetails }: AgentTimelineProps) {
+export function AgentTimeline({ steps, onRiskViewDetails, onRedesignViewDetails }: AgentTimelineProps) {
 	const runningIndex = steps.findIndex((s) => s.status === "running");
 
 	return (
@@ -41,7 +42,7 @@ export function AgentTimeline({ steps, onRiskViewDetails }: AgentTimelineProps) 
 						<AgentStep
 							{...step}
 							errorMessage={step.errorMessage}
-							onViewDetails={i === 3 ? onRiskViewDetails : undefined}
+							onViewDetails={i === 2 ? onRedesignViewDetails : i === 3 ? onRiskViewDetails : undefined}
 						/>
 						{!isLast && (
 							<div className="ml-[5px] h-4 border-l border-border-bright" />
