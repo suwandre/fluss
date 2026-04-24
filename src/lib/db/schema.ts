@@ -94,3 +94,13 @@ export const userPreferences = pgTable("user_preferences", (t) => ({
 	createdAt: t.timestamp("created_at", { withTimezone: true }).defaultNow(),
 	updatedAt: t.timestamp("updated_at", { withTimezone: true }).defaultNow(),
 }));
+
+export const tickerMetadata = pgTable("ticker_metadata", (t) => ({
+	id: t.serial().primaryKey(),
+	ticker: t.text().notNull().unique(),
+	name: t.text(),
+	sector: t.text(),
+	industry: t.text(),
+	assetClass: t.text("asset_class"),
+	updatedAt: t.timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}));
