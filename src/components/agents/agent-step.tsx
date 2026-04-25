@@ -51,7 +51,12 @@ function formatDuration(ms: number): string {
 function renderValue(value: unknown): string {
 	if (value === null) return "null";
 	if (value === undefined) return "";
-	if (typeof value === "object") return JSON.stringify(value);
+	if (typeof value === "object") {
+		if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object") {
+			return `[${value.length} items]`;
+		}
+		return JSON.stringify(value);
+	}
 	return String(value);
 }
 
@@ -132,10 +137,6 @@ function formatRiskField(key: string, value: unknown): string {
 const FIELD_TOOLTIPS: Record<string, string> = {
 	verdict:
 		"The Risk Agent's final judgment on whether the proposed rebalancing is safe enough to execute.",
-	var_95:
-		"Value at Risk: the worst single-day loss expected on 95% of trading days, based on historical data.",
-	stress_results:
-		"Historical 'what-if' simulations. Shows how much your portfolio would lose if past market crashes happened again today.",
 	caveats: "Specific warnings or conditions attached to the verdict.",
 	risk_summary: "A plain-English summary of the risk assessment.",
 	health_status:

@@ -320,3 +320,11 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
   - On-demand API runs unaffected.
 - [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
 
+## Post-Phase Fix (4/26/2026) — Sidebar verbosity
+
+- [x] **Strip redesign sidebar to actions + confidence only** — Removed `improvement`, `proposal_summary`, `proposed_actions`, `sharpe_delta`, `volatility_delta_pct` from `buildStructuredOutput` redesign case. Sidebar now shows actions count + confidence badge only.
+- [x] **Strip risk sidebar to verdict + scenarios only** — Removed `caveats`, `risk_summary`, `improvement_summary` from `buildStructuredOutput` risk case. Verdict already renders as colored line above key-value list. Scenarios count stays. Everything else lives in the modal.
+- [x] **Defensive object-array guard in renderValue** — If an array of objects slips through, `renderValue` now shows `[N items]` instead of raw JSON.
+- [x] **Cleaned FIELD_TOOLTIPS** — Removed `var_95` and `stress_results` tooltip entries.
+- [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
+

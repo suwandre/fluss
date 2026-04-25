@@ -46,31 +46,19 @@ function buildStructuredOutput(
 				analysis: output.analysis,
 			};
 		}
-		case "redesign": {
-			const ei = output.expected_improvement as
-				| Record<string, unknown>
-				| undefined;
+		case "redesign":
 			return {
 				actions: Array.isArray(output.proposed_actions)
 					? output.proposed_actions.length
 					: 0,
 				confidence: output.confidence,
-				improvement: ei?.narrative,
-				proposal_summary: output.proposal_summary,
-				proposed_actions: output.proposed_actions,
-				sharpe_delta: ei?.sharpe_delta,
-				volatility_delta_pct: ei?.volatility_delta_pct,
 			};
-		}
 		case "risk":
 			return {
 				verdict: output.verdict,
 				scenarios: Array.isArray(output.stress_results)
 					? output.stress_results.length
 					: 0,
-				caveats: output.caveats,
-				risk_summary: output.risk_summary,
-				improvement_summary: output.improvement_summary,
 			};
 		default:
 			return undefined;

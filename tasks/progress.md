@@ -353,3 +353,24 @@
 
 **Gotchas:**
 - None.
+
+---
+
+## Task — Strip redesign/risk sidebar verbosity + guard arrays (4/26/2026)
+
+**Description:** Redesign and Risk Agent sidebars showed wall-of-text paragraphs and raw JSON arrays. User wants concise status strip; detail goes in modals.
+
+**Summary:**
+- `src/hooks/use-agent-run.ts` (`buildStructuredOutput`):
+  - Redesign case now returns only `actions` (count) and `confidence`. Removed: `improvement`, `proposal_summary`, `proposed_actions` (raw objects), `sharpe_delta`, `volatility_delta_pct`.
+  - Risk case now returns only `verdict` and `scenarios`. Removed: `caveats`, `risk_summary`, `improvement_summary`. Verdict already renders as colored outcome line in `AgentStep`. Scenarios count stays.
+- `src/components/agents/agent-step.tsx`:
+  - `renderValue`: added guard for arrays of objects → `[N items]` instead of raw JSON.
+  - `FIELD_TOOLTIPS`: removed `var_95` and `stress_results` entries.
+
+**Verification:**
+- `npx tsc --noEmit` — 0 errors.
+- `npx next build` — successful.
+
+**Gotchas:**
+- None.
