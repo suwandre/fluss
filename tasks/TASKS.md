@@ -293,3 +293,15 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **Fix Average Drawdown Discrepancy**
 - [x] **Replace Hard Veto with Weighted Risk Score**
 - [x] **User Preference Modal + DB + Workflow Wiring**
+
+---
+
+## UX Fixes — PRP Metric Cards, Inline Risk, Sentiment Detection (4/25/2026)
+
+- [x] **PRP Metric Cards** — restructured to show Current vs Proposed absolute values + delta (Sharpe, Avg Stress Drawdown/Max Drawdown), with fallback to N/A when data missing.
+- [x] **Expandable PRP Rationale Rows** — table rows now toggle full rationale on click, replacing permanent `truncate` ellipsis.
+- [x] **Bulleted Proposal Summary** — `proposal_summary` split into sentence bullets with teal markers; dropped italic/leading-relaxed styling.
+- [x] **Inline Risk Analysis in PRP** — `RiskAnalysisContent` extracted from `risk-analysis-modal.tsx` and rendered inline inside `redesign-proposal-modal.tsx` via "View Risk Analysis" / "← Back to Proposal" toggle; `onViewRiskAnalysis` dead callback removed from `page.tsx`.
+- [x] **Sentiment Detection for Risk Assessment Summary** — `RiskCards` now uses 3-tier sentiment (bad=red/❌, good=green/✅, neutral=amber/⚠️); section renamed from "Risk Factors" and background de-red-shifted for visual neutrality.
+- [x] **White Scrollbar Fix** — `AgentReasoningPanel` replaced `@base-ui/react/scroll-area` with native `<div className="overflow-y-auto custom-scrollbar">` using `rgba(255,255,255,0.15)` thumb.
+

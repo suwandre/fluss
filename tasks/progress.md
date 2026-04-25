@@ -547,4 +547,32 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 
 ---
 
-(End of file - total 408 lines)
+## UX Fixes — PRP Metric Cards, Inline Risk, Sentiment Detection (4/25/2026)
+
+**Description:** User reported 6 UI/UX bugs: Max Drawdown "—" caused by strict null checks, truncated rationale with no expand, blobby italic summary paragraph, broken "View Risk Analysis" button, warning icons on positive Risk Factor text, and a white scrollbar on the Agent Reasoning panel.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - New `MetricCard` subcomponent renders label + Current + Proposed + Delta in a clean list layout. Current value passed from `page.tsx` `summaryMetrics`.
+  - Table rows now have `cursor-pointer` and toggle `whitespace-normal` via `expandedRow` state on click, replacing permanent `truncate`.
+  - `proposal_summary` split via `splitSentences()` into bulleted list with teal markers; removed `italic` and `leading-relaxed`.
+  - Added `RiskAnalysisContent` inline rendering: `activeView` state toggles between Proposal and Risk; "View Risk Analysis" / "← Back to Proposal" buttons.
+  - Fixed `MetricCard` delta visibility: only shows when at least one of current/proposed is a number (`showDelta = hasDelta && (hasCurrent || hasProposed)`).
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - Extracted reusable `RiskAnalysisContent` component from the modal body.
+  - Renamed "Risk Factors" → "Risk Assessment Summary"; de-red-shifted background/border.
+  - Replaced binary `severity()` with 3-tier `sentimentConfig()` (bad=red/❌, good=green/✅, neutral=amber/⚠️) with expanded regexes.
+- `src/components/agents/agent-reasoning-panel.tsx`:
+  - Replaced `ScrollArea` import + usage with native `<div className="flex-1 overflow-y-auto custom-scrollbar">`.
+- `src/app/page.tsx`:
+  - Wired new props `currentSharpe`, `currentMaxDrawdown`, `currentVolatility`, `riskMetrics`, `riskStructuredOutput` into `RedesignProposalModal`.
+  - Removed dead `onViewRiskAnalysis` callback.
+
+**Verification:**
+- `bun run build` — successful (0 TypeScript/build errors).
+- `npx tsc --noEmit` — 0 errors.
+
+**Gotchas:**
+- None. No new dependencies.
+
+---
