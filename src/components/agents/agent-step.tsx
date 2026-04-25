@@ -123,12 +123,6 @@ const VERDICT_BADGE_STYLES: Record<HealthState, string> = {
 const TRUNCATE_THRESHOLD = 80;
 
 function formatRiskField(key: string, value: unknown): string {
-	if (key === "var_95" && typeof value === "number") {
-		return `VaR 95%: ${value}% (max daily loss at 95% confidence)`;
-	}
-	if (key === "stress_results" && Array.isArray(value)) {
-		return `${value.length} historical stress scenarios tested`;
-	}
 	if (key === "caveats" && Array.isArray(value)) {
 		return value.join(" • ");
 	}

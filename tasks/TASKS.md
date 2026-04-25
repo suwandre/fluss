@@ -310,3 +310,13 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **Unified Redesign/Risk Modal** — Remove separate `RiskAnalysisModal` from sidebar. Inline `<RiskAnalysisContent>` permanently in `redesign-proposal-modal.tsx`. Remove "View Analysis" button from Risk Agent step.
 - [x] **Sentiment Fix** — Expand `good` regex in `RiskCards` and exclude CTA sentences (`approve this proposal`, `reject this proposal`) from sentiment detection.
 
+## Post-Phase Fixes (4/25/2026) — Risk sidebar + Two-tier scheduler
+
+- [x] **Strip raw numeric fields from Risk sidebar** — Removed `var_95`, `current_avg_drawdown`, `proposed_avg_drawdown`, `current_max_drawdown`, `proposed_max_drawdown`, `current_concentration_score`, `proposed_concentration_score`, `current_var_95` from `buildStructuredOutput` risk case in `use-agent-run.ts`. Sidebar now shows only: verdict, scenarios count, caveats, `risk_summary` (expandable via `ExpandableValue`), `improvement_summary` (expandable). Raw metrics remain on full `workflowOutput` for modal consumption.
+- [x] **Clean dead `formatRiskField` branches** — Deleted `key === "var_95"` and `key === "stress_results"` branches from `formatRiskField` in `agent-step.tsx`.
+- [x] **Two-tier scheduler** — Replaced monolithic 15-min full-pipeline scheduler with two-tier logic in `scheduler.ts`:
+  - Tier 1: Fetch holdings → batch prices → `computePortfolioMetrics` → direct `monitorAgent.generate()` call. If holdings empty, skip. If `health_status === "nominal"`, persist lightweight `agentRuns` record (`agentName: "monitor"`) and stop.
+  - Tier 2: If Monitor returns `warning`/`critical`, ingest news then run full `portfolioFactoryWorkflow` with `inputData: { sectorConstraint: "diversify", riskAppetite: "aggressive", maxTurnoverPct: 30, excludedTickers: [] }`.
+  - On-demand API runs unaffected.
+- [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
+

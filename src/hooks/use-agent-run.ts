@@ -65,25 +65,12 @@ function buildStructuredOutput(
 		case "risk":
 			return {
 				verdict: output.verdict,
-				var_95:
-					typeof output.var_95 === "number"
-						? output.var_95
-						: typeof output.var_95 === "string"
-							? parseFloat(output.var_95 as string) || null
-							: null,
 				scenarios: Array.isArray(output.stress_results)
 					? output.stress_results.length
 					: 0,
 				caveats: output.caveats,
 				risk_summary: output.risk_summary,
 				improvement_summary: output.improvement_summary,
-				current_avg_drawdown: output.current_avg_drawdown,
-				proposed_avg_drawdown: output.proposed_avg_drawdown,
-				current_max_drawdown: output.current_max_drawdown,
-				proposed_max_drawdown: output.proposed_max_drawdown,
-				current_concentration_score: output.current_concentration_score,
-				proposed_concentration_score: output.proposed_concentration_score,
-				current_var_95: output.current_var_95,
 			};
 		default:
 			return undefined;
