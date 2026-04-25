@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useState } from "react";
 import { RiskAnalysisContent } from "./risk-analysis-modal";
 
@@ -146,6 +147,7 @@ export function RedesignProposalModal({
 	riskStructuredOutput,
 }: RedesignProposalModalProps) {
 	const [expandedRow, setExpandedRow] = useState<number | null>(null);
+	const [activeTab, setActiveTab] = useState<"proposal" | "risk">("proposal");
 	const badge = confidenceBadge(confidence);
 
 	const currentWeightMap = new Map<string, number>();
@@ -190,115 +192,133 @@ export function RedesignProposalModal({
 					</div>
 				</DialogHeader>
 
-				<div className="space-y-5 overflow-y-auto max-h-[80vh] pr-2 custom-scrollbar">
-					<>
-						{/* Proposed Allocation Table */}
-						<div className="rounded border border-border overflow-hidden">
-							<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-3 py-2 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
-								<span>Ticker</span>
-								<span className="text-right">Current</span>
-								<span className="text-right">Proposed</span>
-								<span className="text-right">Delta</span>
-								<span>Rationale</span>
-							</div>
-							{rows.length > 0 ? (
-								rows.map((row, i) => {
-									const isExpanded = expandedRow === i;
-									return (
-										<div
-											key={i}
-											className={`grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2 px-3 py-2 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors cursor-pointer ${isExpanded ? "bg-bg-elevated/50" : ""}`}
-											onClick={() => setExpandedRow(isExpanded ? null : i)}
-										>
-											<span className="truncate font-medium text-text">
-												{row.ticker}
-											</span>
-											<span className="text-right text-text-dim">
-												{row.current.toFixed(1)}%
-											</span>
-											<span className="text-right text-teal font-medium">
-												{row.target_pct.toFixed(1)}%
-											</span>
-											<span
-												className={`text-right font-semibold ${
-													row.delta > 0
-														? "text-green"
-														: row.delta < 0
-															? "text-red"
-															: "text-text-dim"
-												}`}
+				<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "proposal" | "risk")}>
+					<TabsList className="flex gap-2 border-b border-border pb-1 mb-4">
+						<TabsTrigger
+							value="proposal"
+							className="text-[12px] font-mono font-medium px-2 py-1 rounded text-text-dim hover:text-text transition-colors data-[state=active]:text-teal data-[state=active]:border-b-2 data-[state=active]:border-teal"
+						>
+							Proposal
+						</TabsTrigger>
+						<TabsTrigger
+							value="risk"
+							className="text-[12px] font-mono font-medium px-2 py-1 rounded text-text-dim hover:text-text transition-colors data-[state=active]:text-teal data-[state=active]:border-b-2 data-[state=active]:border-teal"
+						>
+							Risk Analysis
+						</TabsTrigger>
+					</TabsList>
+
+					<TabsContent value="proposal">
+						<div className="overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar space-y-5">
+							{/* Proposed Allocation Table */}
+							<div className="rounded border border-border overflow-hidden">
+								<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-3 py-2 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
+									<span>Ticker</span>
+									<span className="text-right">Current</span>
+									<span className="text-right">Proposed</span>
+									<span className="text-right">Delta</span>
+									<span>Rationale</span>
+								</div>
+								{rows.length > 0 ? (
+									rows.map((row, i) => {
+										const isExpanded = expandedRow === i;
+										return (
+											<div
+												key={i}
+												className={`grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2 px-3 py-2 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors cursor-pointer ${isExpanded ? "bg-bg-elevated/50" : ""}`}
+												onClick={() => setExpandedRow(isExpanded ? null : i)}
 											>
-												{row.delta > 0 ? "+" : ""}{row.delta.toFixed(1)}%
-											</span>
-											<span className={`text-text-dim leading-snug ${isExpanded ? "whitespace-normal" : "truncate"}`}>
-												{row.rationale ?? "—"}
-											</span>
+												<span className="truncate font-medium text-text">
+													{row.ticker}
+												</span>
+												<span className="text-right text-text-dim">
+													{row.current.toFixed(1)}%
+												</span>
+												<span className="text-right text-teal font-medium">
+													{row.target_pct.toFixed(1)}%
+												</span>
+												<span
+													className={`text-right font-semibold ${
+														row.delta > 0
+															? "text-green"
+																: row.delta < 0
+																	? "text-red"
+																	: "text-text-dim"
+													}`}
+												>
+													{row.delta > 0 ? "+" : ""}{row.delta.toFixed(1)}%
+												</span>
+												<span className={`text-text-dim leading-snug ${isExpanded ? "whitespace-normal" : "truncate"}`}>
+													{row.rationale ?? "—"}
+												</span>
+											</div>
+										);
+										})
+									) : (
+										<div className="px-3 py-4 text-[12px] font-mono text-text-dim italic">
+											No proposed actions available.
 										</div>
-									);
-									})
-								) : (
-									<div className="px-3 py-4 text-[12px] font-mono text-text-dim italic">
-										No proposed actions available.
+									)}
+							</div>
+
+							{/* Metric Cards */}
+							<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+								<MetricCard
+									label="Sharpe Ratio"
+									current={currentSharpe}
+									proposed={proposedSharpe}
+									delta={expected_improvement?.sharpe_delta ?? null}
+									unit=""
+									isBetterWhenLower={false}
+									showProposed={hasSharpe || proposedSharpe != null}
+								/>
+								<MetricCard
+									label={showStressMetric ? "Avg Stress Drawdown" : "Volatility"}
+									current={showStressMetric ? riskMetrics?.current_avg_drawdown ?? null : currentVolatility ?? null}
+									proposed={showStressMetric ? riskMetrics?.proposed_avg_drawdown ?? null : (currentVolatility != null && hasVol ? currentVolatility + expected_improvement.volatility_delta_pct! : null)}
+									delta={showStressMetric
+										? (typeof riskMetrics?.proposed_avg_drawdown === "number" && typeof riskMetrics?.current_avg_drawdown === "number"
+											? riskMetrics.proposed_avg_drawdown - riskMetrics.current_avg_drawdown
+											: null)
+										: expected_improvement?.volatility_delta_pct ?? null}
+									unit="%"
+									isBetterWhenLower={true}
+									showProposed={showStressMetric ? (riskMetrics?.proposed_avg_drawdown != null || riskMetrics?.current_avg_drawdown != null) : hasVol}
+								/>
+								<MetricCard
+									label="Max Drawdown"
+									current={currentMaxDrawdown}
+									proposed={proposedMaxDrawdown}
+									delta={expected_improvement?.max_drawdown_delta_pct ?? null}
+									unit="%"
+									isBetterWhenLower={true}
+									showProposed={hasMaxDd || proposedMaxDrawdown != null}
+								/>
+							</div>
+
+							{/* Proposal Summary Bullets */}
+							{proposal_summary && (
+								<div className="rounded border border-border bg-bg-elevated p-3 space-y-2">
+									{splitSentences(proposal_summary).map((sentence, i) => (
+										<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-snug">
+											<span className="text-teal mt-1 shrink-0">•</span>
+											<span>{sentence}</span>
+										</div>
+										))}
 									</div>
 								)}
-						</div>
-
-						{/* Metric Cards */}
-						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-							<MetricCard
-								label="Sharpe Ratio"
-								current={currentSharpe}
-								proposed={proposedSharpe}
-								delta={expected_improvement?.sharpe_delta ?? null}
-								unit=""
-								isBetterWhenLower={false}
-								showProposed={hasSharpe || proposedSharpe != null}
-							/>
-							<MetricCard
-								label={showStressMetric ? "Avg Stress Drawdown" : "Volatility"}
-								current={showStressMetric ? riskMetrics?.current_avg_drawdown ?? null : currentVolatility ?? null}
-								proposed={showStressMetric ? riskMetrics?.proposed_avg_drawdown ?? null : (currentVolatility != null && hasVol ? currentVolatility + expected_improvement.volatility_delta_pct! : null)}
-								delta={showStressMetric
-									? (typeof riskMetrics?.proposed_avg_drawdown === "number" && typeof riskMetrics?.current_avg_drawdown === "number"
-										? riskMetrics.proposed_avg_drawdown - riskMetrics.current_avg_drawdown
-										: null)
-									: expected_improvement?.volatility_delta_pct ?? null}
-								unit="%"
-								isBetterWhenLower={true}
-								showProposed={showStressMetric ? (riskMetrics?.proposed_avg_drawdown != null || riskMetrics?.current_avg_drawdown != null) : hasVol}
-							/>
-							<MetricCard
-								label="Max Drawdown"
-								current={currentMaxDrawdown}
-								proposed={proposedMaxDrawdown}
-								delta={expected_improvement?.max_drawdown_delta_pct ?? null}
-								unit="%"
-								isBetterWhenLower={true}
-								showProposed={hasMaxDd || proposedMaxDrawdown != null}
-							/>
-						</div>
-
-						{/* Proposal Summary Bullets */}
-						{proposal_summary && (
-							<div className="rounded border border-border bg-bg-elevated p-3 space-y-2">
-								{splitSentences(proposal_summary).map((sentence, i) => (
-									<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-snug">
-										<span className="text-teal mt-1 shrink-0">•</span>
-										<span>{sentence}</span>
-									</div>
-								))}
 							</div>
-						)}
+						</TabsContent>
 
-						{/* Inline Risk Analysis */}
-						{riskStructuredOutput && (
-							<div className="space-y-5">
-								<RiskAnalysisContent structuredOutput={riskStructuredOutput} />
+						<TabsContent value="risk">
+							<div className="overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar">
+								{riskStructuredOutput && (
+									<RiskAnalysisContent structuredOutput={riskStructuredOutput} />
+								)}
 							</div>
-						)}
-				</>
-			</div>
-		</DialogContent>
-	</Dialog>
+					</TabsContent>
+				</Tabs>
+			</DialogContent>
+		</Dialog>
 	);
 }
