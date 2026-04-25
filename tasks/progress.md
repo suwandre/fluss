@@ -365,7 +365,7 @@
   - Risk case now returns only `verdict` and `scenarios`. Removed: `caveats`, `risk_summary`, `improvement_summary`. Verdict already renders as colored outcome line in `AgentStep`. Scenarios count stays.
 - `src/components/agents/agent-step.tsx`:
   - `renderValue`: added guard for arrays of objects → `[N items]` instead of raw JSON.
-  - `FIELD_TOOLTIPS`: removed `var_95` and `stress_results` entries.
+  - `FIELD_TOOLTIPS`: removed `var_95` and `stress_results` tooltip entries.
 
 **Verification:**
 - `npx tsc --noEmit` — 0 errors.
@@ -388,6 +388,29 @@
   - Tab bar sits below `DialogHeader`, above scrollable content. Each `TabsContent` wraps its content in `overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar`.
   - Removed inline `<RiskAnalysisContent>` from Proposal tab; risk content now only appears under the Risk Analysis tab.
   - Did NOT touch `risk-analysis-modal.tsx` — `RiskAnalysisContent` stays reusable.
+
+**Verification:**
+- `npx tsc --noEmit` — 0 errors.
+- `npx next build` — successful.
+
+**Gotchas:**
+- None.
+
+---
+
+## Task — Equalize Tab Heights + Enrich Proposal Tab (4/26/2026)
+
+**Description:** Proposal tab was visually short compared to Risk tab, creating jarring height jumps when switching tabs. Added fixed-height container equality and three new visual sections.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - Replaced per-tab `max-h-[70vh]` with shared `min-h-[600px] overflow-y-auto` on `TabsContent` wrappers. Both tabs scroll internally if content exceeds container.
+  - Added `sectorExposure` prop.
+  - Inserted **Sector Re-allocation Bars** after allocation table: horizontal current/proposed bars per sector, delta number, sorted by current+proposed weight descending. Used `--text-dim`, `bg-teal`, and `bg-[rgba(255,255,255,0.15)]` bars.
+  - Inserted **Before/After Snapshot Cards** below metric cards: 2-column grid with Positions, Max Position %, Turnover (`sum(abs(delta))/2`), Sectors (unique ticker count), Concentration. Style matches existing metric cards (`bg-bg-elevated border border-border rounded-lg p-3`). Label uppercase `text-[10px] font-mono text-text-dim`. Value `text-[11px] font-mono text-text`.
+  - Inserted **Risk Score Delta** as full-width single card below snapshot cards. Score formula: `(avgStressDrawdown * 0.4) + (maxDrawdown * 0.3) + (var95 * 0.3)`. Shows current → proposed with arrow, delta number, colored badge "Improved" (green) or "Worsened" (red). Graceful N/A if `riskMetrics` missing.
+  - Proposal summary bullets remain below all new cards, unchanged.
+- `src/app/page.tsx`: Passed `sectorExposure` into `<RedesignProposalModal>`.
 
 **Verification:**
 - `npx tsc --noEmit` — 0 errors.
