@@ -210,8 +210,9 @@ export function RedesignProposalModal({
 						</TabsTrigger>
 					</TabsList>
 
-					<TabsContent value="proposal">
-						<div className="min-h-[600px] overflow-y-auto pr-2 custom-scrollbar space-y-5">
+					<div className="h-[65vh] overflow-y-auto pr-2 custom-scrollbar space-y-5">
+						<TabsContent value="proposal">
+							<div>
 							{/* Proposed Allocation Table */}
 							<div className="rounded border border-border overflow-hidden">
 								<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-3 py-2 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
@@ -468,12 +469,13 @@ export function RedesignProposalModal({
 						</TabsContent>
 
 						<TabsContent value="risk">
-							<div className="min-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+							<div>
 								{riskStructuredOutput && (
 									<RiskAnalysisContent structuredOutput={riskStructuredOutput} />
 								)}
 							</div>
 						</TabsContent>
+					</div>
 				</Tabs>
 			</DialogContent>
 		</Dialog>
