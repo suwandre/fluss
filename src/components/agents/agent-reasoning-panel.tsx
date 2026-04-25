@@ -10,7 +10,7 @@ import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
 import { RedesignProposalModal } from "@/components/agents/redesign-proposal-modal";
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { cn } from "@/lib/utils";
 import {
 	RebalancePreferencesModal,
@@ -145,7 +145,7 @@ export function AgentReasoningPanel({
 
 			{/* Body */}
 			{tab === "current" ? (
-				<ScrollArea className="flex-1 overflow-hidden">
+				<div className="flex-1 overflow-y-auto custom-scrollbar">
 					<div className="p-4">
 						<PipelineStatusBar steps={steps} />
 						{isApproved ? (
@@ -188,7 +188,7 @@ export function AgentReasoningPanel({
 							</div>
 						)}
 					</div>
-				</ScrollArea>
+				</div>
 			) : (
 				<div className="flex-1 overflow-hidden">
 					<RunHistoryPanel

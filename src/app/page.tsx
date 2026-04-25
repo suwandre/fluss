@@ -224,6 +224,24 @@ export default function Home() {
 			} | undefined,
 		};
 	}, [workflowOutput]);
+	const riskStructuredOutputForModal = useMemo(() => {
+		if (!workflowOutput?.risk) return null;
+		return workflowOutput.risk as Record<string, unknown>;
+	}, [workflowOutput]);
+
+	const riskMetrics = useMemo(() => {
+		if (!workflowOutput?.risk) return null;
+		const r = workflowOutput.risk as Record<string, unknown>;
+		return {
+			current_var_95: typeof r.current_var_95 === "number" ? r.current_var_95 : null,
+			proposed_var_95: typeof r.var_95 === "number" ? r.var_95 : null,
+			current_avg_drawdown: typeof r.current_avg_drawdown === "number" ? r.current_avg_drawdown : null,
+			proposed_avg_drawdown: typeof r.proposed_avg_drawdown === "number" ? r.proposed_avg_drawdown : null,
+			current_max_drawdown: typeof r.current_max_drawdown === "number" ? r.current_max_drawdown : null,
+			proposed_max_drawdown: typeof r.proposed_max_drawdown === "number" ? r.proposed_max_drawdown : null,
+		};
+	}, [workflowOutput]);
+
 	const [sectorModalOpen, setSectorModalOpen] = useState(false);
 
 	// Extract proposed actions from workflow redesign output
@@ -309,10 +327,11 @@ export default function Home() {
 			proposed_actions={redesignData?.proposed_actions}
 			expected_improvement={redesignData?.expected_improvement}
 			currentAllocations={currentAllocations}
-			onViewRiskAnalysis={() => {
-				setRedesignModalOpen(false);
-				// Could open risk modal too if desired
-			}}
+			currentSharpe={summaryMetrics.sharpeRatio}
+			currentMaxDrawdown={summaryMetrics.maxDrawdownPct}
+			currentVolatility={null}
+			riskMetrics={riskMetrics}
+			riskStructuredOutput={riskStructuredOutputForModal}
 		/>
 	</div>
 );

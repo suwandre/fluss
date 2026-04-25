@@ -315,6 +315,8 @@ function RiskCards({ text }: { text: string }) {
 			lower === "rejected" ||
 			lower === "approve" ||
 			lower === "reject" ||
+			lower === "approve with caveats" ||
+			lower === "approved with caveats" ||
 			lower.startsWith("approve with caveats") ||
 			lower.startsWith("approved with caveats")
 		) {
@@ -326,19 +328,23 @@ function RiskCards({ text }: { text: string }) {
 		return <div className="text-[12px] text-text-dim italic">No risks specified.</div>;
 	}
 
-	const severity = (s: string) => {
-		const bad = /reject|catastrophic|critical|severe|excessive/i;
-		return bad.test(s) ? { icon: "\u274C", border: "border-l-red", text: "text-red" } : { icon: "\u26A0\uFE0F", border: "border-l-amber", text: "text-amber" };
-	};
+	function sentimentConfig(s: string) {
+		const lower = s.toLowerCase();
+		const bad = /reject|catastrophic|critical|severe|excessive|worse|higher|increased|dangerous|fragile|vulnerable|fails|breach/i;
+		const good = /improve|better|lower|approved|less risky|reduce|within range|shallower|shorter|passes|broad-based|safe|meaningfully less/i;
+		if (bad.test(lower)) return { icon: "❌", border: "border-l-red", text: "text-red", bg: "bg-[rgba(239,68,68,0.04)]" };
+		if (good.test(lower)) return { icon: "✅", border: "border-l-green", text: "text-green", bg: "bg-[rgba(34,197,94,0.04)]" };
+		return { icon: "⚠️", border: "border-l-amber", text: "text-amber", bg: "bg-[rgba(245,158,11,0.04)]" };
+	}
 
 	return (
 		<div className="space-y-2">
 			{sentences.map((s, i) => {
-				const sev = severity(s);
+				const sev = sentimentConfig(s);
 				return (
 					<div
 						key={i}
-						className={`rounded bg-[rgba(239,68,68,0.04)] border-l-3 ${sev.border} px-3 py-2 text-[12px] text-text/90 leading-snug flex items-start gap-2`}
+						className={`rounded ${sev.bg} border-l-3 ${sev.border} px-3 py-2 text-[12px] text-text/90 leading-snug flex items-start gap-2`}
 					>
 						<span className="shrink-0 mt-0.5">{sev.icon}</span>
 						<span>{s}</span>
@@ -407,14 +413,14 @@ function ScenarioComparisonTable({ data }: { data: ScenarioComparison[] }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Main Component                                                   */
+/*  Risk Analysis Content                                            */
 /* ------------------------------------------------------------------ */
 
-export function RiskAnalysisModal({
-	open,
-	onOpenChange,
+export function RiskAnalysisContent({
 	structuredOutput,
-}: RiskAnalysisModalProps) {
+}: {
+	structuredOutput: Record<string, unknown>;
+}) {
 	const verdict = typeof structuredOutput.verdict === "string" ? structuredOutput.verdict : "";
 	const caveats = Array.isArray(structuredOutput.caveats) ? (structuredOutput.caveats as string[]) : [];
 	const riskSummary = typeof structuredOutput.risk_summary === "string" ? structuredOutput.risk_summary : "";
@@ -434,102 +440,121 @@ export function RiskAnalysisModal({
 	const verdictConfig = verdict ? getVerdictConfig(verdict) : null;
 
 	return (
+		<>
+			<div className="space-y-5">
+				{/* Verdict Banner */}
+				{verdictConfig && (
+					<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>
+						<span className="text-2xl">{verdictConfig.icon}</span>
+						<div>
+							<div className={`font-bold text-sm ${verdictConfig.text}`}>{verdictConfig.label}</div>
+							<div className="text-[11px] text-text-dim mt-0.5">
+								{verdictConfig.label === "Approved"
+									? "Portfolio passes all risk thresholds."
+									: verdictConfig.label === "Approved with Caveats"
+										? "Portfolio is acceptable but watch flagged areas."
+										: "Portfolio exceeds risk limits. Review changes."}
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* VaR Gauge */}
+				<div className="rounded-lg border border-border bg-bg-elevated p-3">
+					<VaRGauge value={var95} />
+				</div>
+
+				{/* Stress Scenarios */}
+				{stressResults.length > 0 && (
+					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+						<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
+							<span>Stress Scenarios</span>
+							<span className="text-text-muted text-[10px] font-sans normal-case">Drawdown &rarr; Recovery</span>
+						</div>
+						<StressBars data={stressResults} />
+					</div>
+				)}
+
+				{/* Scenario Comparison */}
+				{scenarioComparisons.length > 0 && (
+					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+						<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
+							<span>Scenario Comparison</span>
+							<span className="text-text-muted text-[10px] font-sans normal-case">Current &rarr; Proposed</span>
+						</div>
+						<ScenarioComparisonTable data={scenarioComparisons} />
+					</div>
+				)}
+
+				{/* Before / After Metrics — Key Metrics Comparison */}
+				{(typeof structuredOutput.current_var_95 === "number" || improvementSummary) && (
+					<div className="rounded-lg border border-teal/15 bg-[rgba(20,184,166,0.04)] p-4">
+						<div className="text-[11px] font-mono text-teal uppercase tracking-wide mb-3 pb-1 border-b border-teal/10">
+							Portfolio Changes
+						</div>
+						<KeyMetricsComparison structuredOutput={structuredOutput} />
+						{improvementSummary && (
+							<p className="text-[12px] text-text-dim italic mt-3 pt-2 border-t border-teal/10">
+								{improvementSummary}
+							</p>
+						)}
+					</div>
+				)}
+
+				{/* Risk Assessment Summary */}
+				{riskSummary && (
+					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+						<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-1 border-b border-border">
+							Risk Assessment Summary
+						</div>
+						<RiskCards text={riskSummary} />
+					</div>
+				)}
+
+				{/* Caveats */}
+				{caveats.length > 0 && (
+					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+						<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2">
+							Caveats
+						</div>
+						<div className="flex flex-col gap-2">
+							{caveats.map((c, i) => (
+								<div
+									key={i}
+									className="bg-amber/10 border border-amber/20 text-amber rounded px-3 py-1.5 text-[11px]"
+								>
+									{c}
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+			</div>
+		</>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                   */
+/* ------------------------------------------------------------------ */
+
+export function RiskAnalysisModal({
+	open,
+	onOpenChange,
+	structuredOutput,
+}: RiskAnalysisModalProps) {
+	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-3xl">
 				<DialogHeader>
 					<DialogTitle>Risk Analysis Dashboard</DialogTitle>
 				</DialogHeader>
 
-				<div className="space-y-5 overflow-y-auto max-h-[80vh] pr-2 custom-scrollbar">
-					{/* Verdict Banner */}
-					{verdictConfig && (
-						<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>
-							<span className="text-2xl">{verdictConfig.icon}</span>
-							<div>
-								<div className={`font-bold text-sm ${verdictConfig.text}`}>{verdictConfig.label}</div>
-								<div className="text-[11px] text-text-dim mt-0.5">
-									{verdictConfig.label === "Approved"
-										? "Portfolio passes all risk thresholds."
-										: verdictConfig.label === "Approved with Caveats"
-											? "Portfolio is acceptable but watch flagged areas."
-											: "Portfolio exceeds risk limits. Review changes."}
-								</div>
-							</div>
-						</div>
-					)}
+				<div className="overflow-y-auto max-h-[80vh] pr-2 custom-scrollbar">
+					<RiskAnalysisContent structuredOutput={structuredOutput} />
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
 
-					{/* VaR Gauge */}
-					<div className="rounded-lg border border-border bg-bg-elevated p-3">
-						<VaRGauge value={var95} />
-					</div>
-
-					{/* Stress Scenarios */}
-					{stressResults.length > 0 && (
-						<div className="rounded-lg border border-border bg-bg-elevated p-4">
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
-								<span>Stress Scenarios</span>
-								<span className="text-text-muted text-[10px] font-sans normal-case">Drawdown &rarr; Recovery</span>
-							</div>
-							<StressBars data={stressResults} />
-						</div>
-					)}
-
-					{/* Scenario Comparison */}
-					{scenarioComparisons.length > 0 && (
-						<div className="rounded-lg border border-border bg-bg-elevated p-4">
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
-								<span>Scenario Comparison</span>
-								<span className="text-text-muted text-[10px] font-sans normal-case">Current → Proposed</span>
-							</div>
-							<ScenarioComparisonTable data={scenarioComparisons} />
-						</div>
-					)}
-
-					{/* Before / After Metrics — Key Metrics Comparison */}
-					{(typeof structuredOutput.current_var_95 === "number" || improvementSummary) && (
-						<div className="rounded-lg border border-teal/15 bg-[rgba(20,184,166,0.04)] p-4">
-							<div className="text-[11px] font-mono text-teal uppercase tracking-wide mb-3 pb-1 border-b border-teal/10">
-								Portfolio Changes
-							</div>
-							<KeyMetricsComparison structuredOutput={structuredOutput} />
-							{improvementSummary && (
-								<p className="text-[12px] text-text-dim italic mt-3 pt-2 border-t border-teal/10">
-									{improvementSummary}
-								</p>
-							)}
-						</div>
-					)}
-
-					{/* Risk Factors */}
-					{riskSummary && (
-						<div className="rounded-lg border border-red/15 bg-[rgba(239,68,68,0.03)] p-4">
-							<div className="text-[11px] font-mono text-red uppercase tracking-wide mb-3 pb-1 border-b border-red/10">
-								Risk Factors
-							</div>
-							<RiskCards text={riskSummary} />
-						</div>
-					)}
-
-					{/* Caveats */}
-					{caveats.length > 0 && (
-						<div className="rounded-lg border border-border bg-bg-elevated p-4">
-							<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-2">
-								Caveats
-							</div>
-							<div className="flex flex-col gap-2">
-								{caveats.map((c, i) => (
-									<div
-										key={i}
-										className="bg-amber/10 border border-amber/20 text-amber rounded px-3 py-1.5 text-[11px]"
-									>
-										{c}
-									</div>
-								))}
-							</div>
-						</div>
-					)}
-					</div>
-				</DialogContent>
-			</Dialog>
-		);
-	}
