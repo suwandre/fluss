@@ -25,7 +25,6 @@ interface AgentStepProps {
 	isStreaming?: boolean;
 	errorMessage?: string;
 	skipReason?: string;
-	onViewDetails?: () => void;
 }
 
 const STATUS_LABEL_MAP: Record<AgentStatus, string> = {
@@ -124,17 +123,6 @@ const VERDICT_BADGE_STYLES: Record<HealthState, string> = {
 const TRUNCATE_THRESHOLD = 80;
 
 function formatRiskField(key: string, value: unknown): string {
-	if (key === "verdict" && typeof value === "string") {
-		const map: Record<string, string> = {
-			rejected: "❌ Rejected",
-			approved_with_caveats: "⚠️ Approved with caveats",
-			approved: "✅ Approved",
-			reject: "❌ Rejected",
-			approve_with_caveats: "⚠️ Approved with caveats",
-			approve: "✅ Approved",
-		};
-		return map[value.toLowerCase()] ?? value;
-	}
 	if (key === "var_95" && typeof value === "number") {
 		return `VaR 95%: ${value}% (max daily loss at 95% confidence)`;
 	}
@@ -232,7 +220,6 @@ export function AgentStep({
 	isStreaming = false,
 	errorMessage,
 	skipReason,
-	onViewDetails,
 }: AgentStepProps) {
 	const [reasoningOpen, setReasoningOpen] = useState(false);
 	const reducedMotion = useReducedMotion();
@@ -244,15 +231,6 @@ export function AgentStep({
 
 	const showStructuredOutput = status === "done" || status === "running";
 	const hasReasoning = !!reasoning || isStreaming;
-
-	const isRiskDone = name.toLowerCase().includes("risk") && status === "done";
-
-	const isRedesignDone = name.toLowerCase().includes("redesign") && status === "done" && onViewDetails;
-
-	// Condensed summary for Risk Agent
-	const riskSummaryLine = isRiskDone && structuredOutput?.risk_summary && typeof structuredOutput.risk_summary === "string"
-		? (structuredOutput.risk_summary as string).slice(0, 80)
-		: null;
 
 	return (
 		<div data-slot="agent-step" className="flex gap-3">
@@ -312,97 +290,75 @@ export function AgentStep({
 					</div>
 				)}
 
-				{/* Condensed Risk / Redesign views */}
-				{isRiskDone ? (
-					<>
-						{riskSummaryLine && (
-							<div className="mt-1 text-[12px] font-mono text-text leading-snug">
-								{riskSummaryLine}
-								{(structuredOutput?.risk_summary as string)?.length > 80 && "…"}
-							</div>
-						)}
-						{/* Final Verdict */}
-						{(() => {
-							const v = String(structuredOutput?.verdict ?? "").toLowerCase();
-							if (v === "approved" || v === "approve") {
-								return (
-									<div className="mt-1 text-[12px] font-mono text-green leading-snug">
-										✅ Changes approved. Ready to apply.
-									</div>
-								);
+				{/* Structured output */}
+				{showStructuredOutput && structuredOutput && (
+					<div className="mt-1.5 space-y-0.5">
+						{Object.entries(structuredOutput).map(([key, value]) => {
+							if (key === "verdict" && typeof value === "string") {
+								const v = value.toLowerCase();
+								if (v === "approved" || v === "approve") {
+									return (
+										<div
+											key={key}
+											className="text-[12px] font-mono text-green leading-snug"
+										>
+											✅ Changes approved. Ready to apply.
+										</div>
+									);
+								}
+								if (v === "rejected" || v === "reject") {
+									return (
+										<div
+											key={key}
+											className="text-[12px] font-mono text-red leading-snug"
+										>
+											❌ Changes rejected. Current portfolio retained.
+										</div>
+									);
+								}
+								if (v === "approved_with_caveats" || v === "approve_with_caveats") {
+									return (
+										<div
+											key={key}
+											className="text-[12px] font-mono text-amber leading-snug"
+										>
+											⚠️ Approved with conditions. Review caveats.
+										</div>
+									);
+								}
+								return null;
 							}
-							if (v === "rejected" || v === "reject") {
-								return (
-									<div className="mt-1 text-[12px] font-mono text-red leading-snug">
-										❌ Changes rejected. Current portfolio retained.
-									</div>
-								);
-							}
-							if (v === "approved_with_caveats" || v === "approve_with_caveats") {
-								return (
-									<div className="mt-1 text-[12px] font-mono text-amber leading-snug">
-										⚠️ Approved with conditions. Review caveats.
-									</div>
-								);
-							}
-							return null;
-						})()}
-					</>
-				) : isRedesignDone ? (
-					<>
-						<div className="mt-1 flex items-center gap-2 text-[12px] font-mono text-text leading-snug">
-							<span>{(structuredOutput?.actions as number) ?? 0} actions proposed</span>
-							{verdict && (
-								<span className={`text-[10px] font-mono font-medium px-1.5 py-px rounded-full ${VERDICT_BADGE_STYLES[verdict.tier]}`}>
-									{verdict.label}
-								</span>
-							)}
-						</div>
-						<button
-							type="button"
-							onClick={onViewDetails}
-							className="mt-1.5 px-2 py-0.5 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors cursor-pointer"
-						>
-							View Proposal
-						</button>
-					</>
-				) : (
-					/* Structured output (non-Risk or not done) */
-					showStructuredOutput && structuredOutput && (
-						<div className="mt-1.5 space-y-0.5">
-							{Object.entries(structuredOutput).map(([key, value]) => {
-								const rendered = formatRiskField(key, value);
-								const tip = FIELD_TOOLTIPS[key];
-								return (
-									<div
-										key={key}
-										className="flex gap-1 items-start text-[12px] font-mono leading-snug"
-									>
-										{tip ? (
-											<Tooltip>
-												<TooltipTrigger>
-													<button
-														type="button"
-														className="shrink-0 mt-0.5 text-text-dim hover:text-text transition-colors cursor-help"
-													>
-														<InfoIcon className="size-3" />
-													</button>
-												</TooltipTrigger>
-												<TooltipContent side="right">
-													{tip}
-												</TooltipContent>
-											</Tooltip>
-										) : (
-											<span className="w-3 shrink-0" />
-										)}
-										<span className="text-text-dim shrink-0">{key}:</span>
-										<ExpandableValue value={rendered} />
-									</div>
-								);
-								})}
-							</div>
-						)
-					)}
+							const rendered = formatRiskField(key, value);
+							const tip = FIELD_TOOLTIPS[key];
+							return (
+								<div
+									key={key}
+									className="flex gap-1 items-start text-[12px] font-mono leading-snug"
+								>
+									{tip ? (
+										<Tooltip>
+											<TooltipTrigger>
+												<button
+													type="button"
+													className="shrink-0 mt-0.5 text-text-dim hover:text-text transition-colors cursor-help"
+												>
+													<InfoIcon className="size-3" />
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="right">
+												{tip}
+											</TooltipContent>
+										</Tooltip>
+									) : (
+										<span className="w-3 shrink-0" />
+									)}
+									<span className="text-text-dim shrink-0">{key}:</span>
+									<ExpandableValue value={rendered} />
+								</div>
+							);
+						})}
+					</div>
+				)}
 
 				{/* Collapsible reasoning */}
 				{hasReasoning && (

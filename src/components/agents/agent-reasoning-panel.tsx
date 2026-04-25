@@ -5,8 +5,6 @@ import {
 	AgentTimeline,
 	type AgentStepData,
 } from "@/components/agents/agent-timeline";
-import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
-import { RedesignProposalModal } from "@/components/agents/redesign-proposal-modal";
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
 import { StressTestChart } from "@/components/charts/stress-test-chart";
 
@@ -39,7 +37,6 @@ interface AgentReasoningPanelProps {
 	onRun?: (preferences?: RebalancePreferences) => void;
 	stressResults?: StressResult[] | null;
 	onRestoreRun?: (run: HistoryRun) => void;
-	onSectorViewDetails?: () => void;
 	onRedesignViewDetails?: () => void;
 }
 
@@ -59,14 +56,12 @@ export function AgentReasoningPanel({
 	onRun,
 	stressResults,
 	onRestoreRun,
-	onSectorViewDetails,
 	onRedesignViewDetails,
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
 	const [prefsModalOpen, setPrefsModalOpen] = useState(false);
 	const riskDone = steps[3]?.status === "done";
 	const showChart = riskDone && stressResults && stressResults.length > 0;
-	const riskStructuredOutput = (steps[3]?.structuredOutput ?? null) as Record<string, unknown> | null;
 
 	const handleSelectRun = (run: HistoryRun) => {
 		onRestoreRun?.(run);
@@ -178,6 +173,15 @@ export function AgentReasoningPanel({
 							<RunSummary steps={steps} />
 						)}
 						<AgentTimeline steps={steps} onRedesignViewDetails={onRedesignViewDetails} />
+						{steps[2]?.status === "done" && onRedesignViewDetails && (
+							<button
+								type="button"
+								onClick={onRedesignViewDetails}
+								className="mt-4 w-full py-2.5 rounded border border-border-bright bg-bg-elevated text-text font-mono text-[13px] font-medium hover:bg-bg-card hover:border-border transition-colors cursor-pointer"
+							>
+								View Proposal
+							</button>
+						)}
 
 						{/* Stress test chart — shown after Risk Agent completes */}
 						{showChart && (

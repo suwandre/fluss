@@ -308,7 +308,6 @@ export default function Home() {
 				onRun={startRun}
 				stressResults={stressResults}
 				onRestoreRun={handleRestoreRun}
-				onSectorViewDetails={() => setSectorModalOpen(true)}
 				onRedesignViewDetails={() => setRedesignModalOpen(true)}
 			/>
 		</div>

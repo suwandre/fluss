@@ -596,3 +596,30 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 - None.
 
 ---
+
+## Task — Risk Agent expandable + View Proposal prominent button (4/25/2026)
+
+**Description:** Two UI fixes in agent reasoning sidebar: (1) Risk Agent summary now generic via `ExpandableValue` with verdict rendered inside generic loop; (2) "View Proposal" button moved to bottom of timeline and made prominent.
+
+**Summary:**
+- `agent-step.tsx`:
+  - Deleted `isRiskDone` branch, `isRedesignDone` branch, and all associated variables (`riskSummaryLine`, `isRiskDone`, `isRedesignDone`).
+  - Removed `onViewDetails` prop from `AgentStepProps` + destructuring.
+  - Inside `Object.entries(structuredOutput).map(...)` loop, added special `key === "verdict"` case rendering colored outcome lines without `key:` label.
+  - Kept `formatRiskField` for other keys.
+  - Kept `TRUNCATE_THRESHOLD` because `ExpandableValue` still uses it.
+- `agent-timeline.tsx`:
+  - Removed `onViewDetails={i === 2 ? onRedesignViewDetails : undefined}` from `AgentStep` call.
+- `agent-reasoning-panel.tsx`:
+  - Added conditional "View Proposal" button after `<AgentTimeline />`, only shown when redesign step (`steps[2]`) is done.
+  - Removed dead imports (`SectorHeatmapModal`, `RedesignProposalModal`) and unused `riskStructuredOutput` variable.
+  - Removed `onSectorViewDetails` prop from `AgentReasoningPanel` (caller in `page.tsx` updated too).
+- `page.tsx`:
+  - Removed `onSectorViewDetails` prop from `<AgentReasoningPanel>` call.
+
+**Verification:**
+- `npx next build` — successful (0 errors).
+- `npx tsc --noEmit` — 0 errors.
+
+**Gotchas:**
+- None.

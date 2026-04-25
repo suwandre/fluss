@@ -34,11 +34,10 @@ export function AgentTimeline({ steps, onRedesignViewDetails }: AgentTimelinePro
 						key={step.name}
 						className={cn(isDimmed && "opacity-45 transition-opacity")}
 					>
-						<AgentStep
-							{...step}
-							errorMessage={step.errorMessage}
-							onViewDetails={i === 2 ? onRedesignViewDetails : undefined}
-						/>
+					<AgentStep
+						{...step}
+						errorMessage={step.errorMessage}
+					/>
 						{!isLast && (
 							<div className="ml-[5px] h-4 border-l border-border-bright" />
 						)}
