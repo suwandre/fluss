@@ -328,3 +328,8 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **Cleaned FIELD_TOOLTIPS** — Removed `var_95` and `stress_results` tooltip entries.
 - [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
 
+## UX Fix (4/26/2026) — Tabbed Redesign Proposal Modal
+
+- [x] **Tabbed layout in `redesign-proposal-modal.tsx`** — Added `Tabs` (Proposal / Risk Analysis) below `DialogHeader`, above scrollable content area. Default active: Proposal. Each tab wraps its content in `overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar`. Removed inline `<RiskAnalysisContent>` from Proposal tab; risk content now only renders in Risk Analysis tab via `<TabsContent value="risk">`.
+- [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
+
