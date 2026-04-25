@@ -305,3 +305,8 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **Sentiment Detection for Risk Assessment Summary** — `RiskCards` now uses 3-tier sentiment (bad=red/❌, good=green/✅, neutral=amber/⚠️); section renamed from "Risk Factors" and background de-red-shifted for visual neutrality.
 - [x] **White Scrollbar Fix** — `AgentReasoningPanel` replaced `@base-ui/react/scroll-area` with native `<div className="overflow-y-auto custom-scrollbar">` using `rgba(255,255,255,0.15)` thumb.
 
+## UX Fixes — Unified Redesign/Risk Modal + Sentiment Fix (4/25/2026)
+
+- [x] **Unified Redesign/Risk Modal** — Remove separate `RiskAnalysisModal` from sidebar. Inline `<RiskAnalysisContent>` permanently in `redesign-proposal-modal.tsx`. Remove "View Analysis" button from Risk Agent step.
+- [x] **Sentiment Fix** — Expand `good` regex in `RiskCards` and exclude CTA sentences (`approve this proposal`, `reject this proposal`) from sentiment detection.
+

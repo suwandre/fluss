@@ -309,7 +309,7 @@ function KeyMetricsComparison({
 function RiskCards({ text }: { text: string }) {
 	const sentences = splitSentences(text).filter((s) => {
 		const lower = s.trim().toLowerCase();
-		// skip verdict sentences
+		// skip verdict / CTA sentences
 		if (
 			lower === "approved" ||
 			lower === "rejected" ||
@@ -318,7 +318,11 @@ function RiskCards({ text }: { text: string }) {
 			lower === "approve with caveats" ||
 			lower === "approved with caveats" ||
 			lower.startsWith("approve with caveats") ||
-			lower.startsWith("approved with caveats")
+			lower.startsWith("approved with caveats") ||
+			lower === "approve this proposal" ||
+			lower.startsWith("approve this proposal") ||
+			lower === "reject this proposal" ||
+			lower.startsWith("reject this proposal")
 		) {
 			return false;
 		}
@@ -331,7 +335,7 @@ function RiskCards({ text }: { text: string }) {
 	function sentimentConfig(s: string) {
 		const lower = s.toLowerCase();
 		const bad = /reject|catastrophic|critical|severe|excessive|worse|higher|increased|dangerous|fragile|vulnerable|fails|breach/i;
-		const good = /improve|better|lower|approved|less risky|reduce|within range|shallower|shorter|passes|broad-based|safe|meaningfully less/i;
+		const good = /improve|better|lower|approved|less risky|reduce|within range|shallower|shorter|passes|broad-based|safe|meaningfully less|reduction|decrease|falling|improvement|decline|recover/i;
 		if (bad.test(lower)) return { icon: "❌", border: "border-l-red", text: "text-red", bg: "bg-[rgba(239,68,68,0.04)]" };
 		if (good.test(lower)) return { icon: "✅", border: "border-l-green", text: "text-green", bg: "bg-[rgba(34,197,94,0.04)]" };
 		return { icon: "⚠️", border: "border-l-amber", text: "text-amber", bg: "bg-[rgba(245,158,11,0.04)]" };

@@ -5,7 +5,6 @@ import {
 	AgentTimeline,
 	type AgentStepData,
 } from "@/components/agents/agent-timeline";
-import { RiskAnalysisModal } from "@/components/agents/risk-analysis-modal";
 import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
 import { RedesignProposalModal } from "@/components/agents/redesign-proposal-modal";
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
@@ -64,7 +63,6 @@ export function AgentReasoningPanel({
 	onRedesignViewDetails,
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
-	const [riskModalOpen, setRiskModalOpen] = useState(false);
 	const [prefsModalOpen, setPrefsModalOpen] = useState(false);
 	const riskDone = steps[3]?.status === "done";
 	const showChart = riskDone && stressResults && stressResults.length > 0;
@@ -179,7 +177,7 @@ export function AgentReasoningPanel({
 						) : (
 							<RunSummary steps={steps} />
 						)}
-						<AgentTimeline steps={steps} onRiskViewDetails={() => setRiskModalOpen(true)} onRedesignViewDetails={onRedesignViewDetails} />
+						<AgentTimeline steps={steps} onRedesignViewDetails={onRedesignViewDetails} />
 
 						{/* Stress test chart — shown after Risk Agent completes */}
 						{showChart && (
@@ -198,14 +196,6 @@ export function AgentReasoningPanel({
 				</div>
 			)}
 		</aside>
-
-		{riskStructuredOutput && (
-			<RiskAnalysisModal
-				open={riskModalOpen}
-				onOpenChange={setRiskModalOpen}
-				structuredOutput={riskStructuredOutput}
-			/>
-		)}
 
 		{onRun && (
 			<RebalancePreferencesModal

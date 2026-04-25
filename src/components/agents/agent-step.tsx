@@ -245,7 +245,7 @@ export function AgentStep({
 	const showStructuredOutput = status === "done" || status === "running";
 	const hasReasoning = !!reasoning || isStreaming;
 
-	const isRiskDone = name.toLowerCase().includes("risk") && status === "done" && onViewDetails;
+	const isRiskDone = name.toLowerCase().includes("risk") && status === "done";
 
 	const isRedesignDone = name.toLowerCase().includes("redesign") && status === "done" && onViewDetails;
 
@@ -347,13 +347,6 @@ export function AgentStep({
 							}
 							return null;
 						})()}
-						<button
-							type="button"
-							onClick={onViewDetails}
-							className="mt-1.5 px-2 py-0.5 text-[11px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors cursor-pointer"
-						>
-							View Analysis
-						</button>
 					</>
 				) : isRedesignDone ? (
 					<>

@@ -145,7 +145,6 @@ export function RedesignProposalModal({
 	riskMetrics,
 	riskStructuredOutput,
 }: RedesignProposalModalProps) {
-	const [activeView, setActiveView] = useState<"proposal" | "risk">("proposal");
 	const [expandedRow, setExpandedRow] = useState<number | null>(null);
 	const badge = confidenceBadge(confidence);
 
@@ -192,135 +191,114 @@ export function RedesignProposalModal({
 				</DialogHeader>
 
 				<div className="space-y-5 overflow-y-auto max-h-[80vh] pr-2 custom-scrollbar">
-					{activeView === "risk" && riskStructuredOutput ? (
-						<div className="space-y-5">
-							<RiskAnalysisContent structuredOutput={riskStructuredOutput} />
-						</div>
-					) : (
-						<>
-							{/* Proposed Allocation Table */}
-							<div className="rounded border border-border overflow-hidden">
-								<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-3 py-2 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
-									<span>Ticker</span>
-									<span className="text-right">Current</span>
-									<span className="text-right">Proposed</span>
-									<span className="text-right">Delta</span>
-									<span>Rationale</span>
-								</div>
-								{rows.length > 0 ? (
-									rows.map((row, i) => {
-										const isExpanded = expandedRow === i;
-										return (
-											<div
-												key={i}
-												className={`grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2 px-3 py-2 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors cursor-pointer ${isExpanded ? "bg-bg-elevated/50" : ""}`}
-												onClick={() => setExpandedRow(isExpanded ? null : i)}
+					<>
+						{/* Proposed Allocation Table */}
+						<div className="rounded border border-border overflow-hidden">
+							<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-3 py-2 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
+								<span>Ticker</span>
+								<span className="text-right">Current</span>
+								<span className="text-right">Proposed</span>
+								<span className="text-right">Delta</span>
+								<span>Rationale</span>
+							</div>
+							{rows.length > 0 ? (
+								rows.map((row, i) => {
+									const isExpanded = expandedRow === i;
+									return (
+										<div
+											key={i}
+											className={`grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2 px-3 py-2 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors cursor-pointer ${isExpanded ? "bg-bg-elevated/50" : ""}`}
+											onClick={() => setExpandedRow(isExpanded ? null : i)}
+										>
+											<span className="truncate font-medium text-text">
+												{row.ticker}
+											</span>
+											<span className="text-right text-text-dim">
+												{row.current.toFixed(1)}%
+											</span>
+											<span className="text-right text-teal font-medium">
+												{row.target_pct.toFixed(1)}%
+											</span>
+											<span
+												className={`text-right font-semibold ${
+													row.delta > 0
+														? "text-green"
+														: row.delta < 0
+															? "text-red"
+															: "text-text-dim"
+												}`}
 											>
-												<span className="truncate font-medium text-text">
-													{row.ticker}
-												</span>
-												<span className="text-right text-text-dim">
-													{row.current.toFixed(1)}%
-												</span>
-												<span className="text-right text-teal font-medium">
-													{row.target_pct.toFixed(1)}%
-												</span>
-												<span
-													className={`text-right font-semibold ${
-														row.delta > 0
-															? "text-green"
-															: row.delta < 0
-																? "text-red"
-																: "text-text-dim"
-													}`}
-												>
-													{row.delta > 0 ? "+" : ""}{row.delta.toFixed(1)}%
-												</span>
-												<span className={`text-text-dim leading-snug ${isExpanded ? "whitespace-normal" : "truncate"}`}>
-													{row.rationale ?? "—"}
-												</span>
-											</div>
-										);
-										})
-									) : (
-										<div className="px-3 py-4 text-[12px] font-mono text-text-dim italic">
-											No proposed actions available.
+												{row.delta > 0 ? "+" : ""}{row.delta.toFixed(1)}%
+											</span>
+											<span className={`text-text-dim leading-snug ${isExpanded ? "whitespace-normal" : "truncate"}`}>
+												{row.rationale ?? "—"}
+											</span>
 										</div>
-									)}
-								</div>
-
-								{/* Metric Cards */}
-								<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-									<MetricCard
-										label="Sharpe Ratio"
-										current={currentSharpe}
-										proposed={proposedSharpe}
-										delta={expected_improvement?.sharpe_delta ?? null}
-										unit=""
-										isBetterWhenLower={false}
-										showProposed={hasSharpe || proposedSharpe != null}
-									/>
-									<MetricCard
-										label={showStressMetric ? "Avg Stress Drawdown" : "Volatility"}
-										current={showStressMetric ? riskMetrics?.current_avg_drawdown ?? null : currentVolatility ?? null}
-										proposed={showStressMetric ? riskMetrics?.proposed_avg_drawdown ?? null : (currentVolatility != null && hasVol ? currentVolatility + expected_improvement.volatility_delta_pct! : null)}
-										delta={showStressMetric
-											? (typeof riskMetrics?.proposed_avg_drawdown === "number" && typeof riskMetrics?.current_avg_drawdown === "number"
-												? riskMetrics.proposed_avg_drawdown - riskMetrics.current_avg_drawdown
-												: null)
-											: expected_improvement?.volatility_delta_pct ?? null}
-										unit="%"
-										isBetterWhenLower={true}
-										showProposed={showStressMetric ? (riskMetrics?.proposed_avg_drawdown != null || riskMetrics?.current_avg_drawdown != null) : hasVol}
-									/>
-									<MetricCard
-										label="Max Drawdown"
-										current={currentMaxDrawdown}
-										proposed={proposedMaxDrawdown}
-										delta={expected_improvement?.max_drawdown_delta_pct ?? null}
-										unit="%"
-										isBetterWhenLower={true}
-										showProposed={hasMaxDd || proposedMaxDrawdown != null}
-									/>
-								</div>
-
-								{/* Proposal Summary Bullets */}
-								{proposal_summary && (
-									<div className="rounded border border-border bg-bg-elevated p-3 space-y-2">
-										{splitSentences(proposal_summary).map((sentence, i) => (
-											<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-snug">
-												<span className="text-teal mt-1 shrink-0">•</span>
-												<span>{sentence}</span>
-											</div>
-										))}
+									);
+									})
+								) : (
+									<div className="px-3 py-4 text-[12px] font-mono text-text-dim italic">
+										No proposed actions available.
 									</div>
 								)}
-							</>
+						</div>
+
+						{/* Metric Cards */}
+						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+							<MetricCard
+								label="Sharpe Ratio"
+								current={currentSharpe}
+								proposed={proposedSharpe}
+								delta={expected_improvement?.sharpe_delta ?? null}
+								unit=""
+								isBetterWhenLower={false}
+								showProposed={hasSharpe || proposedSharpe != null}
+							/>
+							<MetricCard
+								label={showStressMetric ? "Avg Stress Drawdown" : "Volatility"}
+								current={showStressMetric ? riskMetrics?.current_avg_drawdown ?? null : currentVolatility ?? null}
+								proposed={showStressMetric ? riskMetrics?.proposed_avg_drawdown ?? null : (currentVolatility != null && hasVol ? currentVolatility + expected_improvement.volatility_delta_pct! : null)}
+								delta={showStressMetric
+									? (typeof riskMetrics?.proposed_avg_drawdown === "number" && typeof riskMetrics?.current_avg_drawdown === "number"
+										? riskMetrics.proposed_avg_drawdown - riskMetrics.current_avg_drawdown
+										: null)
+									: expected_improvement?.volatility_delta_pct ?? null}
+								unit="%"
+								isBetterWhenLower={true}
+								showProposed={showStressMetric ? (riskMetrics?.proposed_avg_drawdown != null || riskMetrics?.current_avg_drawdown != null) : hasVol}
+							/>
+							<MetricCard
+								label="Max Drawdown"
+								current={currentMaxDrawdown}
+								proposed={proposedMaxDrawdown}
+								delta={expected_improvement?.max_drawdown_delta_pct ?? null}
+								unit="%"
+								isBetterWhenLower={true}
+								showProposed={hasMaxDd || proposedMaxDrawdown != null}
+							/>
+						</div>
+
+						{/* Proposal Summary Bullets */}
+						{proposal_summary && (
+							<div className="rounded border border-border bg-bg-elevated p-3 space-y-2">
+								{splitSentences(proposal_summary).map((sentence, i) => (
+									<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-snug">
+										<span className="text-teal mt-1 shrink-0">•</span>
+										<span>{sentence}</span>
+									</div>
+								))}
+							</div>
 						)}
 
-						{/* Footer */}
-						{activeView === "proposal" ? (
-							<button
-								type="button"
-								onClick={() => { setActiveView("risk"); setExpandedRow(null); }}
-								disabled={!riskStructuredOutput}
-								className="mt-2 w-full text-[13px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors px-3 py-2 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-							>
-								View Risk Analysis
-								<span>→</span>
-							</button>
-						) : (
-							<button
-								type="button"
-								onClick={() => setActiveView("proposal")}
-								className="mt-2 w-full text-[13px] font-mono rounded border border-border bg-bg-elevated text-text-dim hover:text-text hover:border-border-bright transition-colors px-3 py-2 cursor-pointer flex items-center justify-center gap-2"
-							>
-								<span>←</span>
-								Back to Proposal
-							</button>
+						{/* Inline Risk Analysis */}
+						{riskStructuredOutput && (
+							<div className="space-y-5">
+								<RiskAnalysisContent structuredOutput={riskStructuredOutput} />
+							</div>
 						)}
-					</div>
-				</DialogContent>
-			</Dialog>
-		);
+				</>
+			</div>
+		</DialogContent>
+	</Dialog>
+	);
 }

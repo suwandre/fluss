@@ -576,3 +576,23 @@ Build fails only on pre-existing DATABASE_URL `ERR_INVALID_URL` (missing protoco
 - None. No new dependencies.
 
 ---
+
+## UX Fix — Unified Redesign/Risk Modal + Sentiment Fix (4/25/2026)
+
+**Description:** User reported two issues: (1) two separate "risk analysis" modals exist — one from "View Analysis" in Risk Agent step, and one from "View Risk Analysis" in Redesign Proposal modal. User wants a single universal "View Proposal" button that shows the redesign proposal with inline risk analysis already embedded. (2) Risk Assessment Summary positive sentences (e.g. "meaningful net risk reduction") and call-to-action sentences ("Approve this proposal.") were incorrectly flagged with warning (yellow ⚠️) icon.
+
+**Summary:**
+- `src/components/agents/agent-reasoning-panel.tsx`: Removed `RiskAnalysisModal` import, removed `riskModalOpen` state, removed inline `<RiskAnalysisModal>` render. Removed `onRiskViewDetails` from `AgentTimeline` props.
+- `src/components/agents/agent-timeline.tsx`: Removed `onRiskViewDetails` prop entirely. `AgentStep` `onViewDetails` now only wired for redesign step (index 2).
+- `src/components/agents/agent-step.tsx`: `isRiskDone` no longer depends on `onViewDetails`. Removed "View Analysis" button from Risk step condensed view. Kept verdict line and risk summary text.
+- `src/components/agents/redesign-proposal-modal.tsx`: Removed `activeView` state and footer toggle buttons ("View Risk Analysis →" / "← Back to Proposal"). Proposal content and `<RiskAnalysisContent>` now always rendered inline together when `riskStructuredOutput` is available.
+- `src/components/agents/risk-analysis-modal.tsx`: Added CTA sentence exclusions in `RiskCards` filter (`approve this proposal`, `reject this proposal`). Expanded `good` sentiment regex with `reduction`, `decrease`, `falling`, `improvement`, `decline`, `recover`.
+
+**Verification:**
+- `bun tsc --noEmit` — 0 errors.
+- `bun run build` — successful.
+
+**Gotchas:**
+- None.
+
+---
