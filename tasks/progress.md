@@ -37,7 +37,6 @@
 **Gotchas:**
 - None.
 
-
 ---
 
 ## UX-11 — Structured stress scenario comparison in Risk Analysis Modal (4/23/2026)
@@ -367,6 +366,28 @@
 - `src/components/agents/agent-step.tsx`:
   - `renderValue`: added guard for arrays of objects → `[N items]` instead of raw JSON.
   - `FIELD_TOOLTIPS`: removed `var_95` and `stress_results` entries.
+
+**Verification:**
+- `npx tsc --noEmit` — 0 errors.
+- `npx next build` — successful.
+
+**Gotchas:**
+- None.
+
+---
+
+## Task — Tabbed Proposal/Risk Modal (4/26/2026)
+
+**Description:** Proposal modal was a single long scroll mixing proposal data with risk analysis. User requested tabs at the top so each view is focused and toggle is immediately accessible.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - Added `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` from `@/components/ui/tabs` (installed via shadcn).
+  - Two tabs: **Proposal** (allocation table, metric cards, summary bullets) and **Risk Analysis** (`<RiskAnalysisContent>`).
+  - Default active tab: **Proposal**.
+  - Tab bar sits below `DialogHeader`, above scrollable content. Each `TabsContent` wraps its content in `overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar`.
+  - Removed inline `<RiskAnalysisContent>` from Proposal tab; risk content now only appears under the Risk Analysis tab.
+  - Did NOT touch `risk-analysis-modal.tsx` — `RiskAnalysisContent` stays reusable.
 
 **Verification:**
 - `npx tsc --noEmit` — 0 errors.
