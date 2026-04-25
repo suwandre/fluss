@@ -331,6 +331,7 @@ export default function Home() {
 			currentVolatility={null}
 			riskMetrics={riskMetrics}
 			riskStructuredOutput={riskStructuredOutputForModal}
+			sectorExposure={sectorExposure}
 		/>
 	</div>
 );
