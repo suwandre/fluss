@@ -550,3 +550,20 @@
 
 **Gotchas:**
 - None.
+
+---
+
+## Task — Fix tooltips, restore delta column, add gauge center number (4/27/2026)
+
+**Description:** Three fixes in redesign-proposal-modal.tsx.
+
+**Summary:**
+- Fix 1: LabelWithTooltip renders ? as button type=button with title. Ensures tooltip events fire in Dialog portals. Proposal Summary also uses LabelWithTooltip now (was inline span).
+- Fix 2: Delta column restored. Grid cols-[80px_100px_100px_80px_1fr]. Color-coded delta cell. Rationale button centered. Empty state matches.
+- Fix 3: Gauge center number. SVG wrapped in relative flex flex-col items-center. Absolute overlay: proposed score (text-3xl font-mono font-bold text-teal), delta badge, Lower is better label.
+
+**Verification:**
+- tsc clean, next build clean.
+
+**Gotchas:**
+- None.

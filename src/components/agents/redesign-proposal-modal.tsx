@@ -51,15 +51,22 @@ const LABEL_TOOLTIPS: Record<string, string> = {
 	"Sectors": "Number of distinct asset classes / sectors represented.",
 	"Concentration": "Same as Max Position %. Measures portfolio concentration risk.",
 	"Risk Score": "Composite 0–100 score. Lower = safer. Weights: drawdown (45%), VaR (30%), concentration (25%).",
+	"Proposal Summary": "The agent's own summary of the proposed changes.",
 };
 
 function LabelWithTooltip({ label }: { label: string }) {
 	const tooltip = LABEL_TOOLTIPS[label];
 	return (
-		<span title={tooltip ?? ""} className="cursor-help border-b border-dashed border-text-dim/40">
+		<span className="inline-flex items-center gap-1 border-b border-dashed border-text-dim/40">
 			{label}
 			{tooltip && (
-				<span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 rounded-full text-[8px] font-mono bg-text-dim/15 text-text-dim align-middle">?</span>
+				<button
+					type="button"
+					title={tooltip}
+					className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-text-muted text-[8px] font-mono text-text-muted leading-none cursor-help hover:text-text hover:border-text transition-colors"
+				>
+					?
+				</button>
 			)}
 		</span>
 	);
@@ -131,36 +138,45 @@ function RiskScoreGauge({
 			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
 				<LabelWithTooltip label="Risk Score" />
 			</div>
-			<svg viewBox="0 0 200 120" className="w-full max-w-[240px] mx-auto">
-				{/* Background track */}
-				<path
-					d="M 20 100 A 80 80 0 0 1 180 100"
-					fill="none"
-					stroke="rgba(255,255,255,0.08)"
-					strokeWidth={12}
-					strokeLinecap="round"
-				/>
-				{/* Current score arc */}
-				<path
-					d={currentArc}
-					fill="none"
-					stroke="rgba(255,255,255,0.15)"
-					strokeWidth={10}
-					strokeLinecap="round"
-				/>
-				{/* Proposed score arc */}
-				<path
-					d={proposedArc}
-					fill="none"
-					stroke="teal"
-					strokeWidth={10}
-					strokeLinecap="round"
-				/>
-				{/* Current dot */}
-				<circle cx={currentDotX} cy={currentDotY} r={4} fill="rgba(255,255,255,0.4)" />
-				{/* Proposed dot */}
-				<circle cx={proposedDotX} cy={proposedDotY} r={4} fill="teal" />
-			</svg>
+			<div className="relative flex flex-col items-center">
+				<svg viewBox="0 0 200 120" className="w-full max-w-[240px] mx-auto">
+					{/* Background track */}
+					<path
+						d="M 20 100 A 80 80 0 0 1 180 100"
+						fill="none"
+						stroke="rgba(255,255,255,0.08)"
+						strokeWidth={12}
+						strokeLinecap="round"
+					/>
+					{/* Current score arc */}
+					<path
+						d={currentArc}
+						fill="none"
+						stroke="rgba(255,255,255,0.15)"
+						strokeWidth={10}
+						strokeLinecap="round"
+					/>
+					{/* Proposed score arc */}
+					<path
+						d={proposedArc}
+						fill="none"
+						stroke="teal"
+						strokeWidth={10}
+						strokeLinecap="round"
+					/>
+					{/* Current dot */}
+					<circle cx={currentDotX} cy={currentDotY} r={4} fill="rgba(255,255,255,0.4)" />
+					{/* Proposed dot */}
+					<circle cx={proposedDotX} cy={proposedDotY} r={4} fill="teal" />
+				</svg>
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-2 flex flex-col items-center">
+					<span className="text-3xl font-mono font-bold text-teal">{proposedScore.toFixed(1)}</span>
+					<span className={`px-1.5 py-px rounded-full text-[10px] font-mono ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
+						Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
+					</span>
+					<span className="text-[10px] text-text-dim mt-0.5">Lower is better</span>
+				</div>
+			</div>
 			<div className="flex items-center justify-center gap-3 mt-1 text-[11px] font-mono">
 				<span className="text-text-dim">Current: {currentScore.toFixed(2)}</span>
 				<span className="text-text-dim">→</span>
@@ -292,10 +308,11 @@ export function RedesignProposalModal({
 							<div className="space-y-6">
 								{/* Proposed Allocation Table */}
 								<div className="rounded border border-border overflow-hidden">
-									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_1fr] gap-2">
+									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_80px_1fr] gap-2">
 										<span>Ticker</span>
 										<span className="text-right">Current</span>
 										<span className="text-right">Proposed</span>
+										<span className="text-right">Delta</span>
 										<span>Rationale</span>
 									</div>
 									{rows.length > 0 ? (
@@ -304,7 +321,7 @@ export function RedesignProposalModal({
 											return (
 												<div key={i}>
 													<div
-														className={`grid grid-cols-[80px_100px_100px_1fr] gap-2 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
+														className={`grid grid-cols-[80px_100px_100px_80px_1fr] gap-2 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
 													>
 														<span className="truncate font-medium text-text">
 															{row.ticker}
@@ -315,7 +332,10 @@ export function RedesignProposalModal({
 														<span className="text-right text-teal font-medium">
 															{row.target_pct.toFixed(1)}%
 														</span>
-														<span>
+														<span className={`text-right font-semibold ${row.delta > 0 ? "text-green" : row.delta < 0 ? "text-red" : "text-text-dim"}`}>
+															{row.delta > 0 ? "+" : ""}{row.delta.toFixed(1)}%
+														</span>
+														<span className="flex items-center justify-center">
 															<button
 																onClick={(e) => { e.stopPropagation(); setExpandedRow(isExpanded ? null : i); }}
 																className="text-teal text-[11px] font-mono underline underline-offset-2 hover:text-teal/70 cursor-pointer"
@@ -333,7 +353,7 @@ export function RedesignProposalModal({
 											);
 										})
 									) : (
-										<div className="px-4 py-4 text-[12px] font-mono text-text-dim italic">
+										<div className="px-4 py-4 text-[12px] font-mono text-text-dim italic grid grid-cols-[80px_100px_100px_80px_1fr] gap-2">
 											No proposed actions available.
 										</div>
 									)}
@@ -443,10 +463,7 @@ export function RedesignProposalModal({
 								{proposal_summary && (
 									<div className="rounded border border-border bg-bg-elevated p-4 space-y-3">
 										<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-1">
-											<span title="The agent's own summary of the proposed changes." className="cursor-help border-b border-dashed border-text-dim/40">
-												Proposal Summary
-												<span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 rounded-full text-[8px] font-mono bg-text-dim/15 text-text-dim align-middle">?</span>
-											</span>
+											<LabelWithTooltip label="Proposal Summary" />
 										</div>
 										{splitSentences(proposal_summary).map((sentence, i) => (
 											<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-relaxed">
