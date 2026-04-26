@@ -248,11 +248,22 @@ export default function Home() {
 	const proposedActions = useMemo(() => {
 		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
 		if (!redesign || !Array.isArray(redesign.proposed_actions)) return null;
+		const TICKER_ASSET_CLASS: Record<string, string> = {
+			BTC: "crypto",
+			ETH: "crypto",
+			QQQ: "equity",
+			SPY: "equity",
+			VGK: "equity",
+			AGG: "fixed_income",
+			TLT: "fixed_income",
+			GLD: "commodities",
+			VNQ: "reits",
+		};
 		return (redesign.proposed_actions as { ticker: string; target_pct: number }[]).map((a) => ({
 			ticker: a.ticker,
 			target_pct: a.target_pct,
 			sector: null as string | null,
-			assetClass: "equity" as string,
+			assetClass: TICKER_ASSET_CLASS[a.ticker.toUpperCase()] ?? "equity",
 		}));
 	}, [workflowOutput]);
 

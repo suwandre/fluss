@@ -174,11 +174,21 @@ export function RedesignProposalModal({
 			: expected_improvement.sharpe_delta!)
 		: null;
 
+	// Fallback: if LLM didn't output max_drawdown_delta_pct but riskMetrics has proposed_max_drawdown, use it
 	const proposedMaxDrawdown = hasMaxDd
 		? (typeof currentMaxDrawdown === "number"
 			? currentMaxDrawdown + expected_improvement.max_drawdown_delta_pct!
 			: expected_improvement.max_drawdown_delta_pct!)
-		: null;
+		: (typeof riskMetrics?.proposed_max_drawdown === "number"
+			? riskMetrics.proposed_max_drawdown
+			: null);
+
+	// Compute delta for max drawdown: prefer explicit delta, otherwise derive from current+proposed
+	const maxDrawdownDelta = hasMaxDd
+		? expected_improvement.max_drawdown_delta_pct!
+		: (typeof currentMaxDrawdown === "number" && typeof proposedMaxDrawdown === "number"
+			? proposedMaxDrawdown - currentMaxDrawdown
+			: null);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -272,15 +282,18 @@ export function RedesignProposalModal({
 									</div>
 									<div className="space-y-1">
 										{(() => {
-											const sectors = Object.keys(sectorExposure.current ?? {}).
-												map((sector) => ({
-													sector,
-													current: sectorExposure.current?.[sector] ?? 0,
-													proposed: sectorExposure.proposed?.[sector] ?? 0,
-												}));
+											const allSectorKeys = Array.from(new Set([
+												...Object.keys(sectorExposure.current ?? {}),
+												...Object.keys(sectorExposure.proposed ?? {}),
+											]));
+											const sectors = allSectorKeys.map((sector) => ({
+												sector,
+												current: sectorExposure.current?.[sector] ?? 0,
+												proposed: sectorExposure.proposed?.[sector] ?? 0,
+											}));
 											if (sectors.length === 0) return null;
-											// sort by proposed weight desc, fallback current+proposed
-											sectors.sort((a, b) => (b.proposed + b.current) - (a.proposed + a.current));
+											// sort by max(current, proposed) descending so active sectors appear first
+											sectors.sort((a, b) => Math.max(b.current, b.proposed) - Math.max(a.current, a.proposed));
 											return sectors.map((s) => {
 												const delta = s.proposed - s.current;
 												const maxBar = Math.max(s.current, s.proposed, 1);
@@ -344,13 +357,13 @@ export function RedesignProposalModal({
 									showProposed={showStressMetric ? (riskMetrics?.proposed_avg_drawdown != null || riskMetrics?.current_avg_drawdown != null) : hasVol}
 								/>
 								<MetricCard
-									label="Max Drawdown"
+									label="Peak-to-Trough Drawdown"
 									current={currentMaxDrawdown}
 									proposed={proposedMaxDrawdown}
-									delta={expected_improvement?.max_drawdown_delta_pct ?? null}
+									delta={maxDrawdownDelta}
 									unit="%"
 									isBetterWhenLower={true}
-									showProposed={hasMaxDd || proposedMaxDrawdown != null}
+									showProposed={proposedMaxDrawdown != null}
 								/>
 							</div>
 

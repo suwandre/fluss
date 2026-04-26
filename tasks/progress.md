@@ -462,3 +462,36 @@
 
 **Gotchas:**
 - Extra closing `</div>` after wrapping sector card — removed.
+
+---
+
+## Bug Fixes — PRP Modal: Max Drawdown fallback, Sector Re-allocation, Sector key union (4/26/2026)
+
+**Description:** Three bugs in the Portfolio Redesign Proposal modal:
+
+1. **Max Drawdown card missing Proposed + Delta** when LLM didn't output `max_drawdown_delta_pct`. Card showed "N/A" even though `riskMetrics.proposed_max_drawdown` was available. Label said "Max Drawdown" instead of "Peak-to-Trough Drawdown".
+2. **Sector Re-allocation only showed "crypto 100% → 0%"** because `proposedActions` in `page.tsx` hardcoded `assetClass: "equity"` for every ticker, and sector code only iterated `Object.keys(current)`, missing new sectors like Equity, Fixed Income.
+3. No union of sector keys from both current and proposed — new sectors in proposed were invisible.
+
+**Summary:**
+
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - `proposedMaxDrawdown`: added fallback — if `max_drawdown_delta_pct` is null AND `riskMetrics.proposed_max_drawdown` is a number, use `riskMetrics.proposed_max_drawdown`.
+  - Added `maxDrawdownDelta` computed value: if `hasMaxDd`, use explicit delta; else if both `currentMaxDrawdown` and `proposedMaxDrawdown` are numbers, compute `proposed - current` inline.
+  - MetricCard props updated: `delta={maxDrawdownDelta}`, `showProposed={proposedMaxDrawdown != null}`, label `"Peak-to-Trough Drawdown"`.
+  - Sector re-allocation: changed from `Object.keys(sectorExposure.current)` to union set of keys from BOTH current and proposed. Sort by `Math.max(current, proposed)` descending so active sectors appear first.
+
+- `src/hooks/use-sector-exposure.ts`:
+  - Added `TICKER_SECTOR_MAP` (BTC→Cryptocurrency, ETH→Cryptocurrency, QQQ→Equity, AGG→Fixed Income, SPY→Equity, GLD→Commodities, VGK→International, VNQ→REITs, TLT→Fixed Income).
+  - Added `ASSET_CLASS_LABELS` map (crypto→Cryptocurrency, equity→Equity, fixed_income→Fixed Income, commodities→Commodities, reits→REITs).
+  - `groupBySector`: if `item.sector` is null/empty/whitespace, check `TICKER_SECTOR_MAP` first, then capitalize `assetClass` via `ASSET_CLASS_LABELS`, then `capitalize()`, final fallback "Other".
+
+- `src/app/page.tsx`:
+  - `proposedActions` useMemo: replaced hardcoded `assetClass: "equity"` with `TICKER_ASSET_CLASS` lookup (BTC/ETH→crypto, QQQ/SPY/VGK→equity, AGG/TLT→fixed_income, GLD→commodities, VNQ→reits, default→equity).
+
+**Verification:**
+- `npx tsc --noEmit` — 0 errors.
+- `bun run build` — successful.
+
+**Gotchas:**
+- None.
