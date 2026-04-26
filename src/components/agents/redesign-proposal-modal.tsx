@@ -47,7 +47,7 @@ interface RedesignProposalModalProps {
 const LABEL_TOOLTIPS: Record<string, string> = {
 	"Positions": "Number of unique holdings in the portfolio.",
 	"Max Position %": "Weight of the single largest holding. Lower = more diversified.",
-	"Turnover": "% of portfolio value that must be traded to reach the proposed allocation.",
+	"Rebalance Turnover": "% of portfolio value that must be traded to reach the proposed allocation.",
 	"Sectors": "Number of distinct asset classes / sectors represented.",
 	"Concentration": "Same as Max Position %. Measures portfolio concentration risk.",
 	"Risk Score": "Composite 0–100 score. Lower = safer. Weights: drawdown (45%), VaR (30%), concentration (25%).",
@@ -86,6 +86,92 @@ function splitSentences(text: string): string[] {
 	return sentences;
 }
 
+function RiskScoreGauge({
+	currentScore,
+	proposedScore,
+	delta,
+	improved,
+}: {
+	currentScore: number;
+	proposedScore: number;
+	delta: number;
+	improved: boolean;
+}) {
+	const maxScore = Math.max(currentScore, proposedScore, 60);
+	const cx = 100;
+	const cy = 100;
+	const r = 80;
+
+	const startAngle = Math.PI; // leftmost
+	// Arc: from left end to angle proportional to score
+	const currentAngle = Math.PI - (currentScore / maxScore) * Math.PI;
+	const proposedAngle = Math.PI - (proposedScore / maxScore) * Math.PI;
+
+	function arcPath(angleStart: number, angleEnd: number): string {
+		const x1 = cx + r * Math.cos(angleStart);
+		const y1 = cy - r * Math.sin(angleStart);
+		const x2 = cx + r * Math.cos(angleEnd);
+		const y2 = cy - r * Math.sin(angleEnd);
+		const largeArc = Math.abs(angleEnd - angleStart) > Math.PI ? 1 : 0;
+		const sweep = angleEnd > angleStart ? 0 : 1;
+		return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} ${sweep} ${x2} ${y2}`;
+	}
+
+	const currentArc = arcPath(startAngle, currentAngle);
+	const proposedArc = arcPath(startAngle, proposedAngle);
+
+	// Dot positions
+	const currentDotX = cx + r * Math.cos(currentAngle);
+	const currentDotY = cy - r * Math.sin(currentAngle);
+	const proposedDotX = cx + r * Math.cos(proposedAngle);
+	const proposedDotY = cy - r * Math.sin(proposedAngle);
+
+	return (
+		<div className="rounded border border-border bg-bg-elevated p-4">
+			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
+				<LabelWithTooltip label="Risk Score" />
+			</div>
+			<svg viewBox="0 0 200 120" className="w-full max-w-[240px] mx-auto">
+				{/* Background track */}
+				<path
+					d="M 20 100 A 80 80 0 0 1 180 100"
+					fill="none"
+					stroke="rgba(255,255,255,0.08)"
+					strokeWidth={12}
+					strokeLinecap="round"
+				/>
+				{/* Current score arc */}
+				<path
+					d={currentArc}
+					fill="none"
+					stroke="rgba(255,255,255,0.15)"
+					strokeWidth={10}
+					strokeLinecap="round"
+				/>
+				{/* Proposed score arc */}
+				<path
+					d={proposedArc}
+					fill="none"
+					stroke="teal"
+					strokeWidth={10}
+					strokeLinecap="round"
+				/>
+				{/* Current dot */}
+				<circle cx={currentDotX} cy={currentDotY} r={4} fill="rgba(255,255,255,0.4)" />
+				{/* Proposed dot */}
+				<circle cx={proposedDotX} cy={proposedDotY} r={4} fill="teal" />
+			</svg>
+			<div className="flex items-center justify-center gap-3 mt-1 text-[11px] font-mono">
+				<span className="text-text-dim">Current: {currentScore.toFixed(2)}</span>
+				<span className="text-text-dim">→</span>
+				<span className="text-teal font-medium">Proposed: {proposedScore.toFixed(2)}</span>
+				<span className={`px-1.5 py-px rounded-full ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
+					Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
+				</span>
+			</div>
+		</div>
+	);
+}
 
 
 export function RedesignProposalModal({
@@ -145,7 +231,7 @@ export function RedesignProposalModal({
 	const snapshotItems = [
 		{ label: "Positions", current: currentCount, proposed: proposedCount, unit: "", showProposed: true },
 		{ label: "Max Position %", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
-		{ label: "Turnover", current: turnover, proposed: turnover, unit: "%", showProposed: false },
+		{ label: "Rebalance Turnover", current: turnover, proposed: turnover, unit: "%", showProposed: false },
 		{ label: "Sectors", current: currentSectorCount, proposed: proposedSectorCount, unit: "", showProposed: true },
 		{ label: "Concentration", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
 	];
@@ -206,45 +292,43 @@ export function RedesignProposalModal({
 							<div className="space-y-6">
 								{/* Proposed Allocation Table */}
 								<div className="rounded border border-border overflow-hidden">
-									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
+									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_1fr] gap-2">
 										<span>Ticker</span>
 										<span className="text-right">Current</span>
 										<span className="text-right">Proposed</span>
-										<span className="text-right">Delta</span>
 										<span>Rationale</span>
 									</div>
 									{rows.length > 0 ? (
 										rows.map((row, i) => {
 											const isExpanded = expandedRow === i;
 											return (
-												<div
-													key={i}
-													className={`grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors cursor-pointer ${isExpanded ? "bg-bg-elevated/50" : ""}`}
-													onClick={() => setExpandedRow(isExpanded ? null : i)}
-												>
-													<span className="truncate font-medium text-text">
-														{row.ticker}
-													</span>
-													<span className="text-right text-text-dim">
-														{row.current.toFixed(1)}%
-													</span>
-													<span className="text-right text-teal font-medium">
-														{row.target_pct.toFixed(1)}%
-													</span>
-													<span
-														className={`text-right font-semibold ${
-															row.delta > 0
-																? "text-green"
-																: row.delta < 0
-																	? "text-red"
-																	: "text-text-dim"
-														}`}
+												<div key={i}>
+													<div
+														className={`grid grid-cols-[80px_100px_100px_1fr] gap-2 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
 													>
-														{row.delta > 0 ? "+" : ""}{row.delta.toFixed(1)}%
-													</span>
-													<span className={`text-text-dim leading-snug ${isExpanded ? "whitespace-normal" : "truncate"}`}>
-														{row.rationale ?? "—"}
-													</span>
+														<span className="truncate font-medium text-text">
+															{row.ticker}
+														</span>
+														<span className="text-right text-text-dim">
+															{row.current.toFixed(1)}%
+														</span>
+														<span className="text-right text-teal font-medium">
+															{row.target_pct.toFixed(1)}%
+														</span>
+														<span>
+															<button
+																onClick={(e) => { e.stopPropagation(); setExpandedRow(isExpanded ? null : i); }}
+																className="text-teal text-[11px] font-mono underline underline-offset-2 hover:text-teal/70 cursor-pointer"
+															>
+																{isExpanded ? "Hide Rationale" : "View Rationale"}
+															</button>
+														</span>
+													</div>
+													{isExpanded && (
+														<div className="px-4 py-2 text-[12px] font-mono text-text-dim bg-bg-elevated/30 border-b border-border">
+															{row.rationale ?? "—"}
+														</div>
+													)}
 												</div>
 											);
 										})
@@ -334,7 +418,7 @@ export function RedesignProposalModal({
 									))}
 								</div>
 
-								{/* Risk Score Inline */}
+								{/* Risk Score Gauge */}
 								{(() => {
 									if (!riskScoreLine) {
 										if (!riskMetrics) return null;
@@ -346,15 +430,12 @@ export function RedesignProposalModal({
 									}
 									const { currentScore, proposedScore, delta, improved } = riskScoreLine;
 									return (
-										<div className="flex items-center gap-3 text-[11px] font-mono">
-											<LabelWithTooltip label="Risk Score" />
-											<span className="text-text">{currentScore.toFixed(2)}</span>
-											<span className="text-text-dim">→</span>
-											<span className="text-text font-medium">{proposedScore.toFixed(2)}</span>
-											<span className={`px-1.5 py-px rounded-full ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
-												Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
-											</span>
-										</div>
+										<RiskScoreGauge
+											currentScore={currentScore}
+											proposedScore={proposedScore}
+											delta={delta}
+											improved={improved}
+										/>
 									);
 								})()}
 

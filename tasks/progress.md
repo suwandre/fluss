@@ -526,3 +526,27 @@
 
 **Gotchas:**
 - None.
+
+---
+
+## Task — Proposal tab: titleCase sectors, rationale toggle, risk gauge, turnover rename (4/27/2026)
+
+**Description:** Four targeted changes to Proposal tab. No Risk Analysis tab changes.
+
+**Summary:**
+- `src/hooks/use-sector-exposure.ts`:
+  - Added `toTitleCase(str)`: splits on `_` and `-`, capitalizes each word. `fixed_income` → `Fixed Income`.
+  - `groupBySector`: after normalization, transforms all keys through `toTitleCase`. Values unchanged.
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - **Allocation table**: Header `Ticker | Current | Proposed | Rationale`. Grid `grid-cols-[80px_100px_100px_1fr]`. Removed Delta column. Removed `cursor-pointer` and `onClick` from grid row.
+  - **Rationale cell**: Inline "View Rationale" / "Hide Rationale" button (teal, underline, stopPropagation). Expanded rationale renders as extra div below row (`border-b border-border`).
+  - **Risk Score**: Replaced inline text line with `RiskScoreGauge` component — SVG semicircular gauge (viewBox 0 0 200 120), gray track, current arc (white/0.15), proposed arc (teal), dot markers, score labels + delta badge below.
+  - **Snapshot cards**: Renamed "Turnover" label → "Rebalance Turnover" in both tooltip map and snapshot items array.
+- Did NOT touch Risk Analysis tab, `risk-analysis-modal.tsx`, sidebar, or pipeline bar.
+
+**Verification:**
+- `npx tsc --noEmit` — 0 errors.
+- `npx next build` — successful.
+
+**Gotchas:**
+- None.

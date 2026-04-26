@@ -14,21 +14,34 @@ export interface SectorExposureResult {
   proposed: Record<string, number>;
 }
 
+function toTitleCase(str: string): string {
+  return str
+    .split(/[_\-]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function groupBySector(items: SectorExposureInput[]): Record<string, number> {
-  const groups: Record<string, number> = {};
+  const raw: Record<string, number> = {};
 
   for (const item of items) {
     const fallback = "other";
     const sector = item.sector?.trim().toLowerCase() || item.assetClass?.trim().toLowerCase() || fallback;
-    groups[sector] = (groups[sector] || 0) + item.weight;
+    raw[sector] = (raw[sector] || 0) + item.weight;
   }
 
   // Normalize to 100%
-  const total = Object.values(groups).reduce((a, b) => a + b, 0);
+  const total = Object.values(raw).reduce((a, b) => a + b, 0);
   if (total > 0) {
-    for (const key of Object.keys(groups)) {
-      groups[key] = (groups[key] / total) * 100;
+    for (const key of Object.keys(raw)) {
+      raw[key] = (raw[key] / total) * 100;
     }
+  }
+
+  // Transform keys to titleCase
+  const groups: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    groups[toTitleCase(key)] = value;
   }
 
   return groups;
