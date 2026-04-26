@@ -216,7 +216,7 @@ export function AgentReasoningPanel({
 function PipelineStatusBar({ steps }: { steps: AgentStepData[] }) {
 	const labels = ["Monitor", "Bottleneck", "Redesign", "Risk", "Final"];
 	return (
-		<div className="flex items-center gap-3 mb-4 py-2 px-3 rounded border border-border bg-bg-elevated overflow-x-auto">
+		<div className="grid grid-cols-5 gap-1 mb-4 py-3 px-3 rounded border border-border bg-bg-elevated">
 			{labels.map((label, i) => {
 				const step = steps[i];
 				const isDone = step?.status === "done";
@@ -253,7 +253,7 @@ function PipelineStatusBar({ steps }: { steps: AgentStepData[] }) {
 				}
 
 				return (
-					<div key={label} className="flex items-center gap-1.5 shrink-0">
+					<div key={label} className="flex flex-col items-center gap-1">
 						<div className={`size-4 rounded-full border flex items-center justify-center ${dotClass}`}>
 							{(isDone || (isLast && finalGreen)) && (
 								<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -261,10 +261,7 @@ function PipelineStatusBar({ steps }: { steps: AgentStepData[] }) {
 								</svg>
 							)}
 						</div>
-						<span className={`text-[10px] font-mono uppercase tracking-wide ${labelColor}`}>{label}</span>
-						{i < labels.length - 1 && (
-							<span className="mx-1 text-text-muted text-[10px]">→</span>
-						)}
+						<span className={`text-[10px] font-mono uppercase tracking-wide text-center truncate ${labelColor}`}>{label}</span>
 					</div>
 				);
 			})}

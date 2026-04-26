@@ -252,6 +252,27 @@
 
 ---
 
+## Task — Fix PipelineStatusBar horizontal scroll (4/26/2026)
+
+**Description:** Pipeline status bar used `flex overflow-x-auto` forcing horizontal scroll to see all 5 steps. Sidebar is narrow (min 340px). Replaced with grid layout so all steps are always visible.
+
+**Summary:**
+- `src/components/agents/agent-reasoning-panel.tsx` (`PipelineStatusBar`):
+  - Container: `flex items-center gap-3 … overflow-x-auto` → `grid grid-cols-5 gap-1 … py-3`.
+  - Each step: `flex items-center gap-1.5 shrink-0` → `flex flex-col items-center gap-1` (dot on top, label below).
+  - Removed `→` arrow separators between steps.
+  - Label: added `text-center truncate` to `text-[10px] font-mono uppercase tracking-wide` for overflow safety on "Bottleneck".
+  - All status logic (isDone/isRunning/isError/isLast/finalGreen) untouched.
+
+**Verification:**
+- `npx tsc --noEmit` — 0 errors.
+- `bun run build` — successful.
+
+**Gotchas:**
+- None.
+
+---
+
 **Description:** Build infrastructure for real sector analysis: `ticker_metadata` DB table, Yahoo Finance + crypto fallback metadata fetcher, sync function wired into workflow, and sector heatmap modal comparing current vs proposed portfolio allocation.
 
 **Summary:**
