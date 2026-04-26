@@ -417,13 +417,98 @@ function ScenarioComparisonTable({ data }: { data: ScenarioComparison[] }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Inline Metric Card (mirrors Proposal tab style)                    */
+/* ------------------------------------------------------------------ */
+
+function InlineMetricCard({
+	label,
+	current,
+	proposed,
+	delta,
+	unit,
+	isBetterWhenLower,
+	tooltip,
+}: {
+	label: string;
+	current: number | null | undefined;
+	proposed: number | null | undefined;
+	delta: number | null | undefined;
+	unit: string;
+	isBetterWhenLower: boolean;
+	tooltip?: string;
+}) {
+	const hasCurrent = typeof current === "number";
+	const hasProposed = typeof proposed === "number";
+	const hasDelta = typeof delta === "number";
+	const showDelta = hasDelta && (hasCurrent || hasProposed);
+
+	let direction = "→";
+	let directionColor = "text-text-dim";
+	if (hasDelta) {
+		if (isBetterWhenLower) {
+			direction = delta < 0 ? "▼" : delta > 0 ? "▲" : "→";
+			directionColor = delta < 0 ? "text-green" : delta > 0 ? "text-red" : "text-text-dim";
+		} else {
+			direction = delta > 0 ? "▲" : delta < 0 ? "▼" : "→";
+			directionColor = delta > 0 ? "text-green" : delta < 0 ? "text-red" : "text-text-dim";
+		}
+	}
+
+	return (
+		<div className="rounded border border-border bg-bg-elevated p-4">
+			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
+				<span title={tooltip ?? ""} className="cursor-help border-b border-dashed border-text-dim/40">
+					{label}
+					{tooltip && (
+						<span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 rounded-full text-[8px] font-mono bg-text-dim/15 text-text-dim align-middle">?</span>
+					)}
+				</span>
+			</div>
+			<div className="space-y-1">
+				<div className="flex items-center justify-between">
+					<span className="text-[10px] font-mono text-text-muted">Current</span>
+					<span className="text-[11px] font-mono text-text">
+						{hasCurrent ? `${current.toFixed(2)}${unit}` : "N/A"}
+					</span>
+				</div>
+				{hasProposed && (
+					<div className="flex items-center justify-between">
+						<span className="text-[10px] font-mono text-teal/60">Proposed</span>
+						<span className="text-[11px] font-mono text-teal font-medium">
+							{typeof proposed === "number" ? `${proposed.toFixed(2)}${unit}` : "N/A"}
+						</span>
+					</div>
+				)}
+				{showDelta && (
+					<div className="flex items-center justify-between pt-1 border-t border-border/40">
+						<span className="text-[10px] font-mono text-text-muted">Delta</span>
+						<span className="text-[13px] font-mono font-semibold text-text">
+							{delta > 0 ? "+" : ""}{delta.toFixed(2)}{unit}
+							<span className={`ml-1 text-[11px] ${directionColor}`}>{direction}</span>
+						</span>
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Risk Analysis Content                                            */
 /* ------------------------------------------------------------------ */
 
 export function RiskAnalysisContent({
 	structuredOutput,
+	currentSharpe,
+	currentVolatility,
+	currentMaxDrawdown,
+	sharpeDelta,
 }: {
 	structuredOutput: Record<string, unknown>;
+	currentSharpe?: number | null;
+	currentVolatility?: number | null;
+	currentMaxDrawdown?: number | null;
+	sharpeDelta?: number | null;
 }) {
 	const verdict = typeof structuredOutput.verdict === "string" ? structuredOutput.verdict : "";
 	const caveats = Array.isArray(structuredOutput.caveats) ? (structuredOutput.caveats as string[]) : [];
@@ -446,6 +531,45 @@ export function RiskAnalysisContent({
 	return (
 		<>
 			<div className="space-y-5">
+				{/* Risk Metric Cards (from Proposal tab) */}
+				<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+					<InlineMetricCard
+						label="Sharpe Ratio"
+						current={currentSharpe ?? null}
+						proposed={typeof currentSharpe === "number" && typeof sharpeDelta === "number" ? currentSharpe + sharpeDelta : (typeof sharpeDelta === "number" ? sharpeDelta : null)}
+						delta={sharpeDelta ?? null}
+						unit=""
+						isBetterWhenLower={false}
+						tooltip="Risk-adjusted return metric. Higher = better."
+					/>
+					<InlineMetricCard
+						label="Avg Stress Drawdown"
+						current={typeof structuredOutput.current_avg_drawdown === "number" ? structuredOutput.current_avg_drawdown as number : currentVolatility ?? null}
+						proposed={typeof structuredOutput.proposed_avg_drawdown === "number" ? structuredOutput.proposed_avg_drawdown as number : null}
+						delta={
+							typeof structuredOutput.current_avg_drawdown === "number" && typeof structuredOutput.proposed_avg_drawdown === "number"
+								? (structuredOutput.proposed_avg_drawdown as number) - (structuredOutput.current_avg_drawdown as number)
+								: null
+						}
+						unit="%"
+						isBetterWhenLower={true}
+						tooltip="Average drawdown across all stress scenarios."
+					/>
+					<InlineMetricCard
+						label="Peak-to-Trough Drawdown"
+						current={typeof structuredOutput.current_max_drawdown === "number" ? structuredOutput.current_max_drawdown as number : currentMaxDrawdown ?? null}
+						proposed={typeof structuredOutput.proposed_max_drawdown === "number" ? structuredOutput.proposed_max_drawdown as number : null}
+						delta={
+							typeof structuredOutput.current_max_drawdown === "number" && typeof structuredOutput.proposed_max_drawdown === "number"
+								? (structuredOutput.proposed_max_drawdown as number) - (structuredOutput.current_max_drawdown as number)
+								: null
+						}
+						unit="%"
+						isBetterWhenLower={true}
+						tooltip="Worst-case single-scenario drawdown."
+					/>
+				</div>
+
 				{/* Verdict Banner */}
 				{verdictConfig && (
 					<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>

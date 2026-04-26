@@ -328,6 +328,14 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **Cleaned FIELD_TOOLTIPS** — Removed `var_95` and `stress_results` tooltip entries.
 - [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
 
+## UX Fix (4/27/2026) — Sector naming, Tooltips, Proposal/Risk tab restructure
+
+- [x] **Fix sector naming bug** — `use-sector-exposure.ts` `groupBySector` now lowercases sector + assetClass + fallback, merging "crypto"/"Cryptocurrency" into one bucket. Removed hardcoded `TICKER_SECTOR_MAP` and `ASSET_CLASS_LABELS` maps.
+- [x] **Tooltips on Proposal tab snapshot cards** — Added `LabelWithTooltip` component with `?` circle icon and `title` attribute. Tooltips for: Positions, Max Position %, Turnover, Sectors, Concentration, Risk Score. Also on Proposal Summary label.
+- [x] **Restructure Proposal tab** — Removed Sharpe Ratio, Avg Stress Drawdown, Peak-to-Trough Drawdown metric cards. Snapshot cards remain with tooltips. Risk Score changed from full card to inline summary line (`Risk Score: X → Y Δ-Z Improved`). Proposal summary bullets kept.
+- [x] **Move risk metrics to Risk tab** — Added `InlineMetricCard` component in `risk-analysis-modal.tsx`. Three cards (Sharpe, Avg Stress Drawdown, Peak-to-Trough Drawdown) rendered at top of Risk tab, before verdict banner. `RiskAnalysisContent` now accepts `currentSharpe`, `currentVolatility`, `currentMaxDrawdown`, `sharpeDelta` props.
+- [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
+
 ## UX Fix (4/26/2026) — Tabbed Redesign Proposal Modal
 
 - [x] **Tabbed layout in `redesign-proposal-modal.tsx`** — Added `Tabs` (Proposal / Risk Analysis) below `DialogHeader`, above scrollable content area. Default active: Proposal. Each tab wraps its content in `overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar`. Removed inline `<RiskAnalysisContent>` from Proposal tab; risk content now only renders in Risk Analysis tab via `<TabsContent value="risk">`.

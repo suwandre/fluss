@@ -495,3 +495,34 @@
 
 **Gotchas:**
 - None.
+
+---
+
+## Task — Sector naming fix, Tooltips, Proposal/Risk tab restructure (4/27/2026)
+
+**Description:** Three changes: (1) Fix sector naming bug where "crypto" and "Cryptocurrency" weren't merging. (2) Add tooltips to all Proposal tab card labels. (3) Move Sharpe/Avg Drawdown/Peak-to-Trough cards from Proposal to Risk tab, convert Risk Score to inline line.
+
+**Summary:**
+- `src/hooks/use-sector-exposure.ts`:
+  - `groupBySector`: changed sector resolution to `item.sector?.trim().toLowerCase() || item.assetClass?.trim().toLowerCase() || "other"`.
+  - Removed hardcoded `TICKER_SECTOR_MAP`, `ASSET_CLASS_LABELS`, and `capitalize()`. All keys now lowercase.
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - Added `LABEL_TOOLTIPS` map and `LabelWithTooltip` component (dashed underline + `?` circle + `title`).
+  - Snapshot cards use `<LabelWithTooltip>`. Removed `MetricCard` and old metric card variables.
+  - Removed 3 metric cards (Sharpe, Avg Stress Drawdown, Peak-to-Trough).
+  - Risk Score: card → inline summary line with delta badge.
+  - Risk Score weights: 45/30/25 (drawdown/VaR/concentration) per tooltip.
+  - Proposal Summary label: tooltip added.
+  - Sectors count: uses sector exposure keys instead of ticker count.
+  - `RiskAnalysisContent` call passes `currentSharpe`, `currentVolatility`, `currentMaxDrawdown`, `sharpeDelta`.
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - Added `InlineMetricCard` component with tooltip support.
+  - `RiskAnalysisContent` accepts `currentSharpe`, `currentVolatility`, `currentMaxDrawdown`, `sharpeDelta`.
+  - 3 metric cards rendered at top of Risk tab, before verdict banner.
+
+**Verification:**
+- `npx tsc --noEmit` — 0 errors.
+- `npx next build` — successful.
+
+**Gotchas:**
+- None.

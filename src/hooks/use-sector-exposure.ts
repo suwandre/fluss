@@ -14,47 +14,12 @@ export interface SectorExposureResult {
   proposed: Record<string, number>;
 }
 
-const TICKER_SECTOR_MAP: Record<string, string> = {
-  BTC: "Cryptocurrency",
-  ETH: "Cryptocurrency",
-  QQQ: "Equity",
-  AGG: "Fixed Income",
-  SPY: "Equity",
-  GLD: "Commodities",
-  VGK: "International",
-  VNQ: "REITs",
-  TLT: "Fixed Income",
-};
-
-const ASSET_CLASS_LABELS: Record<string, string> = {
-  crypto: "Cryptocurrency",
-  equity: "Equity",
-  fixed_income: "Fixed Income",
-  commodities: "Commodities",
-  reits: "REITs",
-};
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 function groupBySector(items: SectorExposureInput[]): Record<string, number> {
   const groups: Record<string, number> = {};
 
   for (const item of items) {
-    let sector: string;
-    if (item.sector?.trim()) {
-      sector = item.sector.trim();
-    } else {
-      const mapped = TICKER_SECTOR_MAP[item.ticker.toUpperCase()];
-      if (mapped) {
-        sector = mapped;
-      } else if (item.assetClass?.trim()) {
-        sector = ASSET_CLASS_LABELS[item.assetClass.toLowerCase()] ?? capitalize(item.assetClass);
-      } else {
-        sector = "Other";
-      }
-    }
+    const fallback = "other";
+    const sector = item.sector?.trim().toLowerCase() || item.assetClass?.trim().toLowerCase() || fallback;
     groups[sector] = (groups[sector] || 0) + item.weight;
   }
 
