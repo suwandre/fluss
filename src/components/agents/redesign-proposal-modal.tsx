@@ -100,8 +100,8 @@ function MetricCard({
 	}
 
 	return (
-		<div className="rounded border border-border bg-bg-elevated p-3">
-			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
+		<div className="rounded border border-border bg-bg-elevated p-4">
+			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
 				{label}
 			</div>
 			<div className="space-y-1">
@@ -182,7 +182,7 @@ export function RedesignProposalModal({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-3xl">
+			<DialogContent className="sm:max-w-3xl p-6">
 				<DialogHeader>
 					<div className="flex items-center gap-3">
 						<DialogTitle>Portfolio Redesign Proposal</DialogTitle>
@@ -212,10 +212,10 @@ export function RedesignProposalModal({
 
 					<div className="h-[65vh] overflow-y-auto pr-2 custom-scrollbar space-y-5">
 						<TabsContent value="proposal">
-							<div>
+							<div className="space-y-6">
 							{/* Proposed Allocation Table */}
 							<div className="rounded border border-border overflow-hidden">
-								<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-3 py-2 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
+								<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2">
 									<span>Ticker</span>
 									<span className="text-right">Current</span>
 									<span className="text-right">Proposed</span>
@@ -228,7 +228,7 @@ export function RedesignProposalModal({
 										return (
 											<div
 												key={i}
-												className={`grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2 px-3 py-2 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors cursor-pointer ${isExpanded ? "bg-bg-elevated/50" : ""}`}
+												className={`grid grid-cols-[1fr_120px_120px_80px_1fr] gap-2 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors cursor-pointer ${isExpanded ? "bg-bg-elevated/50" : ""}`}
 												onClick={() => setExpandedRow(isExpanded ? null : i)}
 											>
 												<span className="truncate font-medium text-text">
@@ -258,7 +258,7 @@ export function RedesignProposalModal({
 										);
 											})
 										) : (
-											<div className="px-3 py-4 text-[12px] font-mono text-text-dim italic">
+											<div className="px-4 py-4 text-[12px] font-mono text-text-dim italic">
 												No proposed actions available.
 											</div>
 										)}
@@ -266,8 +266,8 @@ export function RedesignProposalModal({
 
 							{/* Sector Re-allocation Bars */}
 							{sectorExposure && (
-								<div>
-									<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
+								<div className="rounded border border-border bg-bg-elevated p-5">
+									<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
 										Sector Re-allocation
 									</div>
 									<div className="space-y-1">
@@ -387,8 +387,8 @@ export function RedesignProposalModal({
 								return (
 									<div className="grid grid-cols-2 gap-3">
 										{snapshotItems.map((item) => (
-											<div key={item.label} className="rounded border border-border bg-bg-elevated p-3">
-												<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
+											<div key={item.label} className="rounded border border-border bg-bg-elevated p-4">
+												<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
 													{item.label}
 												</div>
 												<div className="space-y-1">
@@ -424,7 +424,7 @@ export function RedesignProposalModal({
 									typeof currentVar !== "number" || typeof proposedVar !== "number"
 								) {
 									return (
-										<div className="rounded border border-border bg-bg-card p-3 flex items-center justify-between">
+										<div className="rounded border border-border bg-bg-card p-4 flex items-center justify-between">
 											<span className="text-[10px] font-mono uppercase text-text-dim tracking-wide">Risk Score</span>
 											<span className="text-sm font-mono text-text-dim">N/A</span>
 										</div>
@@ -435,7 +435,7 @@ export function RedesignProposalModal({
 								const delta = proposedScore - currentScore;
 								const improved = proposedScore < currentScore;
 								return (
-									<div className="rounded border border-border bg-bg-card p-3 flex items-center justify-between gap-4">
+									<div className="rounded border border-border bg-bg-card p-4 flex items-center justify-between gap-4">
 										<span className="text-[10px] font-mono uppercase text-text-dim tracking-wide shrink-0">Risk Score</span>
 										<div className="flex items-center gap-3">
 											<span className="text-sm font-mono text-text">{currentScore.toFixed(2)}</span>
@@ -456,9 +456,9 @@ export function RedesignProposalModal({
 
 							{/* Proposal Summary Bullets */}
 							{proposal_summary && (
-								<div className="rounded border border-border bg-bg-elevated p-3 space-y-2">
+								<div className="rounded border border-border bg-bg-elevated p-4 space-y-3">
 									{splitSentences(proposal_summary).map((sentence, i) => (
-										<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-snug">
+										<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-relaxed">
 											<span className="text-teal mt-1 shrink-0">•</span>
 											<span>{sentence}</span>
 										</div>

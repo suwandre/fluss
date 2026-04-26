@@ -418,3 +418,26 @@
 
 **Gotchas:**
 - None.
+
+---
+
+## Task — Proposal Tab Spacing Fix (4/26/2026)
+
+**Description:** All sections in the Proposal tab were squished together with zero vertical gap. Cards had tiny `p-3` padding. Needed visual breathing room to match the polished Risk Analysis tab.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - Added `space-y-6` to the Proposal tab inner container.
+  - Allocation table header: `px-3 py-2` → `px-4 py-3`. Table rows: `px-3 py-2` → `px-4 py-3`. Empty state: `px-3` → `px-4`.
+  - Wrapped sector re-allocation block in card (`rounded border border-border bg-bg-elevated p-5`). Label `mb-2` → `mb-3`.
+  - MetricCard component: `p-3` → `p-4`, label `mb-2` → `mb-3`.
+  - Snapshot cards: `p-3` → `p-4`, label `mb-2` → `mb-3`.
+  - Risk score delta card: `p-3` → `p-4` (both N/A and data variants).
+  - Proposal summary bullets card: `p-3` → `p-4`, `space-y-2` → `space-y-3`, `leading-snug` → `leading-relaxed`.
+  - DialogContent: added `p-6` to override default `p-4`.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+
+**Gotchas:**
+- Extra closing `</div>` after wrapping sector card — removed.
