@@ -656,3 +656,22 @@
 - Tooltip underline fix uses a nested span pattern because the `render` prop on `TooltipTrigger` only accepts a single-element render tree.
 
 ---
+
+## UX Fixes — Proposal/Risk tab round 4 (4/27/2026)
+
+**Description:** Fourth batch of improvements. Three items: stress section grid headers, tooltip clarity additions, Risk tab tooltip parity.
+
+**Summary:**
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - **UnifiedStressBars grid headers:** Replaced the inline `flex items-center gap-3` row layout with a proper CSS grid (`grid-cols-[120px_1fr_60px_60px_60px_40px]`) and added a header row: Scenario | Current | Proposed | Delta | Rec. Rows now match the Proposal tab ticker table formatting.
+  - **Tooltip clarity:** Appended "Lower = better" to the drawdown and VaR tooltip strings: Avg Stress Drawdown, Peak-to-Trough Drawdown, Max Daily Loss (95%).
+  - **Shadcn Tooltip parity:** `InlineMetricCard` now imports and uses the same shadcn `Tooltip`, `TooltipTrigger`, and `TooltipContent` primitives as the Proposal tab. Removed raw HTML `title` attribute. Tooltip renders through app portal with styled rounded border + bg-elevated.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- `InlineMetricCard` tooltip uses the same nested-span pattern as `LabelWithTooltip` in Proposal tab (`render` prop wrapping label + `?`, underline on child span only).
+
+---

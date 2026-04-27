@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface StressResult {
 	scenario: string;
@@ -389,7 +390,14 @@ function UnifiedStressBars({
 	);
 
 	return (
-		<div className="space-y-3">
+		<div>
+			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-2 grid grid-cols-[120px_1fr_60px_60px_60px_40px] gap-3 border-b border-border">
+				<span>Scenario</span>
+				<span className="text-right">Current</span>
+				<span className="text-right">Proposed</span>
+				<span className="text-right">Delta</span>
+				<span className="text-right">Rec.</span>
+			</div>
 			{scenarioComparisons.map((row, i) => {
 				const currentDd = Math.abs(row.current_drawdown);
 				const proposedDd = Math.abs(row.proposed_drawdown);
@@ -404,8 +412,11 @@ function UnifiedStressBars({
 				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-teal" : "text-text-muted";
 
 				return (
-					<div key={i} className="flex items-center gap-3 text-[12px]">
-						<span className="w-32 shrink-0 truncate text-text/80 font-medium" title={row.scenario}>
+					<div
+						key={i}
+						className="grid grid-cols-[120px_1fr_60px_60px_60px_40px] gap-3 px-4 py-2 text-[12px] items-center border-b border-border last:border-0"
+					>
+						<span className="truncate text-text/80 font-medium" title={row.scenario}>
 							{row.scenario}
 						</span>
 						<div className="flex-1 h-2.5 bg-bg-card rounded-full overflow-hidden relative">
@@ -418,16 +429,16 @@ function UnifiedStressBars({
 								style={{ width: `${Math.min(proposedW, 100)}%`, backgroundColor: barFillColor }}
 							/>
 						</div>
-						<span className="w-12 text-right font-mono text-text-dim shrink-0">
+						<span className="text-right font-mono text-text-dim">
 							-{currentDd.toFixed(1)}%
 						</span>
-						<span className={`w-12 text-right font-mono font-semibold shrink-0 ${isProposedSevere ? "text-red" : "text-amber"}`}>
+						<span className={`text-right font-mono font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
 							-{proposedDd.toFixed(1)}%
 						</span>
-						<span className={`w-14 text-right font-mono font-semibold shrink-0 ${deltaColor}`}>
+						<span className={`text-right font-mono font-semibold ${deltaColor}`}>
 							{delta > 0 ? "+" : ""}{delta.toFixed(1)}pp
 						</span>
-						<span className="w-10 text-right font-mono text-text-muted shrink-0">
+						<span className="text-right font-mono text-text-muted">
 							{recoveryText}
 						</span>
 					</div>
@@ -478,12 +489,26 @@ function InlineMetricCard({
 	return (
 		<div className="rounded border border-border bg-bg-elevated p-4">
 			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
-				<span title={tooltip ?? ""} className="cursor-help">
-					<span className="border-b border-dashed border-text-dim/40">{label}</span>
-					{tooltip && (
-						<span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 rounded-full text-[8px] font-mono bg-text-dim/15 text-text-dim align-middle">?</span>
-					)}
-				</span>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<span className="inline-flex cursor-help items-center gap-1"
+								style={{ borderBottom: "none" }}
+							/>
+						}
+					>
+						<span className="border-b border-dashed border-text-dim/40">{label}</span>
+						{tooltip && (
+							<span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[8px] font-mono bg-text-dim/15 text-text-dim align-middle">?</span>
+						)}
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="max-w-[220px] border border-border bg-bg-elevated text-[11px] font-mono leading-snug text-text shadow-lg"
+					>
+						{tooltip}
+					</TooltipContent>
+				</Tooltip>
 			</div>
 			<div className="space-y-1">
 				<div className="flex items-center justify-between">
@@ -574,7 +599,7 @@ export function RiskAnalysisContent({
 						}
 						unit="%"
 						isBetterWhenLower={true}
-						tooltip="Average drawdown across all stress scenarios."
+						tooltip="Average drawdown across all stress scenarios. Lower = better."
 					/>
 					<InlineMetricCard
 						label="Peak-to-Trough Drawdown"
@@ -587,7 +612,7 @@ export function RiskAnalysisContent({
 						}
 						unit="%"
 						isBetterWhenLower={true}
-						tooltip="Worst-case single-scenario drawdown."
+						tooltip="Worst-case single-scenario drawdown. Lower = better."
 					/>
 					<InlineMetricCard
 						label="Max Daily Loss (95%)"
@@ -600,7 +625,7 @@ export function RiskAnalysisContent({
 						}
 						unit="%"
 						isBetterWhenLower={true}
-						tooltip="Value at Risk: worst expected daily loss at 95% confidence."
+						tooltip="Value at Risk: worst expected daily loss at 95% confidence. Lower = better."
 					/>
 				</div>
 
