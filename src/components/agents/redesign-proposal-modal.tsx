@@ -185,10 +185,9 @@ function RiskScoreGauge({
 				</svg>
 				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-2 flex flex-col items-center">
 					<span className="text-3xl font-mono font-bold text-teal">{proposedScore.toFixed(1)}</span>
-					<span className={`px-1.5 py-px rounded-full text-[10px] font-mono ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
-						Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
-					</span>
-					<span className="text-[10px] text-text-dim mt-0.5">Lower is better</span>
+				<span className={`px-1.5 py-px rounded-full text-[10px] font-mono ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
+									Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
+								</span>
 				</div>
 							</div>
 							<div className="flex items-center justify-center mt-1 text-[11px] font-mono">

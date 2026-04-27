@@ -467,7 +467,7 @@ function UnifiedStressBars({
 					<StressTooltip label="Delta" tip="Difference in percentage points. Negative = improvement" />
 				</span>
 				<span className="text-right">
-					<StressTooltip label="Recovery Days" tip="Estimated days to recover to breakeven" />
+					<StressTooltip label="Recovery" tip="Estimated days to recover to breakeven" />
 				</span>
 			</div>
 			{scenarioComparisons.map((row, i) => {
