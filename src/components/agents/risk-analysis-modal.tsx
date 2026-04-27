@@ -18,7 +18,7 @@ interface RiskAnalysisModalProps {
 	structuredOutput: Record<string, unknown>;
 }
 
-function getVerdictConfig(verdict: string) {
+export function getVerdictConfig(verdict: string) {
 	const lower = verdict.toLowerCase();
 	if (lower === "approved" || lower === "approve") {
 		return {
@@ -234,8 +234,9 @@ function MetricRow({
 	const delta = prop - curr;
 	const better = isBetterWhenLower ? delta < 0 : delta > 0;
 	const worse = isBetterWhenLower ? delta > 0 : delta < 0;
-	const color = worse ? "text-red" : better ? "text-teal" : "text-text-muted";
+	const color = worse ? "text-red" : better ? "text-green" : "text-text-muted";
 	const deltaSign = delta > 0 ? "+" : "";
+	const arrow = better ? "▼" : worse ? "▲" : "→";
 
 	const labelContent = tooltip ? (
 		<Tooltip>
@@ -275,6 +276,7 @@ function MetricRow({
 				<div className="w-16 text-right">
 					<div className={`text-[11px] font-mono font-semibold ${color}`}>
 						{deltaSign}{delta.toFixed(2)}pp
+						<span className="ml-1">{arrow}</span>
 					</div>
 				</div>
 			</div>
@@ -605,8 +607,27 @@ function InlineMetricCard({
 	);
 }
 
+
+function VerdictBanner({ verdictConfig }: { verdictConfig: ReturnType<typeof getVerdictConfig> }) {
+	return (
+		<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>
+			<span className="text-2xl">{verdictConfig.icon}</span>
+			<div>
+				<div className={`font-bold text-sm ${verdictConfig.text}`}>{verdictConfig.label}</div>
+				<div className="text-[11px] text-text-dim mt-0.5">
+					{verdictConfig.label === "Approved"
+						? "Portfolio passes all risk thresholds."
+						: verdictConfig.label === "Approved with Caveats"
+							? "Portfolio is acceptable but watch flagged areas."
+							: "Portfolio exceeds risk limits. Review changes."}
+				</div>
+			</div>
+		</div>
+	);
+}
+
 /* ------------------------------------------------------------------ */
-/*  Risk Analysis Content                                            */
+/*  Risk Analysis Content                                                                                         */
 /* ------------------------------------------------------------------ */
 
 export function RiskAnalysisContent({
@@ -694,23 +715,6 @@ export function RiskAnalysisContent({
 						tooltip="Value at Risk: worst expected daily loss at 95% confidence. Lower = better."
 					/>
 				</div>
-
-				{/* Verdict Banner */}
-				{verdictConfig && (
-					<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>
-						<span className="text-2xl">{verdictConfig.icon}</span>
-						<div>
-							<div className={`font-bold text-sm ${verdictConfig.text}`}>{verdictConfig.label}</div>
-							<div className="text-[11px] text-text-dim mt-0.5">
-								{verdictConfig.label === "Approved"
-									? "Portfolio passes all risk thresholds."
-									: verdictConfig.label === "Approved with Caveats"
-										? "Portfolio is acceptable but watch flagged areas."
-										: "Portfolio exceeds risk limits. Review changes."}
-							</div>
-						</div>
-					</div>
-				)}
 
 				{/* Stress Comparison — merged scenarios */}
 				{scenarioComparisons.length > 0 && (

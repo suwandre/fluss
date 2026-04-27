@@ -6,7 +6,6 @@ import {
 	type AgentStepData,
 } from "@/components/agents/agent-timeline";
 import { RunHistoryPanel } from "@/components/agents/run-history-panel";
-import { StressTestChart } from "@/components/charts/stress-test-chart";
 
 import { cn } from "@/lib/utils";
 import {
@@ -183,10 +182,22 @@ export function AgentReasoningPanel({
 							</button>
 						)}
 
-						{/* Stress test chart — shown after Risk Agent completes */}
+						{/* Stress test summary — shown after Risk Agent completes */}
 						{showChart && (
 							<div className="mt-4 pt-4 border-t border-border">
-								<StressTestChart data={stressResults} />
+								<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">Stress Test Summary</div>
+								<div className="flex items-center gap-2 text-[12px] text-text">
+									<span>{stressResults.length} scenarios tested.</span>
+									<span className="text-text-dim">Worst drawdown: </span>
+									<span className="font-mono font-medium">
+										{(() => {
+											const worst = stressResults.reduce((prev, curr) =>
+												Math.abs(curr.simulated_drawdown_pct || 0) > Math.abs(prev.simulated_drawdown_pct || 0) ? curr : prev
+											);
+												return `-${Math.abs(worst.simulated_drawdown_pct).toFixed(1)}% (${worst.scenario})`;
+										})()}
+									</span>
+								</div>
 							</div>
 						)}
 					</div>
