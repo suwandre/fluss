@@ -210,12 +210,14 @@ function MetricRow({
 	proposedValue,
 	unit,
 	isBetterWhenLower,
+	tooltip,
 }: {
 	label: string;
 	currentValue: number | undefined;
 	proposedValue: number | undefined;
 	unit: string;
 	isBetterWhenLower: boolean;
+	tooltip?: string;
 }) {
 	const curr = typeof currentValue === "number" ? currentValue : null;
 	const prop = typeof proposedValue === "number" ? proposedValue : null;
@@ -235,9 +237,32 @@ function MetricRow({
 	const color = worse ? "text-red" : better ? "text-teal" : "text-text-muted";
 	const deltaSign = delta > 0 ? "+" : "";
 
+	const labelContent = tooltip ? (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<span className="inline-flex cursor-help items-center gap-1"
+						style={{ borderBottom: "none" }}
+					/>
+				}
+			>
+				<span className="border-b border-dashed border-text-dim/40">{label}</span>
+				<span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[8px] font-mono bg-text-dim/15 text-text-dim align-middle">?</span>
+			</TooltipTrigger>
+			<TooltipContent
+				side="top"
+				className="max-w-[220px] border border-border bg-bg-elevated text-[11px] font-mono leading-snug text-text shadow-lg"
+			>
+				{tooltip}
+			</TooltipContent>
+		</Tooltip>
+	) : (
+		<span>{label}</span>
+	);
+
 	return (
 		<div className="flex items-center justify-between px-1 py-1.5 border-b border-border/40 last:border-0">
-			<span className="text-[11px] text-text-dim font-medium">{label}</span>
+			<span className="text-[11px] text-text-dim font-medium">{labelContent}</span>
 			<div className="flex items-center gap-3">
 				<div className="text-right">
 					<div className="text-[10px] text-text-muted">Current</div>
@@ -279,6 +304,7 @@ function KeyMetricsComparison({
 				proposedValue={proposedVar95}
 				unit="%"
 				isBetterWhenLower={true}
+				tooltip="Value at Risk: worst expected daily loss at 95% confidence. Lower = better."
 			/>
 			<MetricRow
 				label="Avg Stress Drawdown"
@@ -286,6 +312,7 @@ function KeyMetricsComparison({
 				proposedValue={proposedAvg}
 				unit="%"
 				isBetterWhenLower={true}
+				tooltip="Average drawdown across all stress scenarios. Lower = better."
 			/>
 			<MetricRow
 				label="Max Stress Drawdown"
@@ -293,6 +320,7 @@ function KeyMetricsComparison({
 				proposedValue={proposedMax}
 				unit="%"
 				isBetterWhenLower={true}
+				tooltip="Worst-case single-scenario drawdown. Lower = better."
 			/>
 			<MetricRow
 				label="Concentration Score"
@@ -300,6 +328,7 @@ function KeyMetricsComparison({
 				proposedValue={proposedConc}
 				unit=""
 				isBetterWhenLower={true}
+				tooltip="Portfolio concentration risk measure. Lower = more diversified."
 			/>
 		</div>
 	);
@@ -396,8 +425,12 @@ function StressTooltip({ label, tip }: { label: string; tip: string }) {
 }
 
 function parseScenario(full: string): { name: string; period: string } {
+	// "Name (Period)" format
 	const m = full.match(/^(.+?)\s*\((.+)\)\s*$/);
 	if (m) return { name: m[1].trim(), period: m[2].trim() };
+	// "Month YYYY Name" format (e.g. "May 2021 Crypto Crash")
+	const m2 = full.match(/^([A-Za-z]+\s+\d{4})\s+(.+)$/);
+	if (m2) return { name: m2[2].trim(), period: m2[1].trim() };
 	return { name: full.trim(), period: "" };
 }
 
@@ -691,16 +724,11 @@ export function RiskAnalysisContent({
 
 				{/* Before / After Metrics — Key Metrics Comparison */}
 				{(typeof structuredOutput.current_var_95 === "number" || improvementSummary) && (
-					<div className="rounded-lg border border-teal/15 bg-[rgba(20,184,166,0.04)] p-4">
-						<div className="text-[11px] font-mono text-teal uppercase tracking-wide mb-3 pb-1 border-b border-teal/10">
-							Portfolio Changes
+					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+						<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
+							<StressTooltip label="Portfolio Changes" tip="Aggregated risk metrics comparing current vs proposed portfolio." />
 						</div>
 						<KeyMetricsComparison structuredOutput={structuredOutput} />
-						{improvementSummary && (
-							<p className="text-[12px] text-text-dim italic mt-3 pt-2 border-t border-teal/10">
-								{improvementSummary}
-							</p>
-						)}
 					</div>
 				)}
 
