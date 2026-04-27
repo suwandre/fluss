@@ -607,3 +607,24 @@
 
 **Gotchas:**
 - The original native browser tooltip only triggered on the small `?`, not the dashed label text.
+
+---
+
+## UX Fixes — Proposal tab round 2 (4/27/2026)
+
+**Description:** Second batch of Proposal tab improvements after review. Four items: sector bar dual-fill, remove Max Position % duplicate, swap Risk/Turnover gauges + reduce redundancy, widen table gaps.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - **Sector bar dual-fill:** Replaced single teal bar + white marker with layered fill: `current` value rendered as muted white background fill from 0→current, `proposed` rendered as teal overlay from 0→proposed. Immediate visual comparison of both values. No legend needed.
+  - **Max Position % → Position Changes:** Removed `Max Position %` snapshot card (duplicate of Concentration). Added `Position Changes` card instead: `New` (tickers added with current=0) and `Exited` (current tickers missing from proposed). Computed from existing `proposed_actions` data.
+  - **Gauge swap + redundancy fix:** Turnover gauge now appears on the **left**, Risk Score on the **right**. Risk Score bottom row stripped to bare `Current: X` only — removed duplicate `Proposed`, arrow, and Improved badge (already shown in center overlay).
+  - **Table gaps:** Table header + rows + empty state grid changed from `gap-3` to `gap-4`. Rationale column padding increased from `pl-4` to `pl-6` for extra visual separation from Delta.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- Turnover is capped at 100% in arc math but center number shows exact.
+- `Position Changes` uses label check rather than generic subLabels prop to avoid typing complexity.
