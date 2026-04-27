@@ -567,3 +567,23 @@
 
 **Gotchas:**
 - None.
+
+---
+
+## Task — Fix Proposal Tab tooltip hover target (4/27/2026)
+
+**Description:** Proposal tab tooltips did not appear reliably because `LabelWithTooltip` used the native `title` attribute only on the tiny `?` button.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - Replaced native `title` usage with the app's existing `Tooltip`, `TooltipTrigger`, and `TooltipContent` primitives.
+  - Made the full label + `?` icon the hover target via `TooltipTrigger`.
+  - Kept the existing visual style while making tooltip content render through the app tooltip portal.
+
+**Verification:**
+- `bunx tsc --noEmit` — clean.
+- `bun run build` — successful.
+- `bun run lint` — still fails on pre-existing unrelated lint errors in scripts/older components; no lint errors from this changed file.
+
+**Gotchas:**
+- The original native browser tooltip only triggered on the small `?`, not the dashed label text.

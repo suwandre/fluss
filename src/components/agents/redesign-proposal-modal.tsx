@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { RiskAnalysisContent } from "./risk-analysis-modal";
 
@@ -56,19 +57,29 @@ const LABEL_TOOLTIPS: Record<string, string> = {
 
 function LabelWithTooltip({ label }: { label: string }) {
 	const tooltip = LABEL_TOOLTIPS[label];
+	if (!tooltip) {
+		return <span>{label}</span>;
+	}
+
 	return (
-		<span className="inline-flex items-center gap-1 border-b border-dashed border-text-dim/40">
-			{label}
-			{tooltip && (
-				<button
-					type="button"
-					title={tooltip}
-					className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-text-muted text-[8px] font-mono text-text-muted leading-none cursor-help hover:text-text hover:border-text transition-colors"
-				>
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<span className="inline-flex cursor-help items-center gap-1 border-b border-dashed border-text-dim/40" />
+				}
+			>
+				{label}
+				<span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-text-muted font-mono text-[8px] leading-none text-text-muted transition-colors hover:border-text hover:text-text">
 					?
-				</button>
-			)}
-		</span>
+				</span>
+			</TooltipTrigger>
+			<TooltipContent
+				side="top"
+				className="max-w-[220px] border border-border bg-bg-elevated text-[11px] font-mono leading-snug text-text shadow-lg"
+			>
+				{tooltip}
+			</TooltipContent>
+		</Tooltip>
 	);
 }
 
