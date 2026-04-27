@@ -386,12 +386,12 @@ function UnifiedStressBars({
 
 	return (
 		<div>
-			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[120px_80px_80px_80px_60px] gap-4 border-b border-border">
-				<span>Scenario</span>
-				<span className="text-right">Current</span>
-				<span className="text-right">Proposed</span>
-				<span className="text-right">Delta</span>
-				<span className="text-right">Rec.</span>
+			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[minmax(180px,1fr)_90px_90px_90px_100px] gap-4 border-b border-border">
+				<span title="Historical stress event name">Scenario</span>
+				<span className="text-right" title="Drawdown under current portfolio allocation">Current</span>
+				<span className="text-right" title="Drawdown under proposed portfolio allocation">Proposed</span>
+				<span className="text-right" title="Difference in percentage points. Negative = improvement">Delta</span>
+				<span className="text-right" title="Estimated days to recover to breakeven">Recovery Days</span>
 			</div>
 			{scenarioComparisons.map((row, i) => {
 				const currentDd = Math.abs(row.current_drawdown);
@@ -400,12 +400,12 @@ function UnifiedStressBars({
 				const recovery = recoveryMap.get(row.scenario);
 				const recoveryText = recovery != null ? `${recovery}d` : "—";
 				const isProposedSevere = proposedDd > 15;
-				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-teal" : "text-text-muted";
+				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-green" : "text-text-muted";
 
 				return (
 					<div
 						key={i}
-						className="grid grid-cols-[120px_80px_80px_80px_60px] gap-4 px-4 py-3 text-[12px] font-mono items-center border-b border-border last:border-0"
+						className="grid grid-cols-[minmax(180px,1fr)_90px_90px_90px_100px] gap-4 px-4 py-3 text-[12px] font-mono items-center border-b border-border last:border-0"
 					>
 						<span className="truncate font-medium text-text" title={row.scenario}>
 							{row.scenario}
@@ -555,7 +555,7 @@ export function RiskAnalysisContent({
 		<>
 			<div className="space-y-5">
 				{/* Risk Metric Cards (from Proposal tab) */}
-				<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					<InlineMetricCard
 						label="Sharpe Ratio"
 						current={currentSharpe ?? null}
@@ -626,9 +626,8 @@ export function RiskAnalysisContent({
 				{/* Stress Comparison — merged scenarios */}
 				{scenarioComparisons.length > 0 && (
 					<div className="rounded-lg border border-border bg-bg-elevated p-4">
-						<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
-							<span>Stress Scenarios</span>
-							<span className="text-text-muted text-[10px] font-sans normal-case">Current &rarr; Proposed</span>
+						<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
+							<span title="Scenario-by-scenario stress test comparing current vs proposed portfolio drawdowns">Stress Scenarios</span>
 						</div>
 						<UnifiedStressBars stressResults={stressResults} scenarioComparisons={scenarioComparisons} />
 					</div>

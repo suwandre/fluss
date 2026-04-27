@@ -696,3 +696,25 @@
 - None.
 
 ---
+
+## UX Fixes — Stress scenarios final polish (4/27/2026)
+
+**Description:** Fifth batch of improvements for the Risk Analysis tab stress scenarios.
+
+**Summary:**
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - **Removed "Current → Proposed"** label from stress section header.
+  - **Metric cards grid:** Changed from `sm:grid-cols-3` to `sm:grid-cols-2` so the 4 cards (Sharpe, Avg Stress, Peak-to-Trough, VaR) are distributed evenly in 2x2 rows.
+  - **"Rec." → "Recovery Days"** — Full label in header.
+  - **Tooltips on all stress fields:** Added `title` attributes to section header and each column header explaining meaning.
+  - **Delta color logic:** Changed from `text-teal` to `text-green` for negative deltas (improvement), `text-red` for positive (worsening). Matches the metric card direction indicators.
+  - **Wider scenario column:** Changed grid columns from `120px` fixed to `minmax(180px,1fr)` to prevent truncation. Scenario names now get more breathing room with consistent right-hand columns.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- None.
+
+---
