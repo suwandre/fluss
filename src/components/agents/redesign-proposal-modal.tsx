@@ -49,8 +49,9 @@ const LABEL_TOOLTIPS: Record<string, string> = {
 	"Positions": "Number of unique holdings in the portfolio.",
 	"Position Changes": "New = tickers being added. Exited = tickers being fully sold.",
 	"Rebalance Turnover": "% of portfolio value that must be traded to reach the proposed allocation.",
+	"Sector Re-allocation": "How sector weights shift from current to proposed allocation.",
 	"Sectors": "Number of distinct asset classes / sectors represented.",
-	"Concentration": "Weight of the single largest holding. Lower = more diversified.",
+	"Max Position %": "Weight of the single largest holding. Lower = more diversified.",
 	"Risk Score": "Composite 0–100 score. Lower = safer. Weights: drawdown (45%), VaR (30%), concentration (25%).",
 	"Proposal Summary": "The agent's own summary of the proposed changes.",
 };
@@ -65,10 +66,12 @@ function LabelWithTooltip({ label }: { label: string }) {
 		<Tooltip>
 			<TooltipTrigger
 				render={
-					<span className="inline-flex cursor-help items-center gap-1 border-b border-dashed border-text-dim/40" />
+					<span className="inline-flex cursor-help items-center gap-1"
+						style={{ borderBottom: "none" }}
+					/>
 				}
 			>
-				{label}
+				<span className="border-b border-dashed border-text-dim/40">{label}</span>
 				<span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-text-muted font-mono text-[8px] leading-none text-text-muted transition-colors hover:border-text hover:text-text">
 					?
 				</span>
@@ -312,7 +315,7 @@ export function RedesignProposalModal({
 		{ label: "Positions", current: currentCount, proposed: proposedCount, unit: "", showProposed: true },
 		{ label: "Position Changes", current: newPositions, proposed: exitedPositions, unit: "", showProposed: true },
 		{ label: "Sectors", current: currentSectorCount, proposed: proposedSectorCount, unit: "", showProposed: true },
-		{ label: "Concentration", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
+		{ label: "Max Position %", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
 	];
 
 	// Risk Score inline line
@@ -425,9 +428,9 @@ export function RedesignProposalModal({
 							{/* Sector Re-allocation Bars */}
 							{sectorExposure && (
 								<div className="rounded border border-border bg-bg-elevated p-5">
-									<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
-										Sector Re-allocation
-									</div>
+							<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
+								<LabelWithTooltip label="Sector Re-allocation" />
+							</div>
 									<div className="space-y-3">
 										{(() => {
 											const allSectorKeys = Array.from(new Set([

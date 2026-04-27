@@ -370,44 +370,65 @@ interface ScenarioComparison {
 	delta_pp: number;
 }
 
-function ScenarioComparisonTable({ data }: { data: ScenarioComparison[] }) {
-	if (data.length === 0) return null;
+function UnifiedStressBars({
+	stressResults,
+	scenarioComparisons,
+}: {
+	stressResults: StressResult[];
+	scenarioComparisons: ScenarioComparison[];
+}) {
+	// Build a map for recovery_days lookup
+	const recoveryMap = new Map<string, number | null>();
+	for (const r of stressResults) {
+		recoveryMap.set(r.scenario, r.recovery_days);
+	}
+
+	const maxDrawdown = Math.max(
+		...scenarioComparisons.map((c) => Math.max(Math.abs(c.current_drawdown), Math.abs(c.proposed_drawdown))),
+		1
+	);
 
 	return (
-		<div className="space-y-2">
-			{data.map((row, i) => {
+		<div className="space-y-3">
+			{scenarioComparisons.map((row, i) => {
+				const currentDd = Math.abs(row.current_drawdown);
+				const proposedDd = Math.abs(row.proposed_drawdown);
 				const delta = row.delta_pp;
-				const color =
-					delta > 0
-						? "text-red" // proposed worse (higher drawdown)
-						: delta < 0
-							? "text-teal" // proposed better
-							: "text-text-muted"; // unchanged
-				const bgColor =
-					delta > 0
-						? "bg-red/5"
-						: delta < 0
-							? "bg-teal/5"
-							: "bg-bg-card";
+				const currentW = (currentDd / maxDrawdown) * 100;
+				const proposedW = (proposedDd / maxDrawdown) * 100;
+				const recovery = recoveryMap.get(row.scenario);
+				const recoveryText = recovery != null ? `${recovery}d` : "—";
+
+				const isProposedSevere = proposedDd > 15;
+				const barFillColor = isProposedSevere ? "var(--red)" : "var(--amber)";
+				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-teal" : "text-text-muted";
 
 				return (
-					<div
-						key={i}
-						className={`flex items-center gap-3 px-3 py-2 rounded border border-border/40 text-[11px] ${bgColor}`}
-					>
-						<span className="w-28 shrink-0 truncate text-text/80 font-medium" title={row.scenario}>
+					<div key={i} className="flex items-center gap-3 text-[12px]">
+						<span className="w-32 shrink-0 truncate text-text/80 font-medium" title={row.scenario}>
 							{row.scenario}
 						</span>
-						<span className="w-14 text-right font-mono text-text-dim">
-							{row.current_drawdown.toFixed(1)}%
+						<div className="flex-1 h-2.5 bg-bg-card rounded-full overflow-hidden relative">
+							<div
+								className="absolute top-0 h-full bg-[rgba(255,255,255,0.15)]"
+								style={{ width: `${Math.min(currentW, 100)}%` }}
+							/>
+							<div
+								className="absolute top-0 h-full rounded-full transition-all duration-700 ease-out"
+								style={{ width: `${Math.min(proposedW, 100)}%`, backgroundColor: barFillColor }}
+							/>
+						</div>
+						<span className="w-12 text-right font-mono text-text-dim shrink-0">
+							-{currentDd.toFixed(1)}%
 						</span>
-						<span className="w-14 text-right font-mono text-text">→</span>
-						<span className="w-14 text-right font-mono text-text">
-							{row.proposed_drawdown.toFixed(1)}%
+						<span className={`w-12 text-right font-mono font-semibold shrink-0 ${isProposedSevere ? "text-red" : "text-amber"}`}>
+							-{proposedDd.toFixed(1)}%
 						</span>
-						<span className={`w-16 text-right font-mono font-semibold ${color}`}>
-							{delta > 0 ? "+" : ""}
-							{delta.toFixed(1)}pp
+						<span className={`w-14 text-right font-mono font-semibold shrink-0 ${deltaColor}`}>
+							{delta > 0 ? "+" : ""}{delta.toFixed(1)}pp
+						</span>
+						<span className="w-10 text-right font-mono text-text-muted shrink-0">
+							{recoveryText}
 						</span>
 					</div>
 				);
@@ -457,8 +478,8 @@ function InlineMetricCard({
 	return (
 		<div className="rounded border border-border bg-bg-elevated p-4">
 			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
-				<span title={tooltip ?? ""} className="cursor-help border-b border-dashed border-text-dim/40">
-					{label}
+				<span title={tooltip ?? ""} className="cursor-help">
+					<span className="border-b border-dashed border-text-dim/40">{label}</span>
 					{tooltip && (
 						<span className="inline-flex items-center justify-center w-3.5 h-3.5 ml-1 rounded-full text-[8px] font-mono bg-text-dim/15 text-text-dim align-middle">?</span>
 					)}
@@ -568,6 +589,19 @@ export function RiskAnalysisContent({
 						isBetterWhenLower={true}
 						tooltip="Worst-case single-scenario drawdown."
 					/>
+					<InlineMetricCard
+						label="Max Daily Loss (95%)"
+						current={typeof structuredOutput.current_var_95 === "number" ? structuredOutput.current_var_95 as number : null}
+						proposed={var95}
+						delta={
+							typeof structuredOutput.current_var_95 === "number" && typeof var95 === "number"
+								? var95 - (structuredOutput.current_var_95 as number)
+								: null
+						}
+						unit="%"
+						isBetterWhenLower={true}
+						tooltip="Value at Risk: worst expected daily loss at 95% confidence."
+					/>
 				</div>
 
 				{/* Verdict Banner */}
@@ -587,30 +621,14 @@ export function RiskAnalysisContent({
 					</div>
 				)}
 
-				{/* VaR Gauge */}
-				<div className="rounded-lg border border-border bg-bg-elevated p-3">
-					<VaRGauge value={var95} />
-				</div>
-
-				{/* Stress Scenarios */}
-				{stressResults.length > 0 && (
-					<div className="rounded-lg border border-border bg-bg-elevated p-4">
-						<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
-							<span>Stress Scenarios</span>
-							<span className="text-text-muted text-[10px] font-sans normal-case">Drawdown &rarr; Recovery</span>
-						</div>
-						<StressBars data={stressResults} />
-					</div>
-				)}
-
-				{/* Scenario Comparison */}
+				{/* Stress Comparison — merged scenarios */}
 				{scenarioComparisons.length > 0 && (
 					<div className="rounded-lg border border-border bg-bg-elevated p-4">
 						<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
-							<span>Scenario Comparison</span>
+							<span>Stress Scenarios</span>
 							<span className="text-text-muted text-[10px] font-sans normal-case">Current &rarr; Proposed</span>
 						</div>
-						<ScenarioComparisonTable data={scenarioComparisons} />
+						<UnifiedStressBars stressResults={stressResults} scenarioComparisons={scenarioComparisons} />
 					</div>
 				)}
 
