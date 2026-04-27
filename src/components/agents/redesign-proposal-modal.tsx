@@ -145,11 +145,11 @@ function RiskScoreGauge({
 	const proposedDotY = cy - r * Math.sin(proposedAngle);
 
 	return (
-		<div className="rounded border border-border bg-bg-elevated p-4">
+		<div className="rounded border border-border bg-bg-elevated p-4 h-full flex flex-col">
 			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
 				<LabelWithTooltip label="Risk Score" />
 			</div>
-			<div className="relative flex flex-col items-center">
+			<div className="relative flex flex-col items-center flex-1 justify-center">
 				<svg viewBox="0 0 200 120" className="w-full max-w-[240px] mx-auto">
 					{/* Background track */}
 					<path
@@ -187,14 +187,67 @@ function RiskScoreGauge({
 					</span>
 					<span className="text-[10px] text-text-dim mt-0.5">Lower is better</span>
 				</div>
+							</div>
+							<div className="flex items-center justify-center gap-3 mt-1 text-[11px] font-mono">
+								<span className="text-text-dim">Current: {currentScore.toFixed(2)}</span>
+								<span className="text-text-dim">→</span>
+								<span className="text-teal font-medium">Proposed: {proposedScore.toFixed(2)}</span>
+								<span className={`px-1.5 py-px rounded-full ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
+									Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
+								</span>
+							</div>
+						</div>
+	);
+}
+
+function TurnoverGauge({ turnover }: { turnover: number }) {
+	const cx = 100;
+	const cy = 100;
+	const r = 80;
+	const startAngle = Math.PI;
+	const angle = Math.PI - (Math.min(turnover, 100) / 100) * Math.PI;
+
+	function arcPath(angleEnd: number): string {
+		const x1 = cx + r * Math.cos(startAngle);
+		const y1 = cy - r * Math.sin(startAngle);
+		const x2 = cx + r * Math.cos(angleEnd);
+		const y2 = cy - r * Math.sin(angleEnd);
+		const largeArc = 0;
+		const sweep = angleEnd > startAngle ? 0 : 1;
+		return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} ${sweep} ${x2} ${y2}`;
+	}
+
+	const fillArc = arcPath(angle);
+	const dotX = cx + r * Math.cos(angle);
+	const dotY = cy - r * Math.sin(angle);
+
+	return (
+		<div className="rounded border border-border bg-bg-elevated p-4 flex flex-col">
+			<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
+				<LabelWithTooltip label="Rebalance Turnover" />
 			</div>
-			<div className="flex items-center justify-center gap-3 mt-1 text-[11px] font-mono">
-				<span className="text-text-dim">Current: {currentScore.toFixed(2)}</span>
-				<span className="text-text-dim">→</span>
-				<span className="text-teal font-medium">Proposed: {proposedScore.toFixed(2)}</span>
-				<span className={`px-1.5 py-px rounded-full ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
-					Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
-				</span>
+			<div className="relative flex flex-col items-center flex-1 justify-center">
+				<svg viewBox="0 0 200 120" className="w-full max-w-[240px] mx-auto">
+					<path
+						d="M 20 100 A 80 80 0 0 1 180 100"
+						fill="none"
+						stroke="rgba(255,255,255,0.08)"
+						strokeWidth={12}
+						strokeLinecap="round"
+					/>
+					<path
+						d={fillArc}
+						fill="none"
+						stroke="teal"
+						strokeWidth={10}
+						strokeLinecap="round"
+					/>
+					<circle cx={dotX} cy={dotY} r={4} fill="teal" />
+				</svg>
+				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-2 flex flex-col items-center">
+					<span className="text-3xl font-mono font-bold text-teal">{turnover.toFixed(1)}%</span>
+					<span className="text-[10px] text-text-dim mt-0.5">Cost to execute</span>
+				</div>
 			</div>
 		</div>
 	);
@@ -258,7 +311,6 @@ export function RedesignProposalModal({
 	const snapshotItems = [
 		{ label: "Positions", current: currentCount, proposed: proposedCount, unit: "", showProposed: true },
 		{ label: "Max Position %", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
-		{ label: "Rebalance Turnover", current: turnover, proposed: turnover, unit: "%", showProposed: false },
 		{ label: "Sectors", current: currentSectorCount, proposed: proposedSectorCount, unit: "", showProposed: true },
 		{ label: "Concentration", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
 	];
@@ -319,12 +371,12 @@ export function RedesignProposalModal({
 							<div className="space-y-6">
 								{/* Proposed Allocation Table */}
 								<div className="rounded border border-border overflow-hidden">
-									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_80px_1fr] gap-2">
+									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_100px_1fr] gap-3">
 										<span>Ticker</span>
 										<span className="text-right">Current</span>
 										<span className="text-right">Proposed</span>
 										<span className="text-right">Delta</span>
-										<span>Rationale</span>
+										<span className="pl-4">Rationale</span>
 									</div>
 									{rows.length > 0 ? (
 										rows.map((row, i) => {
@@ -332,7 +384,7 @@ export function RedesignProposalModal({
 											return (
 												<div key={i}>
 													<div
-														className={`grid grid-cols-[80px_100px_100px_80px_1fr] gap-2 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
+														className={`grid grid-cols-[80px_100px_100px_100px_1fr] gap-3 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
 													>
 														<span className="truncate font-medium text-text">
 															{row.ticker}
@@ -364,67 +416,61 @@ export function RedesignProposalModal({
 											);
 										})
 									) : (
-										<div className="px-4 py-4 text-[12px] font-mono text-text-dim italic grid grid-cols-[80px_100px_100px_80px_1fr] gap-2">
+										<div className="px-4 py-4 text-[12px] font-mono text-text-dim italic grid grid-cols-[80px_100px_100px_100px_1fr] gap-3">
 											No proposed actions available.
 										</div>
 									)}
 								</div>
 
-								{/* Sector Re-allocation Bars */}
-								{sectorExposure && (
-									<div className="rounded border border-border bg-bg-elevated p-5">
-										<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
-											Sector Re-allocation
-										</div>
-										<div className="space-y-1">
-											{(() => {
-												const allSectorKeys = Array.from(new Set([
-													...Object.keys(sectorExposure.current ?? {}),
-													...Object.keys(sectorExposure.proposed ?? {}),
-												]));
-												const sectors = allSectorKeys.map((sector) => ({
-													sector,
-													current: sectorExposure.current?.[sector] ?? 0,
-													proposed: sectorExposure.proposed?.[sector] ?? 0,
-												}));
-												if (sectors.length === 0) return null;
-												sectors.sort((a, b) => Math.max(b.current, b.proposed) - Math.max(a.current, a.proposed));
-												return sectors.map((s) => {
-													const delta = s.proposed - s.current;
-													const maxBar = Math.max(s.current, s.proposed, 1);
-													const currentW = (s.current / maxBar) * 100;
-													const proposedW = (s.proposed / maxBar) * 100;
-													return (
-														<div key={s.sector} className="flex items-center gap-3">
-															<span className="w-24 shrink-0 text-[11px] font-mono text-text-dim truncate">{s.sector}</span>
-															<div className="flex-1 flex items-center gap-2">
-																<div className="flex-1 h-2 bg-bg-card rounded overflow-hidden">
-																	<div
-																		className="h-full bg-[rgba(255,255,255,0.15)]"
-																		style={{ width: `${currentW}%` }}
-																	/>
-																</div>
-																<span className="text-[10px] font-mono text-text-dim w-8 text-right">{s.current.toFixed(1)}%</span>
-																<span className={`text-[10px] font-mono w-8 text-center ${
-																	delta >= 0 ? "text-green" : "text-red"
-																}`}>
-																	{delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
-																</span>
-																<div className="flex-1 h-2 bg-bg-card rounded overflow-hidden">
-																	<div
-																		className="h-full bg-teal"
-																		style={{ width: `${proposedW}%` }}
-																	/>
-																</div>
-																<span className="text-[10px] font-mono text-teal w-8 text-right">{s.proposed.toFixed(1)}%</span>
-															</div>
-														</div>
-													);
-												});
-											})()}
-										</div>
+							{/* Sector Re-allocation Bars */}
+							{sectorExposure && (
+								<div className="rounded border border-border bg-bg-elevated p-5">
+									<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
+										Sector Re-allocation
 									</div>
-								)}
+									<div className="space-y-3">
+										{(() => {
+											const allSectorKeys = Array.from(new Set([
+												...Object.keys(sectorExposure.current ?? {}),
+												...Object.keys(sectorExposure.proposed ?? {}),
+											]));
+											const sectors = allSectorKeys.map((sector) => ({
+												sector,
+												current: sectorExposure.current?.[sector] ?? 0,
+												proposed: sectorExposure.proposed?.[sector] ?? 0,
+											}));
+											if (sectors.length === 0) return null;
+											sectors.sort((a, b) => Math.max(b.current, b.proposed) - Math.max(a.current, a.proposed));
+											return sectors.map((s) => {
+												const delta = s.proposed - s.current;
+												return (
+													<div key={s.sector} className="flex items-center gap-3">
+														<span className="w-24 shrink-0 text-[11px] font-mono text-text-dim truncate">{s.sector}</span>
+														<div className="flex-1 flex items-center gap-2">
+															<div className="flex-1 h-2 bg-bg-card rounded overflow-hidden relative">
+																<div
+																	className="h-full bg-teal"
+																	style={{ width: `${Math.min(s.proposed, 100)}%` }}
+																/>
+																<div
+																	className="absolute top-0 h-full w-px bg-white/70"
+																	style={{ left: `${Math.min(s.current, 100)}%` }}
+																/>
+															</div>
+															<span className={`text-[10px] font-mono w-8 text-right ${
+																delta >= 0 ? "text-green" : "text-red"
+															}`}>
+																{delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
+															</span>
+															<span className="text-[10px] font-mono text-teal w-8 text-right">{s.proposed.toFixed(1)}%</span>
+														</div>
+													</div>
+												);
+											});
+										})()}
+									</div>
+								</div>
+							)}
 
 								{/* Snapshot Cards */}
 								<div className="grid grid-cols-2 gap-3">
@@ -449,15 +495,21 @@ export function RedesignProposalModal({
 									))}
 								</div>
 
-								{/* Risk Score Gauge */}
+							{/* Risk Score + Turnover Gauges */}
+							<div className="grid grid-cols-2 gap-3">
 								{(() => {
 									if (!riskScoreLine) {
-										if (!riskMetrics) return null;
-										return (
-											<div className="text-[11px] font-mono text-text-dim">
-												<LabelWithTooltip label="Risk Score" />: <span className="text-text-muted">N/A</span>
-											</div>
-										);
+										if (!riskMetrics) {
+											return (
+												<div className="rounded border border-border bg-bg-elevated p-4 h-full flex flex-col">
+													<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
+														<LabelWithTooltip label="Risk Score" />
+													</div>
+													<div className="text-[11px] font-mono text-text-muted flex-1 flex items-center justify-center">N/A</div>
+												</div>
+											);
+										}
+										return null;
 									}
 									const { currentScore, proposedScore, delta, improved } = riskScoreLine;
 									return (
@@ -469,6 +521,8 @@ export function RedesignProposalModal({
 										/>
 									);
 								})()}
+								<TurnoverGauge turnover={turnover} />
+							</div>
 
 								{/* Proposal Summary Bullets */}
 								{proposal_summary && (

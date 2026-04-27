@@ -570,6 +570,26 @@
 
 ---
 
+## UX Fixes — Delta→Rationale spacing, Single-bar sectors, Turnover gauge (4/27/2026)
+
+**Description:** User requested three UX improvements for the Proposal tab of the Portfolio Redesign Proposal modal.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - **Delta→Rationale spacing fix:** Table header grid changed from `grid-cols-[80px_100px_100px_80px_1fr] gap-2` to `grid-cols-[80px_100px_100px_100px_1fr] gap-3` with `pl-4` on Rationale column. Row grid and empty state grids updated to match. Visual separation between Delta and Rationale restored.
+  - **Single-bar sector reallocation:** Replaced dual horizontal bars per row with one unified bar. Teal fill represents *proposed* percentage (absolute 0-100 scale). White vertical line marker at *current* percentage. Removed current label on left; only delta badge (green/red) and proposed percentage on right remain. Reduced row gap from `space-y-1` to `space-y-3` for breathing room.
+  - **Turnover gauge next to Risk Score:** Removed Rebalance Turnover from snapshot card grid (was a single "Current" value, semantically broken). Created new `TurnoverGauge` component — semicircular SVG gauge identical visual style to `RiskScoreGauge`. Renders turnover as a single hero metric: teal fill arc, dot marker, large center number (`turnover.toFixed(1)%`), subtitle "Cost to execute". Risk Score gauge and Turnover gauge now sit side-by-side in a `grid-cols-2 gap-3` row. Both gauges use `h-full flex flex-col` for equal height. `RiskScoreGauge` wrapper updated to `flex flex-col` for match.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- Turnover gauge caps at 100% (`Math.min(turnover, 100)`). If turnover exceeds 100%, marker stays at arc end; the center number still shows exact value.
+- Single-bar sector rows no longer show current % text. User can infer it from the white marker position on the bar.
+
+---
+
 ## Task — Fix Proposal Tab tooltip hover target (4/27/2026)
 
 **Description:** Proposal tab tooltips did not appear reliably because `LabelWithTooltip` used the native `title` attribute only on the tiny `?` button.
