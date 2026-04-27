@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useState } from "react";
 
 interface StressResult {
 	scenario: string;
@@ -371,6 +372,28 @@ interface ScenarioComparison {
 	delta_pp: number;
 }
 
+function StressTooltip({ label, tip }: { label: string; tip: string }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<span className="inline-flex cursor-help items-center gap-1"
+						style={{ borderBottom: "none" }}
+					/>
+				}
+			>
+				<span className="border-b border-dashed border-text-dim/40">{label}</span>
+			</TooltipTrigger>
+			<TooltipContent
+				side="top"
+				className="max-w-[220px] border border-border bg-bg-elevated text-[11px] font-mono leading-snug text-text shadow-lg"
+			>
+				{tip}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
 function UnifiedStressBars({
 	stressResults,
 	scenarioComparisons,
@@ -378,6 +401,8 @@ function UnifiedStressBars({
 	stressResults: StressResult[];
 	scenarioComparisons: ScenarioComparison[];
 }) {
+	const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
 	// Build a map for recovery_days lookup
 	const recoveryMap = new Map<string, number | null>();
 	for (const r of stressResults) {
@@ -387,11 +412,21 @@ function UnifiedStressBars({
 	return (
 		<div>
 			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[minmax(180px,1fr)_90px_90px_90px_100px] gap-4 border-b border-border">
-				<span title="Historical stress event name">Scenario</span>
-				<span className="text-right" title="Drawdown under current portfolio allocation">Current</span>
-				<span className="text-right" title="Drawdown under proposed portfolio allocation">Proposed</span>
-				<span className="text-right" title="Difference in percentage points. Negative = improvement">Delta</span>
-				<span className="text-right" title="Estimated days to recover to breakeven">Recovery Days</span>
+				<span>
+					<StressTooltip label="Scenario" tip="Historical stress event name. Click a row to expand full name." />
+				</span>
+				<span className="text-right">
+					<StressTooltip label="Current" tip="Drawdown under current portfolio allocation" />
+				</span>
+				<span className="text-right">
+					<StressTooltip label="Proposed" tip="Drawdown under proposed portfolio allocation" />
+				</span>
+				<span className="text-right">
+					<StressTooltip label="Delta" tip="Difference in percentage points. Negative = improvement" />
+				</span>
+				<span className="text-right">
+					<StressTooltip label="Recovery Days" tip="Estimated days to recover to breakeven" />
+				</span>
 			</div>
 			{scenarioComparisons.map((row, i) => {
 				const currentDd = Math.abs(row.current_drawdown);
@@ -401,23 +436,31 @@ function UnifiedStressBars({
 				const recoveryText = recovery != null ? `${recovery}d` : "—";
 				const isProposedSevere = proposedDd > 15;
 				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-green" : "text-text-muted";
+				const isExpanded = expandedRow === i;
 
 				return (
-					<div
-						key={i}
-						className="grid grid-cols-[minmax(180px,1fr)_90px_90px_90px_100px] gap-4 px-4 py-3 text-[12px] font-mono items-center border-b border-border last:border-0"
-					>
-						<span className="truncate font-medium text-text" title={row.scenario}>
-							{row.scenario}
-						</span>
-						<span className="text-right text-text-dim">-{currentDd.toFixed(1)}%</span>
-						<span className={`text-right font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
-							-{proposedDd.toFixed(1)}%
-						</span>
-						<span className={`text-right font-semibold ${deltaColor}`}>
-							{delta > 0 ? "+" : ""}{delta.toFixed(1)}pp
-						</span>
-						<span className="text-right text-text-muted">{recoveryText}</span>
+					<div key={i} className="border-b border-border last:border-0">
+						<div
+							className="grid grid-cols-[minmax(180px,1fr)_90px_90px_90px_100px] gap-4 px-4 py-3 text-[12px] font-mono items-center cursor-pointer transition-colors hover:bg-bg-elevated/30"
+							onClick={() => setExpandedRow(isExpanded ? null : i)}
+						>
+							<span className={`font-medium text-text ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
+								{row.scenario}
+							</span>
+							<span className="text-right text-text-dim">-{currentDd.toFixed(1)}%</span>
+							<span className={`text-right font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
+								-{proposedDd.toFixed(1)}%
+							</span>
+							<span className={`text-right font-semibold ${deltaColor}`}>
+								{delta > 0 ? "+" : ""}{delta.toFixed(1)}pp
+							</span>
+							<span className="text-right text-text-muted">{recoveryText}</span>
+						</div>
+						{isExpanded && (
+							<div className="px-4 pb-3 text-[11px] font-mono text-text-dim bg-bg-elevated/20">
+								{row.scenario}
+							</div>
+						)}
 					</div>
 				);
 			})}
@@ -627,7 +670,7 @@ export function RiskAnalysisContent({
 				{scenarioComparisons.length > 0 && (
 					<div className="rounded-lg border border-border bg-bg-elevated p-4">
 						<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
-							<span title="Scenario-by-scenario stress test comparing current vs proposed portfolio drawdowns">Stress Scenarios</span>
+							<StressTooltip label="Stress Scenarios" tip="Scenario-by-scenario stress test comparing current vs proposed portfolio drawdowns" />
 						</div>
 						<UnifiedStressBars stressResults={stressResults} scenarioComparisons={scenarioComparisons} />
 					</div>

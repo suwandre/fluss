@@ -672,7 +672,27 @@
 - `npx tsc --noEmit` — clean.
 
 **Gotchas:**
-- `InlineMetricCard` tooltip uses the same nested-span pattern as `LabelWithTooltip` in Proposal tab (`render` prop wrapping label + `?`, underline on child span only).
+- None.
+
+---
+
+## UX Fixes — Stress scenarios tooltips + expandable rows (4/27/2026)
+
+**Description:** Sixth batch — user reported tooltips still not working (native `title` wasn't rendering) and scenario names were truncated.
+
+**Summary:**
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - **Added `StressTooltip` component:** Reusable component wrapping label text in shadcn `Tooltip` (dashed underline + styled portal tooltip). Same visual pattern as Proposal tab `LabelWithTooltip`.
+  - **Replaced all native `title` attributes:** Column headers (Scenario, Current, Proposed, Delta, Recovery Days) and section header now use `StressTooltip` with styled shadcn `TooltipContent`.
+  - **Added `useState` import:** Required for the expandable row state.
+  - **Expandable scenario rows:** Added `expandedRow` state. Clicking a row toggles expansion. When expanded, scenario name shows `whitespace-normal break-words` (full text visible), and a new detail div appears below with the full scenario name repeated in `text-text-dim`.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- Click target is the entire row, not just the scenario name. Hover row gets subtle `bg-bg-elevated/30` highlight.
 
 ---
 
