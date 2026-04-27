@@ -47,10 +47,10 @@ interface RedesignProposalModalProps {
 
 const LABEL_TOOLTIPS: Record<string, string> = {
 	"Positions": "Number of unique holdings in the portfolio.",
-	"Max Position %": "Weight of the single largest holding. Lower = more diversified.",
+	"Position Changes": "New = tickers being added. Exited = tickers being fully sold.",
 	"Rebalance Turnover": "% of portfolio value that must be traded to reach the proposed allocation.",
 	"Sectors": "Number of distinct asset classes / sectors represented.",
-	"Concentration": "Same as Max Position %. Measures portfolio concentration risk.",
+	"Concentration": "Weight of the single largest holding. Lower = more diversified.",
 	"Risk Score": "Composite 0–100 score. Lower = safer. Weights: drawdown (45%), VaR (30%), concentration (25%).",
 	"Proposal Summary": "The agent's own summary of the proposed changes.",
 };
@@ -188,13 +188,8 @@ function RiskScoreGauge({
 					<span className="text-[10px] text-text-dim mt-0.5">Lower is better</span>
 				</div>
 							</div>
-							<div className="flex items-center justify-center gap-3 mt-1 text-[11px] font-mono">
+							<div className="flex items-center justify-center mt-1 text-[11px] font-mono">
 								<span className="text-text-dim">Current: {currentScore.toFixed(2)}</span>
-								<span className="text-text-dim">→</span>
-								<span className="text-teal font-medium">Proposed: {proposedScore.toFixed(2)}</span>
-								<span className={`px-1.5 py-px rounded-full ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
-									Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
-								</span>
 							</div>
 						</div>
 	);
@@ -308,9 +303,14 @@ export function RedesignProposalModal({
 	const currentSectorCount = currentSectorKeys.size || currentCount;
 	const proposedSectorCount = proposedSectorKeys.size || proposedCount;
 
+	// Position changes
+	const proposedTickerSet = new Set((proposed_actions ?? []).map(a => a.ticker.toUpperCase()));
+	const newPositions = (proposed_actions ?? []).filter(a => a.target_pct > 0 && !(currentWeightMap.get(a.ticker.toUpperCase()) ?? 0)).length;
+	const exitedPositions = currentAllocations.filter(c => c.weight > 0 && !proposedTickerSet.has(c.ticker.toUpperCase())).length;
+
 	const snapshotItems = [
 		{ label: "Positions", current: currentCount, proposed: proposedCount, unit: "", showProposed: true },
-		{ label: "Max Position %", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
+		{ label: "Position Changes", current: newPositions, proposed: exitedPositions, unit: "", showProposed: true },
 		{ label: "Sectors", current: currentSectorCount, proposed: proposedSectorCount, unit: "", showProposed: true },
 		{ label: "Concentration", current: currentMaxPos, proposed: proposedMaxPos, unit: "%", showProposed: true },
 	];
@@ -371,12 +371,12 @@ export function RedesignProposalModal({
 							<div className="space-y-6">
 								{/* Proposed Allocation Table */}
 								<div className="rounded border border-border overflow-hidden">
-									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_100px_1fr] gap-3">
+									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_100px_1fr] gap-4">
 										<span>Ticker</span>
 										<span className="text-right">Current</span>
 										<span className="text-right">Proposed</span>
 										<span className="text-right">Delta</span>
-										<span className="pl-4">Rationale</span>
+										<span className="pl-6">Rationale</span>
 									</div>
 									{rows.length > 0 ? (
 										rows.map((row, i) => {
@@ -384,7 +384,7 @@ export function RedesignProposalModal({
 											return (
 												<div key={i}>
 													<div
-														className={`grid grid-cols-[80px_100px_100px_100px_1fr] gap-3 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
+														className={`grid grid-cols-[80px_100px_100px_100px_1fr] gap-4 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
 													>
 														<span className="truncate font-medium text-text">
 															{row.ticker}
@@ -416,7 +416,7 @@ export function RedesignProposalModal({
 											);
 										})
 									) : (
-										<div className="px-4 py-4 text-[12px] font-mono text-text-dim italic grid grid-cols-[80px_100px_100px_100px_1fr] gap-3">
+										<div className="px-4 py-4 text-[12px] font-mono text-text-dim italic grid grid-cols-[80px_100px_100px_100px_1fr] gap-4">
 											No proposed actions available.
 										</div>
 									)}
@@ -447,16 +447,16 @@ export function RedesignProposalModal({
 													<div key={s.sector} className="flex items-center gap-3">
 														<span className="w-24 shrink-0 text-[11px] font-mono text-text-dim truncate">{s.sector}</span>
 														<div className="flex-1 flex items-center gap-2">
-															<div className="flex-1 h-2 bg-bg-card rounded overflow-hidden relative">
-																<div
-																	className="h-full bg-teal"
-																	style={{ width: `${Math.min(s.proposed, 100)}%` }}
-																/>
-																<div
-																	className="absolute top-0 h-full w-px bg-white/70"
-																	style={{ left: `${Math.min(s.current, 100)}%` }}
-																/>
-															</div>
+																<div className="flex-1 h-2 bg-bg-card rounded overflow-hidden relative">
+																	<div
+																		className="h-full bg-[rgba(255,255,255,0.15)]"
+																		style={{ width: `${Math.min(s.current, 100)}%` }}
+																	/>
+																	<div
+																		className="absolute top-0 h-full bg-teal"
+																		style={{ left: 0, width: `${Math.min(s.proposed, 100)}%` }}
+																	/>
+																</div>
 															<span className={`text-[10px] font-mono w-8 text-right ${
 																delta >= 0 ? "text-green" : "text-red"
 															}`}>
@@ -479,24 +479,25 @@ export function RedesignProposalModal({
 											<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
 												<LabelWithTooltip label={item.label} />
 											</div>
-											<div className="space-y-1">
-												<div className="flex items-center justify-between">
-													<span className="text-[10px] font-mono text-text-muted">Current</span>
-													<span className="text-[11px] font-mono text-text">{typeof item.current === "number" ? `${item.current.toFixed(item.unit === "%" ? 1 : 0)}${item.unit}` : "N/A"}</span>
-												</div>
-												{item.showProposed && (
-													<div className="flex items-center justify-between">
-														<span className="text-[10px] font-mono text-teal/60">Proposed</span>
-														<span className="text-[11px] font-mono text-teal font-medium">{typeof item.proposed === "number" ? `${item.proposed.toFixed(item.unit === "%" ? 1 : 0)}${item.unit}` : "N/A"}</span>
-													</div>
-												)}
-											</div>
+								<div className="space-y-1">
+									<div className="flex items-center justify-between">
+										<span className="text-[10px] font-mono text-text-muted">{item.label === "Position Changes" ? "New" : "Current"}</span>
+										<span className="text-[11px] font-mono text-text">{typeof item.current === "number" ? `${item.current.toFixed(item.unit === "%" ? 1 : 0)}${item.unit}` : "N/A"}</span>
+									</div>
+									{item.showProposed && (
+										<div className="flex items-center justify-between">
+											<span className="text-[10px] font-mono text-teal/60">{item.label === "Position Changes" ? "Exited" : "Proposed"}</span>
+											<span className="text-[11px] font-mono text-teal font-medium">{typeof item.proposed === "number" ? `${item.proposed.toFixed(item.unit === "%" ? 1 : 0)}${item.unit}` : "N/A"}</span>
+										</div>
+									)}
+								</div>
 										</div>
 									))}
 								</div>
 
 							{/* Risk Score + Turnover Gauges */}
 							<div className="grid grid-cols-2 gap-3">
+								<TurnoverGauge turnover={turnover} />
 								{(() => {
 									if (!riskScoreLine) {
 										if (!riskMetrics) {
@@ -521,7 +522,6 @@ export function RedesignProposalModal({
 										/>
 									);
 								})()}
-								<TurnoverGauge turnover={turnover} />
 							</div>
 
 								{/* Proposal Summary Bullets */}
