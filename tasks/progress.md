@@ -628,3 +628,31 @@
 **Gotchas:**
 - Turnover is capped at 100% in arc math but center number shows exact.
 - `Position Changes` uses label check rather than generic subLabels prop to avoid typing complexity.
+
+---
+
+## UX Fixes — Proposal/Risk tab round 3 (4/27/2026)
+
+**Description:** Third batch of improvements. Seven items: tooltip underline fix, sector reallocation tooltip, risk analysis underline fix, VaR gauge → comparison card, merged stress scenarios, Position Changes rename, Concentration → Max Position %.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`:
+  - **Tooltip underline fix:** `LabelWithTooltip` now wraps label text + `?` in `inline-flex`, but the dashed underline `border-b` is applied to a child span that only contains the label text. The `?` icon sits outside the underline. Hover target remains the full label + icon via `TooltipTrigger render`.
+  - **Sector Re-allocation tooltip:** Added `"Sector Re-allocation"` entry to `LABEL_TOOLTIPS` and wrapped the section label with `<LabelWithTooltip>`.
+  - **Removed duplicate Position Changes key:** Fixed accidental duplicate `"Position Changes"` key in `LABEL_TOOLTIPS`.
+  - **Concentration → Max Position %:** Renamed card label back to `"Max Position %"` to avoid confusion with Risk tab "Concentration Score". Removed old `"Concentration"` tooltip entry.
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - **Underline fix on metric cards:** `InlineMetricCard` label now applies `border-b border-dashed border-text-dim/40` to a child span containing only the label text. The `?` icon sits outside the underline.
+  - **VaR 95% as comparison card:** Replaced the centered `VaRGauge` component with an `InlineMetricCard` (Current / Proposed / Delta). Gauge and needle removed; card sits alongside Sharpe, Avg Stress Drawdown, Peak-to-Trough in the same 4-column grid (dropped to `sm:grid-cols-2 lg:grid-cols-4`). Actually we kept `grid-cols-3` and added VaR as a 4th card in a new row.
+  - **Unified Stress Scenarios:** Merged `StressBars` + `ScenarioComparisonTable` into a single `UnifiedStressBars` component. Each row shows: event name | dual-fill bar (muted white = current, teal/red = proposed) | current drawdown text | proposed drawdown text | delta in pp | recovery days. Removed standalone "Scenario Comparison" section entirely.
+  - **Removed standalone Scenario Comparison:** Section deleted; all data now rendered inside the unified stress block.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- `UnifiedStressBars` uses the `stressResults` array to look up `recovery_days` by matching `scenario` name against `scenario_comparisons` entries.
+- Tooltip underline fix uses a nested span pattern because the `render` prop on `TooltipTrigger` only accepts a single-element render tree.
+
+---
