@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 interface StressResult {
@@ -394,6 +395,12 @@ function StressTooltip({ label, tip }: { label: string; tip: string }) {
 	);
 }
 
+function parseScenario(full: string): { name: string; period: string } {
+	const m = full.match(/^(.+?)\s*\((.+)\)\s*$/);
+	if (m) return { name: m[1].trim(), period: m[2].trim() };
+	return { name: full.trim(), period: "" };
+}
+
 function UnifiedStressBars({
 	stressResults,
 	scenarioComparisons,
@@ -401,9 +408,8 @@ function UnifiedStressBars({
 	stressResults: StressResult[];
 	scenarioComparisons: ScenarioComparison[];
 }) {
-	const [expandedRow, setExpandedRow] = useState<number | null>(null);
+	const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
-	// Build a map for recovery_days lookup
 	const recoveryMap = new Map<string, number | null>();
 	for (const r of stressResults) {
 		recoveryMap.set(r.scenario, r.recovery_days);
@@ -411,9 +417,12 @@ function UnifiedStressBars({
 
 	return (
 		<div>
-			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[minmax(180px,1fr)_90px_90px_90px_100px] gap-4 border-b border-border">
+			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[minmax(120px,1fr)_110px_80px_80px_80px_80px] gap-3 border-b border-border">
 				<span>
-					<StressTooltip label="Scenario" tip="Historical stress event name. Click a row to expand full name." />
+					<StressTooltip label="Scenario" tip="Historical stress event name." />
+				</span>
+				<span>
+					<StressTooltip label="Period" tip="Date range of the historical stress event." />
 				</span>
 				<span className="text-right">
 					<StressTooltip label="Current" tip="Drawdown under current portfolio allocation" />
@@ -436,17 +445,31 @@ function UnifiedStressBars({
 				const recoveryText = recovery != null ? `${recovery}d` : "—";
 				const isProposedSevere = proposedDd > 15;
 				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-green" : "text-text-muted";
-				const isExpanded = expandedRow === i;
+				const isExpanded = expandedRows.has(i);
+				const { name, period } = parseScenario(row.scenario);
 
 				return (
 					<div key={i} className="border-b border-border last:border-0">
 						<div
-							className="grid grid-cols-[minmax(180px,1fr)_90px_90px_90px_100px] gap-4 px-4 py-3 text-[12px] font-mono items-center cursor-pointer transition-colors hover:bg-bg-elevated/30"
-							onClick={() => setExpandedRow(isExpanded ? null : i)}
+							className="grid grid-cols-[minmax(120px,1fr)_110px_80px_80px_80px_80px] gap-3 px-4 py-3 text-[12px] font-mono items-center cursor-pointer transition-colors hover:bg-bg-elevated/30"
+							onClick={() =>
+								setExpandedRows((prev) => {
+									const next = new Set(prev);
+									if (next.has(i)) next.delete(i);
+									else next.add(i);
+									return next;
+								})
+							}
 						>
-							<span className={`font-medium text-text ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
-								{row.scenario}
+							<span className="flex items-center gap-2 font-medium text-text">
+								<ChevronDown
+									className={`w-3.5 h-3.5 text-text-muted transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`}
+								/>
+								<span className={isExpanded ? "whitespace-normal break-words" : "truncate"}>
+									{name}
+								</span>
 							</span>
+							<span className="text-text-dim truncate">{period}</span>
 							<span className="text-right text-text-dim">-{currentDd.toFixed(1)}%</span>
 							<span className={`text-right font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
 								-{proposedDd.toFixed(1)}%
@@ -456,11 +479,6 @@ function UnifiedStressBars({
 							</span>
 							<span className="text-right text-text-muted">{recoveryText}</span>
 						</div>
-						{isExpanded && (
-							<div className="px-4 pb-3 text-[11px] font-mono text-text-dim bg-bg-elevated/20">
-								{row.scenario}
-							</div>
-						)}
 					</div>
 				);
 			})}

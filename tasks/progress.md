@@ -717,6 +717,30 @@
 
 ---
 
+## UX Fix — Risk Analysis Stress Scenario Table Improvements (4/27/2026)
+
+**Description:** User reported two issues in Risk Analysis tab stress scenarios: (1) expanded rows showed duplicate text (header + subheader were identical), and user wanted name and timestamp separated into columns; (2) accordion behavior forced only one open row at a time, which is poor UX for comparative analysis.
+
+**Summary:**
+- `src/components/agents/risk-analysis-modal.tsx` (`UnifiedStressBars`):
+  - Added `parseScenario(full)` helper: regex-splits "Name (Period)" into `{ name, period }`.
+  - Added new `Period` column (110px) between Scenario and Current. Scenario column shows clean event name; period shown as muted text in its own column.
+  - Removed the duplicate expanded `<div>` that repeated the full scenario string. Expanded state now only controls name wrapping (`whitespace-normal` vs `truncate`) and chevron rotation.
+  - Replaced single `expandedRow: number | null` with `expandedRows: Set<number>`. Clicking a row toggles its own expand state independently; multiple rows can stay open simultaneously.
+  - Added `ChevronDown` icon per row (via `lucide-react` import). Rotates 180° when expanded. Sits on the left of the scenario name, making affordance explicit.
+  - Updated grid columns to `[minmax(120px,1fr)_110px_80px_80px_80px_80px]` with `gap-3` to accommodate the new Period column.
+  - Added `StressTooltip` header for the new Period column.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- `parseScenario` uses a greedy `.+?` match followed by `\s*\((.+)\)\s*$`. If a scenario name contains multiple paired parentheses, the regex stops at the first `(`.
+- No changes needed to `redesign-proposal-modal.tsx` or any other file.
+
+---
+
 ## UX Fixes — Stress scenarios final polish (4/27/2026)
 
 **Description:** Fifth batch of improvements for the Risk Analysis tab stress scenarios.
