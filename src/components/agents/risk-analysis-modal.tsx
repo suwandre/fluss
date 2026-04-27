@@ -384,14 +384,9 @@ function UnifiedStressBars({
 		recoveryMap.set(r.scenario, r.recovery_days);
 	}
 
-	const maxDrawdown = Math.max(
-		...scenarioComparisons.map((c) => Math.max(Math.abs(c.current_drawdown), Math.abs(c.proposed_drawdown))),
-		1
-	);
-
 	return (
 		<div>
-			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-2 grid grid-cols-[120px_1fr_60px_60px_60px_40px] gap-3 border-b border-border">
+			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[120px_80px_80px_80px_60px] gap-4 border-b border-border">
 				<span>Scenario</span>
 				<span className="text-right">Current</span>
 				<span className="text-right">Proposed</span>
@@ -402,45 +397,27 @@ function UnifiedStressBars({
 				const currentDd = Math.abs(row.current_drawdown);
 				const proposedDd = Math.abs(row.proposed_drawdown);
 				const delta = row.delta_pp;
-				const currentW = (currentDd / maxDrawdown) * 100;
-				const proposedW = (proposedDd / maxDrawdown) * 100;
 				const recovery = recoveryMap.get(row.scenario);
 				const recoveryText = recovery != null ? `${recovery}d` : "—";
-
 				const isProposedSevere = proposedDd > 15;
-				const barFillColor = isProposedSevere ? "var(--red)" : "var(--amber)";
 				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-teal" : "text-text-muted";
 
 				return (
 					<div
 						key={i}
-						className="grid grid-cols-[120px_1fr_60px_60px_60px_40px] gap-3 px-4 py-2 text-[12px] items-center border-b border-border last:border-0"
+						className="grid grid-cols-[120px_80px_80px_80px_60px] gap-4 px-4 py-3 text-[12px] font-mono items-center border-b border-border last:border-0"
 					>
-						<span className="truncate text-text/80 font-medium" title={row.scenario}>
+						<span className="truncate font-medium text-text" title={row.scenario}>
 							{row.scenario}
 						</span>
-						<div className="flex-1 h-2.5 bg-bg-card rounded-full overflow-hidden relative">
-							<div
-								className="absolute top-0 h-full bg-[rgba(255,255,255,0.15)]"
-								style={{ width: `${Math.min(currentW, 100)}%` }}
-							/>
-							<div
-								className="absolute top-0 h-full rounded-full transition-all duration-700 ease-out"
-								style={{ width: `${Math.min(proposedW, 100)}%`, backgroundColor: barFillColor }}
-							/>
-						</div>
-						<span className="text-right font-mono text-text-dim">
-							-{currentDd.toFixed(1)}%
-						</span>
-						<span className={`text-right font-mono font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
+						<span className="text-right text-text-dim">-{currentDd.toFixed(1)}%</span>
+						<span className={`text-right font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
 							-{proposedDd.toFixed(1)}%
 						</span>
-						<span className={`text-right font-mono font-semibold ${deltaColor}`}>
+						<span className={`text-right font-semibold ${deltaColor}`}>
 							{delta > 0 ? "+" : ""}{delta.toFixed(1)}pp
 						</span>
-						<span className="text-right font-mono text-text-muted">
-							{recoveryText}
-						</span>
+						<span className="text-right text-text-muted">{recoveryText}</span>
 					</div>
 				);
 			})}

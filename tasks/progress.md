@@ -675,3 +675,24 @@
 - `InlineMetricCard` tooltip uses the same nested-span pattern as `LabelWithTooltip` in Proposal tab (`render` prop wrapping label + `?`, underline on child span only).
 
 ---
+
+## UX Fixes — Stress scenarios simplified to clean table (4/27/2026)
+
+**Description:** Stress scenario bars were misaligned with grid headers and the bars were too small for meaningful comparison. Replaced with a flat table matching the Proposal tab's ticker table format.
+
+**Summary:**
+- `src/components/agents/risk-analysis-modal.tsx`:
+  - Removed the SVG dual-fill bars from `UnifiedStressBars`.
+  - Replaced grid columns from `[120px_1fr_60px_60px_60px_40px]` to `[120px_80px_80px_80px_60px]` with `gap-4`.
+  - Header row and data rows now both use `font-mono`, consistent `px-4 py-3` spacing, and `border-b` separators.
+  - Each row: Scenario | Current | Proposed | Delta | Recovery days. No visual bars.
+  - Removed unused `maxDrawdown` calculation and bar-related variables.
+
+**Verification:**
+- `bun run build` — successful (0 errors).
+- `npx tsc --noEmit` — clean.
+
+**Gotchas:**
+- None.
+
+---
