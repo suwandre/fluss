@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronDown } from "lucide-react";
+
 import { useState } from "react";
 
 interface StressResult {
@@ -461,15 +461,10 @@ function UnifiedStressBars({
 								})
 							}
 						>
-							<span className="flex items-center gap-2 font-medium text-text">
-								<ChevronDown
-									className={`w-3.5 h-3.5 text-text-muted transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`}
-								/>
-								<span className={isExpanded ? "whitespace-normal break-words" : "truncate"}>
-									{name}
-								</span>
-							</span>
-							<span className="text-text-dim truncate">{period}</span>
+							<span className={`font-medium text-text ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
+							{name}
+						</span>
+							<span className={`text-text-dim ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>{period}</span>
 							<span className="text-right text-text-dim">-{currentDd.toFixed(1)}%</span>
 							<span className={`text-right font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
 								-{proposedDd.toFixed(1)}%
