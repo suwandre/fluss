@@ -805,3 +805,24 @@
 - This bug predates the unused-code cleanup commit; the cleanup did not delete the proposal row logic.
 
 ---
+
+## Fix — Proposal source-of-truth alignment (4/29/2026)
+
+**Description:** Proposal table and sector reallocation used different interpretations of `proposed_actions`. The table treated omitted current holdings as exited positions, while sector reallocation normalized only the partial action list.
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`: Derive displayed proposal rows from the same semantics as `riskStep`: start with current holdings, apply actions, carry omitted holdings forward, then normalize the final proposed portfolio.
+- Current holdings only show `0%` proposed when the agent emits a `remove` or zero-target action.
+- Added fallback rationale text for unchanged carried-forward rows and action rows without rationale.
+- `src/app/page.tsx`: Build sector exposure from the derived final proposed portfolio instead of raw action rows.
+- `src/hooks/use-sector-exposure.ts`: Removed hidden sector normalization so sector totals reflect the weights passed in.
+
+**Verification:**
+- `bunx tsc --noEmit` — clean.
+- `bun run build` — successful.
+- `bun run lint` — still fails on the known pre-existing lint debt recorded in earlier entries.
+
+**Gotchas:**
+- The real source of truth is now the derived final proposed portfolio. Raw `target_pct` from an action is an input to that derivation, not necessarily the final displayed percentage after normalization.
+
+---

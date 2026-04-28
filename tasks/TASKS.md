@@ -345,3 +345,4 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 
 - [x] Remove dead Risk/Sector modal code, obsolete one-off scripts/assets, and unused dependencies.
 - [x] Fix proposal table so current-only exited holdings render as `0%` proposed instead of disappearing.
+- [x] Align proposal table and sector reallocation to the same final proposed portfolio source of truth.

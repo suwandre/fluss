@@ -7,6 +7,7 @@ import { useState } from "react";
 import { RiskAnalysisContent } from "./risk-analysis-modal";
 
 interface ProposedAction {
+	action?: "reduce" | "increase" | "replace" | "add" | "remove";
 	ticker: string;
 	target_pct: number;
 	rationale?: string;
@@ -284,14 +285,33 @@ export function RedesignProposalModal({
 	for (const c of currentAllocations) allTickers.add(c.ticker.toUpperCase());
 	for (const ticker of proposedActionMap.keys()) allTickers.add(ticker);
 
+	const proposedWeightMap = new Map<string, number>();
+	for (const ticker of allTickers) {
+		const action = proposedActionMap.get(ticker);
+		const current = currentWeightMap.get(ticker) ?? 0;
+		const target = action
+			? action.action === "remove"
+				? 0
+				: Math.max(action.target_pct, 0)
+			: current;
+		proposedWeightMap.set(ticker, target);
+	}
+	const proposedTotalWeight = Array.from(proposedWeightMap.values()).reduce(
+		(sum, weight) => sum + weight,
+		0,
+	);
+	const proposedScale = proposedTotalWeight > 0 ? 100 / proposedTotalWeight : 1;
+
 	const rows = Array.from(allTickers).map((ticker) => {
 		const action = proposedActionMap.get(ticker);
 		const current = currentWeightMap.get(ticker) ?? 0;
-		const target_pct = action?.target_pct ?? 0;
+		const target_pct = (proposedWeightMap.get(ticker) ?? 0) * proposedScale;
 		const delta = target_pct - current;
 		return {
 			ticker: action?.ticker ?? ticker,
 			target_pct,
+			action: action?.action,
+			hasAction: Boolean(action),
 			rationale: action?.rationale,
 			current,
 			delta,
@@ -300,19 +320,11 @@ export function RedesignProposalModal({
 
 	// Snapshot card computations
 	const currentCount = currentAllocations.length;
-	const proposedCount = (proposed_actions ?? []).filter((a) => a.target_pct > 0).length;
+	const proposedCount = rows.filter((row) => row.target_pct > 0).length;
 	const currentMaxPos = currentAllocations.length > 0 ? Math.max(...currentAllocations.map(c => c.weight)) : 0;
-	const proposedMaxPos = (proposed_actions ?? []).length > 0 ? Math.max(...(proposed_actions ?? []).map(a => a.target_pct)) : 0;
+	const proposedMaxPos = rows.length > 0 ? Math.max(...rows.map((row) => row.target_pct)) : 0;
 	// Turnover
-	const currentMap = new Map<string, number>();
-	for (const c of currentAllocations) currentMap.set(c.ticker.toUpperCase(), c.weight);
-	let turnoverSum = 0;
-	for (const t of allTickers) {
-		const cur = currentMap.get(t) ?? 0;
-		const prop = proposedActionMap.get(t)?.target_pct ?? 0;
-		turnoverSum += Math.abs(prop - cur);
-	}
-	const turnover = turnoverSum / 2;
+	const turnover = rows.reduce((sum, row) => sum + Math.abs(row.delta), 0) / 2;
 	// Sectors (use actual sector keys from exposure, fallback to ticker count)
 	const currentSectorKeys = new Set(Object.keys(sectorExposure?.current ?? {}));
 	const proposedSectorKeys = new Set(Object.keys(sectorExposure?.proposed ?? {}));
@@ -320,8 +332,8 @@ export function RedesignProposalModal({
 	const proposedSectorCount = proposedSectorKeys.size || proposedCount;
 
 	// Position changes
-	const newPositions = (proposed_actions ?? []).filter(a => a.target_pct > 0 && !(currentWeightMap.get(a.ticker.toUpperCase()) ?? 0)).length;
-	const exitedPositions = currentAllocations.filter(c => c.weight > 0 && !(proposedActionMap.get(c.ticker.toUpperCase())?.target_pct ?? 0)).length;
+	const newPositions = rows.filter((row) => row.current === 0 && row.target_pct > 0).length;
+	const exitedPositions = rows.filter((row) => row.current > 0 && row.target_pct === 0).length;
 
 	const snapshotItems = [
 		{ label: "Positions", current: currentCount, proposed: proposedCount, unit: "", showProposed: true },
@@ -396,6 +408,13 @@ export function RedesignProposalModal({
 									{rows.length > 0 ? (
 										rows.map((row, i) => {
 											const isExpanded = expandedRow === i;
+											const rationale =
+												row.rationale ??
+												(row.hasAction
+													? row.target_pct === 0
+														? "Position removed from the proposed allocation."
+														: "Target allocation changed by this proposal."
+													: "No change proposed; current allocation carried forward.");
 											return (
 												<div key={i}>
 													<div
@@ -424,7 +443,7 @@ export function RedesignProposalModal({
 													</div>
 													{isExpanded && (
 														<div className="px-4 py-2 text-[12px] font-mono text-text-dim bg-bg-elevated/30 border-b border-border">
-															{row.rationale ?? "—"}
+															{rationale}
 														</div>
 													)}
 												</div>

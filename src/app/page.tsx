@@ -31,6 +31,12 @@ interface HistoryRun {
 	output: Record<string, unknown> | null;
 }
 
+type ProposedActionForExposure = {
+	action?: string;
+	ticker: string;
+	target_pct: number;
+};
+
 export default function Home() {
 	const [holdingsInputOpen, setHoldingsInputOpen] = useState(false);
 	const [redesignModalOpen, setRedesignModalOpen] = useState(false);
@@ -241,29 +247,6 @@ export default function Home() {
 		};
 	}, [workflowOutput]);
 
-	// Extract proposed actions from workflow redesign output
-	const proposedActions = useMemo(() => {
-		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
-		if (!redesign || !Array.isArray(redesign.proposed_actions)) return null;
-		const TICKER_ASSET_CLASS: Record<string, string> = {
-			BTC: "crypto",
-			ETH: "crypto",
-			QQQ: "equity",
-			SPY: "equity",
-			VGK: "equity",
-			AGG: "fixed_income",
-			TLT: "fixed_income",
-			GLD: "commodities",
-			VNQ: "reits",
-		};
-		return (redesign.proposed_actions as { ticker: string; target_pct: number }[]).map((a) => ({
-			ticker: a.ticker,
-			target_pct: a.target_pct,
-			sector: null as string | null,
-			assetClass: TICKER_ASSET_CLASS[a.ticker.toUpperCase()] ?? "equity",
-		}));
-	}, [workflowOutput]);
-
 	// Compute current holdings with sector info from API
 	const currentHoldingsForHeatmap = useMemo(() => {
 		const totalValue = holdingsList.reduce((sum, h) => {
@@ -278,6 +261,61 @@ export default function Home() {
 			assetClass: h.assetClass,
 		}));
 	}, [holdingsList]);
+
+	// Build the final proposed allocation with the same semantics as riskStep:
+	// current portfolio + actions, with omitted current holdings carried forward.
+	const proposedActions = useMemo(() => {
+		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
+		if (!redesign || !Array.isArray(redesign.proposed_actions)) return null;
+		const actions = redesign.proposed_actions as ProposedActionForExposure[];
+		const TICKER_ASSET_CLASS: Record<string, string> = {
+			BTC: "crypto",
+			ETH: "crypto",
+			QQQ: "equity",
+			SPY: "equity",
+			VGK: "equity",
+			AGG: "fixed_income",
+			TLT: "fixed_income",
+			GLD: "commodities",
+			VNQ: "reits",
+		};
+
+		const allocationMap = new Map<string, number>();
+		const metadataMap = new Map<string, { sector: string | null; assetClass: string }>();
+		for (const holding of currentHoldingsForHeatmap) {
+			const ticker = holding.ticker.toUpperCase();
+			allocationMap.set(ticker, holding.weight);
+			metadataMap.set(ticker, {
+				sector: holding.sector ?? null,
+				assetClass: holding.assetClass,
+			});
+		}
+
+		for (const action of actions) {
+			const ticker = action.ticker.toUpperCase();
+			const targetPct = action.action === "remove" ? 0 : Math.max(action.target_pct, 0);
+			allocationMap.set(ticker, targetPct);
+			if (!metadataMap.has(ticker)) {
+				metadataMap.set(ticker, {
+					sector: null,
+					assetClass: TICKER_ASSET_CLASS[ticker] ?? "equity",
+				});
+			}
+		}
+
+		const totalWeight = Array.from(allocationMap.values()).reduce((sum, weight) => sum + weight, 0);
+		const scale = totalWeight > 0 ? 100 / totalWeight : 1;
+
+		return Array.from(allocationMap.entries()).map(([ticker, weight]) => {
+			const metadata = metadataMap.get(ticker);
+			return {
+				ticker,
+				target_pct: weight * scale,
+				sector: metadata?.sector ?? null,
+				assetClass: metadata?.assetClass ?? TICKER_ASSET_CLASS[ticker] ?? "equity",
+			};
+		});
+	}, [currentHoldingsForHeatmap, workflowOutput]);
 
 	const sectorExposure = useSectorExposure(currentHoldingsForHeatmap, proposedActions);
 

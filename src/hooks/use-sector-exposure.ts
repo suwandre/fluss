@@ -30,14 +30,6 @@ function groupBySector(items: SectorExposureInput[]): Record<string, number> {
     raw[sector] = (raw[sector] || 0) + item.weight;
   }
 
-  // Normalize to 100%
-  const total = Object.values(raw).reduce((a, b) => a + b, 0);
-  if (total > 0) {
-    for (const key of Object.keys(raw)) {
-      raw[key] = (raw[key] / total) * 100;
-    }
-  }
-
   // Transform keys to titleCase
   const groups: Record<string, number> = {};
   for (const [key, value] of Object.entries(raw)) {
