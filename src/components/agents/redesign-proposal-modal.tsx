@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { pnlPercent } from "@/lib/format";
 import { useState } from "react";
 import { RiskAnalysisContent } from "./risk-analysis-modal";
 
@@ -56,6 +57,25 @@ const LABEL_TOOLTIPS: Record<string, string> = {
 	"Risk Score": "Composite 0–100 score. Lower = safer. Weights: drawdown (45%), VaR (30%), concentration (25%).",
 	"Proposal Summary": "The agent's own summary of the proposed changes.",
 };
+
+function isRoundedZeroPercent(value: number): boolean {
+	return Math.abs(value).toFixed(1) === "0.0";
+}
+
+function deltaTextClassName(value: number): string {
+	if (isRoundedZeroPercent(value)) return "text-text-dim";
+	return value > 0 ? "text-green" : "text-red";
+}
+
+function proposedTextClassName(delta: number): string {
+	if (isRoundedZeroPercent(delta)) return "text-text-dim";
+	return "text-teal";
+}
+
+function isSameSnapshotValue(current: number, proposed: number, unit: string): boolean {
+	if (unit === "%") return isRoundedZeroPercent(proposed - current);
+	return current === proposed;
+}
 
 function LabelWithTooltip({ label }: { label: string }) {
 	const tooltip = LABEL_TOOLTIPS[label];
@@ -119,6 +139,14 @@ function RiskScoreGauge({
 	delta: number;
 	improved: boolean;
 }) {
+	const isUnchanged = isRoundedZeroPercent(delta);
+	const deltaClassName = isUnchanged
+		? "bg-bg-card text-text-dim"
+		: improved
+			? "bg-green/10 text-green"
+			: "bg-red/10 text-red";
+	const deltaLabel = isUnchanged ? "No change" : improved ? "Improved" : "Worsened";
+	const proposedClassName = isUnchanged ? "text-text-dim" : "text-teal";
 	const maxScore = Math.max(currentScore, proposedScore, 60);
 	const cx = 100;
 	const cy = 100;
@@ -175,19 +203,19 @@ function RiskScoreGauge({
 					<path
 						d={proposedArc}
 						fill="none"
-						stroke="teal"
+						stroke={isUnchanged ? "transparent" : "teal"}
 						strokeWidth={10}
 						strokeLinecap="round"
 					/>
 					{/* Current dot */}
 					<circle cx={currentDotX} cy={currentDotY} r={4} fill="rgba(255,255,255,0.4)" />
 					{/* Proposed dot */}
-					<circle cx={proposedDotX} cy={proposedDotY} r={4} fill="teal" />
+					<circle cx={proposedDotX} cy={proposedDotY} r={4} fill={isUnchanged ? "rgba(255,255,255,0.4)" : "teal"} />
 				</svg>
 				<div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-2 flex flex-col items-center">
-					<span className="text-3xl font-mono font-bold text-teal">{proposedScore.toFixed(1)}</span>
-				<span className={`px-1.5 py-px rounded-full text-[10px] font-mono ${improved ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
-									Δ{delta > 0 ? "+" : ""}{delta.toFixed(2)} {improved ? "Improved" : "Worsened"}
+					<span className={`text-3xl font-mono font-bold ${proposedClassName}`}>{proposedScore.toFixed(1)}</span>
+				<span className={`px-1.5 py-px rounded-full text-[10px] font-mono ${deltaClassName}`}>
+									Δ{isUnchanged ? "0.00" : delta.toFixed(2)} {deltaLabel}
 								</span>
 				</div>
 							</div>
@@ -426,11 +454,11 @@ export function RedesignProposalModal({
 														<span className="text-right text-text-dim">
 															{row.current.toFixed(1)}%
 														</span>
-														<span className="text-right text-teal font-medium">
+														<span className={`text-right font-medium ${proposedTextClassName(row.delta)}`}>
 															{row.target_pct.toFixed(1)}%
 														</span>
-														<span className={`text-right font-semibold ${row.delta > 0 ? "text-green" : row.delta < 0 ? "text-red" : "text-text-dim"}`}>
-															{row.delta > 0 ? "+" : ""}{row.delta.toFixed(1)}%
+														<span className={`text-right font-semibold ${deltaTextClassName(row.delta)}`}>
+															{pnlPercent(row.delta)}
 														</span>
 														<span className="flex items-center justify-center">
 															<button
@@ -477,6 +505,7 @@ export function RedesignProposalModal({
 											sectors.sort((a, b) => Math.max(b.current, b.proposed) - Math.max(a.current, a.proposed));
 											return sectors.map((s) => {
 												const delta = s.proposed - s.current;
+												const isUnchanged = isRoundedZeroPercent(delta);
 												return (
 													<div key={s.sector} className="flex items-center gap-3">
 														<span className="w-24 shrink-0 text-[11px] font-mono text-text-dim truncate">{s.sector}</span>
@@ -487,16 +516,14 @@ export function RedesignProposalModal({
 																		style={{ width: `${Math.min(s.current, 100)}%` }}
 																	/>
 																	<div
-																		className="absolute top-0 h-full bg-teal"
+																		className={`absolute top-0 h-full ${isUnchanged ? "bg-transparent" : "bg-teal"}`}
 																		style={{ left: 0, width: `${Math.min(s.proposed, 100)}%` }}
 																	/>
 																</div>
-															<span className={`text-[10px] font-mono w-8 text-right ${
-																delta >= 0 ? "text-green" : "text-red"
-															}`}>
-																{delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
+															<span className={`text-[10px] font-mono w-8 text-right ${deltaTextClassName(delta)}`}>
+																{pnlPercent(delta)}
 															</span>
-															<span className="text-[10px] font-mono text-teal w-8 text-right">{s.proposed.toFixed(1)}%</span>
+															<span className={`text-[10px] font-mono w-8 text-right ${proposedTextClassName(delta)}`}>{s.proposed.toFixed(1)}%</span>
 														</div>
 													</div>
 												);
@@ -520,8 +547,20 @@ export function RedesignProposalModal({
 									</div>
 									{item.showProposed && (
 										<div className="flex items-center justify-between">
-											<span className="text-[10px] font-mono text-teal/60">{item.label === "Position Changes" ? "Exited" : "Proposed"}</span>
-											<span className="text-[11px] font-mono text-teal font-medium">{typeof item.proposed === "number" ? `${item.proposed.toFixed(item.unit === "%" ? 1 : 0)}${item.unit}` : "N/A"}</span>
+											{(() => {
+												const proposedIsNumber = typeof item.proposed === "number";
+												const currentIsNumber = typeof item.current === "number";
+												const isUnchanged = item.label !== "Position Changes" && currentIsNumber && proposedIsNumber
+													? isSameSnapshotValue(item.current, item.proposed, item.unit)
+													: false;
+												const proposedClassName = isUnchanged ? "text-text-dim" : "text-teal";
+												return (
+													<>
+														<span className={`text-[10px] font-mono ${isUnchanged ? "text-text-muted" : "text-teal/60"}`}>{item.label === "Position Changes" ? "Exited" : "Proposed"}</span>
+														<span className={`text-[11px] font-mono font-medium ${proposedClassName}`}>{proposedIsNumber ? `${item.proposed.toFixed(item.unit === "%" ? 1 : 0)}${item.unit}` : "N/A"}</span>
+													</>
+												);
+											})()}
 										</div>
 									)}
 								</div>
