@@ -275,27 +275,41 @@ export function RedesignProposalModal({
 		currentWeightMap.set(c.ticker.toUpperCase(), c.weight);
 	}
 
-	const rows = (proposed_actions ?? []).map((action) => {
-		const current = currentWeightMap.get(action.ticker.toUpperCase()) ?? 0;
-		const delta = action.target_pct - current;
-		return { ...action, current, delta };
+	const proposedActionMap = new Map<string, ProposedAction>();
+	for (const action of proposed_actions ?? []) {
+		proposedActionMap.set(action.ticker.toUpperCase(), action);
+	}
+
+	const allTickers = new Set<string>();
+	for (const c of currentAllocations) allTickers.add(c.ticker.toUpperCase());
+	for (const ticker of proposedActionMap.keys()) allTickers.add(ticker);
+
+	const rows = Array.from(allTickers).map((ticker) => {
+		const action = proposedActionMap.get(ticker);
+		const current = currentWeightMap.get(ticker) ?? 0;
+		const target_pct = action?.target_pct ?? 0;
+		const delta = target_pct - current;
+		return {
+			ticker: action?.ticker ?? ticker,
+			target_pct,
+			rationale: action?.rationale,
+			current,
+			delta,
+		};
 	});
 
 	// Snapshot card computations
 	const currentCount = currentAllocations.length;
-	const proposedCount = (proposed_actions ?? []).length;
+	const proposedCount = (proposed_actions ?? []).filter((a) => a.target_pct > 0).length;
 	const currentMaxPos = currentAllocations.length > 0 ? Math.max(...currentAllocations.map(c => c.weight)) : 0;
 	const proposedMaxPos = (proposed_actions ?? []).length > 0 ? Math.max(...(proposed_actions ?? []).map(a => a.target_pct)) : 0;
 	// Turnover
 	const currentMap = new Map<string, number>();
 	for (const c of currentAllocations) currentMap.set(c.ticker.toUpperCase(), c.weight);
-	const allTickers = new Set<string>();
-	for (const c of currentAllocations) allTickers.add(c.ticker.toUpperCase());
-	for (const a of (proposed_actions ?? [])) allTickers.add(a.ticker.toUpperCase());
 	let turnoverSum = 0;
 	for (const t of allTickers) {
 		const cur = currentMap.get(t) ?? 0;
-		const prop = (proposed_actions ?? []).find(a => a.ticker.toUpperCase() === t)?.target_pct ?? 0;
+		const prop = proposedActionMap.get(t)?.target_pct ?? 0;
 		turnoverSum += Math.abs(prop - cur);
 	}
 	const turnover = turnoverSum / 2;
@@ -306,9 +320,8 @@ export function RedesignProposalModal({
 	const proposedSectorCount = proposedSectorKeys.size || proposedCount;
 
 	// Position changes
-	const proposedTickerSet = new Set((proposed_actions ?? []).map(a => a.ticker.toUpperCase()));
 	const newPositions = (proposed_actions ?? []).filter(a => a.target_pct > 0 && !(currentWeightMap.get(a.ticker.toUpperCase()) ?? 0)).length;
-	const exitedPositions = currentAllocations.filter(c => c.weight > 0 && !proposedTickerSet.has(c.ticker.toUpperCase())).length;
+	const exitedPositions = currentAllocations.filter(c => c.weight > 0 && !(proposedActionMap.get(c.ticker.toUpperCase())?.target_pct ?? 0)).length;
 
 	const snapshotItems = [
 		{ label: "Positions", current: currentCount, proposed: proposedCount, unit: "", showProposed: true },

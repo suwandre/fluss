@@ -786,3 +786,22 @@
 - `scripts/loop-v2` has its own `package.json`; root `knip` still reports `@modelcontextprotocol/sdk` as unlisted because it does not treat that folder as a workspace.
 
 ---
+
+## Fix — Proposal table current-only holdings (4/28/2026)
+
+**Description:** Current holdings omitted from `proposed_actions` disappeared from the Portfolio Redesign Proposal table instead of rendering as exited positions (`Current X%`, `Proposed 0%`).
+
+**Summary:**
+- `src/components/agents/redesign-proposal-modal.tsx`: Build allocation rows from the union of `currentAllocations` and `proposed_actions`.
+- Missing proposed action now defaults to `target_pct: 0`, so holdings like ETH still render with a negative delta when the proposed portfolio exits them.
+- Updated proposed position count and exited-position count to ignore zero-weight proposed actions.
+
+**Verification:**
+- `bunx tsc --noEmit` — clean.
+- `bun run build` — successful.
+- `bun run lint` — still fails on the known pre-existing lint debt recorded in the cleanup entry.
+
+**Gotchas:**
+- This bug predates the unused-code cleanup commit; the cleanup did not delete the proposal row logic.
+
+---
