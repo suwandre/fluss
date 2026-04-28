@@ -341,3 +341,6 @@ _Total: ~71 tasks across 4 phases | Reference: ARCHITECTURE_V1.md + VISUAL_DESIG
 - [x] **Tabbed layout in `redesign-proposal-modal.tsx`** — Added `Tabs` (Proposal / Risk Analysis) below `DialogHeader`, above scrollable content area. Default active: Proposal. Each tab wraps its content in `overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar`. Removed inline `<RiskAnalysisContent>` from Proposal tab; risk content now only renders in Risk Analysis tab via `<TabsContent value="risk">`.
 - [x] **Build passes** — `npx tsc --noEmit` and `npx next build` both clean.
 
+## Maintenance (4/28/2026) — Unused code cleanup
+
+- [x] Remove dead Risk/Sector modal code, obsolete one-off scripts/assets, and unused dependencies.

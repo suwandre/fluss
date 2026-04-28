@@ -171,7 +171,7 @@ export function AgentReasoningPanel({
 						) : (
 							<RunSummary steps={steps} />
 						)}
-						<AgentTimeline steps={steps} onRedesignViewDetails={onRedesignViewDetails} />
+						<AgentTimeline steps={steps} />
 						{steps[2]?.status === "done" && onRedesignViewDetails && (
 							<button
 								type="button"

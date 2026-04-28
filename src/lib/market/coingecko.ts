@@ -1,4 +1,4 @@
-import type { PriceSnapshot, OHLCVBar } from "./yahoo";
+import type { PriceSnapshot } from "./yahoo";
 
 const BASE_URL = process.env.COINGECKO_BASE_URL || "https://api.coingecko.com/api/v3";
 
@@ -153,88 +153,4 @@ export async function getBatchCryptoPriceSnapshots(tickers: string[]): Promise<M
   }
 
   return map;
-}
-
-export async function getCryptoHistoricalOHLCV(
-  ticker: string,
-  days?: 1 | 7 | 14 | 30 | 90 | 180 | 365,
-  from?: number,
-  to?: number,
-): Promise<OHLCVBar[] | null> {
-  const coinId = tickerToId(ticker);
-  if (!coinId) return null;
-
-  let url: string;
-  if (from != null && to != null) {
-    const params = new URLSearchParams({
-      vs_currency: "usd",
-      from: String(from),
-      to: String(to),
-    });
-    url = `${BASE_URL}/coins/${coinId}/market_chart/range?${params}`;
-  } else {
-    const params = new URLSearchParams({
-      vs_currency: "usd",
-      days: String(days ?? 30),
-    });
-    url = `${BASE_URL}/coins/${coinId}/market_chart?${params}`;
-  }
-
-  const res = await fetchWithTimeout(url, {
-    headers: buildHeaders(),
-  });
-
-  if (res.status === 401) {
-    console.warn(`[coingecko] 401 on OHLCV for ${ticker} — skipping. Check your API key.`);
-    return null;
-  }
-
-  if (!res.ok) {
-    throw new Error(`CoinGecko market chart fetch failed for ${ticker}: ${res.status}`);
-  }
-
-  const data: { prices: number[][]; total_volumes: number[][] } = await res.json();
-
-  // Group prices by calendar day, then derive OHLCV from intraday ticks
-  const dailyGroups = new Map<string, { opens: number[]; closes: number[]; highs: number[]; lows: number[]; volumes: number[] }>();
-
-  for (const [timestamp, price] of data.prices) {
-    const dayKey = new Date(timestamp).toISOString().slice(0, 10);
-    let group = dailyGroups.get(dayKey);
-    if (!group) {
-      group = { opens: [], closes: [], highs: [], lows: [], volumes: [] };
-      dailyGroups.set(dayKey, group);
-    }
-    if (group.opens.length === 0) {
-      group.opens.push(price);
-    } else {
-      group.closes.push(price);
-    }
-    group.highs.push(price);
-    group.lows.push(price);
-  }
-
-  for (const [timestamp, volume] of data.total_volumes) {
-    const dayKey = new Date(timestamp).toISOString().slice(0, 10);
-    const group = dailyGroups.get(dayKey);
-    if (group) group.volumes.push(volume);
-  }
-
-  const bars: OHLCVBar[] = [];
-
-  for (const [dayKey, group] of dailyGroups) {
-    const allPrices = [...group.opens, ...group.closes];
-    if (allPrices.length === 0) continue;
-
-    bars.push({
-      date: new Date(dayKey),
-      open: allPrices[0],
-      high: Math.max(...group.highs),
-      low: Math.min(...group.lows),
-      close: allPrices[allPrices.length - 1],
-      volume: group.volumes.length > 0 ? group.volumes[group.volumes.length - 1] : 0,
-    });
-  }
-
-  return bars.sort((a, b) => a.date.getTime() - b.date.getTime());
 }

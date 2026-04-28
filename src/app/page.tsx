@@ -12,7 +12,6 @@ import { useAgentRun } from "@/hooks/use-agent-run";
 import { useHoldings, type PortfolioOutputData } from "@/hooks/use-holdings";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
-import { SectorHeatmapModal } from "@/components/agents/sector-heatmap-modal";
 import { RedesignProposalModal } from "@/components/agents/redesign-proposal-modal";
 import { useSectorExposure } from "@/hooks/use-sector-exposure";
 import type { MonitorOutput } from "@/lib/agents/monitor";
@@ -242,8 +241,6 @@ export default function Home() {
 		};
 	}, [workflowOutput]);
 
-	const [sectorModalOpen, setSectorModalOpen] = useState(false);
-
 	// Extract proposed actions from workflow redesign output
 	const proposedActions = useMemo(() => {
 		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
@@ -322,12 +319,6 @@ export default function Home() {
 				onRedesignViewDetails={() => setRedesignModalOpen(true)}
 			/>
 		</div>
-
-		<SectorHeatmapModal
-			open={sectorModalOpen}
-			onOpenChange={setSectorModalOpen}
-			data={sectorExposure}
-		/>
 
 		<RedesignProposalModal
 			open={redesignModalOpen}

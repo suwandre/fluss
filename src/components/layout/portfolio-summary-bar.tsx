@@ -6,7 +6,6 @@ import { StatusDot } from "@/components/ui/status-dot";
 import { Button } from "@/components/ui/button";
 import {
   currencyDisplay,
-  pnlDollars,
   drawdownPct,
   timeAgo,
 } from "@/lib/format";

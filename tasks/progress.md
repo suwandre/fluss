@@ -762,3 +762,27 @@
 - None.
 
 ---
+
+## Maintenance — Unused code cleanup (4/28/2026)
+
+**Description:** Remove unused code, stale UI leftovers, tracked one-off files, and redundant dependencies found during the repo cleanup audit.
+
+**Summary:**
+- Removed dead risk modal internals: unused standalone `RiskAnalysisModal`, old VaR gauge, old stress bars, verdict banner helper.
+- Removed unreachable `SectorHeatmapModal` and its unused page state; sector allocation now lives in the redesign proposal modal.
+- Removed stale one-off/root files and unused default public SVG assets.
+- Removed unused chart component and `recharts`; removed unused AI SDK provider packages; added direct `zod` dependency.
+- Cleaned unused imports/helpers in market, agent, factory, and summary bar code.
+- Updated `.env.example` to match the current Ollama/Ollama-compatible provider setup.
+
+**Verification:**
+- `bunx tsc --noEmit` — clean.
+- `bun run build` — successful.
+- `bun run lint` — still fails on pre-existing `scripts/loop-v2` `any` usage, React Compiler set-state-in-effect warnings in existing hooks/components, and Mastra tool `any` casts.
+- `bunx knip --no-progress --reporter compact` — remaining findings are mostly public primitive exports, nested `scripts/loop-v2` package metadata, and intentionally exported types/helpers.
+
+**Gotchas:**
+- No Biome config exists in this repo.
+- `scripts/loop-v2` has its own `package.json`; root `knip` still reports `@modelcontextprotocol/sdk` as unlisted because it does not treat that folder as a workspace.
+
+---

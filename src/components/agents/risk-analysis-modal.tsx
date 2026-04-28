@@ -1,6 +1,5 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { useState } from "react";
@@ -12,192 +11,11 @@ interface StressResult {
 	recovery_days: number | null;
 }
 
-interface RiskAnalysisModalProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	structuredOutput: Record<string, unknown>;
-}
-
-export function getVerdictConfig(verdict: string) {
-	const lower = verdict.toLowerCase();
-	if (lower === "approved" || lower === "approve") {
-		return {
-			label: "Approved",
-			bg: "bg-[rgba(34,197,94,0.12)]",
-			border: "border-green",
-			text: "text-green",
-			icon: "\u2705",
-		};
-	}
-	if (lower === "approved_with_caveats" || lower === "approve_with_caveats") {
-		return {
-			label: "Approved with Caveats",
-			bg: "bg-[rgba(245,158,11,0.12)]",
-			border: "border-amber",
-			text: "text-amber",
-			icon: "\u26A0\uFE0F",
-		};
-	}
-	return {
-		label: "Rejected",
-		bg: "bg-[rgba(239,68,68,0.12)]",
-		border: "border-red",
-		text: "text-red",
-		icon: "\u274C",
-	};
-}
-
 function splitSentences(text: string): string[] {
 	if (!text) return [];
 	const sentences = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
 	if (sentences.length === 0 && text.trim()) return [text.trim()];
 	return sentences;
-}
-
-/* ------------------------------------------------------------------ */
-/*  VaR Gauge — SVG semi-circle                                        */
-/* ------------------------------------------------------------------ */
-
-const GAUGE_R = 48;
-const GAUGE_CENTER_X = 60;
-const GAUGE_CENTER_Y = 50;
-const GAUGE_STROKE = 8;
-const GAUGE_MAX_VAL = 30; // 0–30% arc
-
-function gaugeArcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
-	const start = polar(cx, cy, r, endDeg);
-	const end = polar(cx, cy, r, startDeg);
-	const largeArc = endDeg - startDeg <= 180 ? 0 : 1;
-	return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
-}
-
-function polar(cx: number, cy: number, r: number, angleDeg: number) {
-	const rad = (Math.PI / 180) * angleDeg;
-	return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-}
-
-function VaRGauge({ value }: { value: number | null }) {
-	if (value === null) {
-		return (
-			<div className="flex flex-col items-center justify-center py-6">
-				<div className="text-3xl font-mono font-bold text-text-dim">N/A</div>
-				<div className="text-[11px] font-mono text-text-muted uppercase tracking-wide mt-0.5">
-					Max Daily Loss (95%)
-				</div>
-				<div className="text-[11px] text-text-muted mt-1">Could not compute VaR</div>
-			</div>
-		);
-	}
-
-	const val = value;
-	const clamped = Math.min(Math.max(val, 0), GAUGE_MAX_VAL);
-	const pct = clamped / GAUGE_MAX_VAL;
-	const endAngle = 180 - pct * 180; // 180° (left) → 0° (right)
-
-	const color = val > 15 ? "var(--red)" : val > 8 ? "var(--amber)" : "var(--teal)";
-
-	const arcPath = gaugeArcPath(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R, endAngle, 180);
-
-	return (
-		<div className="flex flex-col items-center justify-center">
-			<svg
-				viewBox="0 0 120 70"
-				className="w-40 h-auto"
-			>
-				{/* background track */}
-				<path
-					d={gaugeArcPath(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R, 0, 180)}
-					fill="none"
-					stroke="var(--bg-elevated)"
-					strokeWidth={GAUGE_STROKE}
-					strokeLinecap="round"
-				/>
-				{/* animated fill */}
-				<path
-					d={arcPath}
-					fill="none"
-					stroke={color}
-					strokeWidth={GAUGE_STROKE}
-					strokeLinecap="round"
-					className="transition-all duration-1000 ease-out"
-				/>
-				{/* needle */}
-				<line
-					x1={GAUGE_CENTER_X}
-					y1={GAUGE_CENTER_Y}
-					x2={polar(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R - 2, endAngle).x}
-					y2={polar(GAUGE_CENTER_X, GAUGE_CENTER_Y, GAUGE_R - 2, endAngle).y}
-					stroke="var(--text)"
-					strokeWidth={2}
-					strokeLinecap="round"
-					className="transition-all duration-1000 ease-out"
-				/>
-				{/* center pivot dot */}
-				<circle cx={GAUGE_CENTER_X} cy={GAUGE_CENTER_Y} r={3.5} fill="var(--text)" />
-			</svg>
-
-			<div className="text-center -mt-1">
-				<div className="text-3xl font-mono font-bold text-text">
-					{val.toFixed(2)}%
-				</div>
-				<div className="text-[11px] font-mono text-text-dim uppercase tracking-wide mt-0.5">
-					Max Daily Loss (95%)
-				</div>
-				<div className="text-[11px] text-text-muted mt-1">
-					{val > 15
-						? "High risk — consider diversification"
-						: val > 8
-							? "Elevated — monitor closely"
-							: "Within acceptable range"}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/* ------------------------------------------------------------------ */
-/*  Stress Scenario Bars (HTML flex, no external chart lib)            */
-/* ------------------------------------------------------------------ */
-
-function StressBars({ data }: { data: StressResult[] }) {
-	const maxDrawdown = Math.max(...data.map((d) => Math.abs(d.simulated_drawdown_pct || 0)), 1);
-
-	return (
-		<div className="space-y-3">
-			{data.map((res, i) => {
-				const drawdown = Math.abs(res.simulated_drawdown_pct || 0);
-				const isSevere = drawdown > 15;
-				const barWidth = (drawdown / maxDrawdown) * 100;
-				const recovery = res.recovery_days != null ? `${res.recovery_days}d` : "—";
-
-				return (
-					<div key={i} className="flex items-center gap-3 text-[12px]">
-						<span className="w-32 shrink-0 truncate text-text/80 font-medium" title={res.scenario}>
-							{res.label || res.scenario}
-						</span>
-
-						<div className="flex-1 h-2.5 bg-bg-card rounded-full overflow-hidden">
-							<div
-								className="h-full rounded-full transition-all duration-700 ease-out"
-								style={{
-									width: `${barWidth}%`,
-									backgroundColor: isSevere ? "var(--red)" : "var(--amber)",
-								}}
-							/>
-						</div>
-
-						<span className={`w-12 text-right font-mono font-semibold shrink-0 ${isSevere ? "text-red" : "text-amber"}`}>
-							-{drawdown.toFixed(1)}%
-						</span>
-
-						<span className="w-10 text-right font-mono text-text-muted shrink-0">
-							{recovery}
-						</span>
-					</div>
-				);
-			})}
-		</div>
-	);
 }
 
 /* ------------------------------------------------------------------ */
@@ -607,25 +425,6 @@ function InlineMetricCard({
 	);
 }
 
-
-function VerdictBanner({ verdictConfig }: { verdictConfig: ReturnType<typeof getVerdictConfig> }) {
-	return (
-		<div className={`rounded-lg border-l-4 px-4 py-3 flex items-center gap-3 ${verdictConfig.bg} ${verdictConfig.border}`}>
-			<span className="text-2xl">{verdictConfig.icon}</span>
-			<div>
-				<div className={`font-bold text-sm ${verdictConfig.text}`}>{verdictConfig.label}</div>
-				<div className="text-[11px] text-text-dim mt-0.5">
-					{verdictConfig.label === "Approved"
-						? "Portfolio passes all risk thresholds."
-						: verdictConfig.label === "Approved with Caveats"
-							? "Portfolio is acceptable but watch flagged areas."
-							: "Portfolio exceeds risk limits. Review changes."}
-				</div>
-			</div>
-		</div>
-	);
-}
-
 /* ------------------------------------------------------------------ */
 /*  Risk Analysis Content                                                                                         */
 /* ------------------------------------------------------------------ */
@@ -643,7 +442,6 @@ export function RiskAnalysisContent({
 	currentMaxDrawdown?: number | null;
 	sharpeDelta?: number | null;
 }) {
-	const verdict = typeof structuredOutput.verdict === "string" ? structuredOutput.verdict : "";
 	const caveats = Array.isArray(structuredOutput.caveats) ? (structuredOutput.caveats as string[]) : [];
 	const riskSummary = typeof structuredOutput.risk_summary === "string" ? structuredOutput.risk_summary : "";
 	const improvementSummary = typeof structuredOutput.improvement_summary === "string" ? structuredOutput.improvement_summary : "";
@@ -658,8 +456,6 @@ export function RiskAnalysisContent({
 		// Gauge guard: 0% with stress data present is almost certainly a parsing failure
 		var95 = null;
 	}
-
-	const verdictConfig = verdict ? getVerdictConfig(verdict) : null;
 
 	return (
 		<>
@@ -768,28 +564,3 @@ export function RiskAnalysisContent({
 		</>
 	);
 }
-
-/* ------------------------------------------------------------------ */
-/*  Main Component                                                   */
-/* ------------------------------------------------------------------ */
-
-export function RiskAnalysisModal({
-	open,
-	onOpenChange,
-	structuredOutput,
-}: RiskAnalysisModalProps) {
-	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-3xl">
-				<DialogHeader>
-					<DialogTitle>Risk Analysis Dashboard</DialogTitle>
-				</DialogHeader>
-
-				<div className="overflow-y-auto max-h-[80vh] pr-2 custom-scrollbar">
-					<RiskAnalysisContent structuredOutput={structuredOutput} />
-				</div>
-			</DialogContent>
-		</Dialog>
-	);
-}
-

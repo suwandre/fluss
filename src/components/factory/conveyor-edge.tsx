@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { getBezierPath, Position, type Edge, type EdgeProps } from "@xyflow/react";
+import { getBezierPath, type Edge, type EdgeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -34,7 +34,6 @@ const tierWidthMap: Record<CorrelationTier, number> = {
 };
 
 function ConveyorEdgeComponent({
-	id,
 	sourceX,
 	sourceY,
 	targetX,

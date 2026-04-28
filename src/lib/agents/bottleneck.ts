@@ -37,28 +37,6 @@ function assetClassForTicker(ticker: string): AssetClass {
 	return "equity";
 }
 
-async function fetchDailyReturns(
-	ticker: string,
-	days: number,
-	fallbackAssetClass?: string,
-): Promise<{ date: string; returnPct: number }[]> {
-	const ac = (fallbackAssetClass as AssetClass) ?? assetClassForTicker(ticker);
-	const history = await getHistory(ticker, ac, { days });
-	if (!history || history.length < 2) return [];
-
-	const results: { date: string; returnPct: number }[] = [];
-	for (let i = 1; i < history.length; i++) {
-		const prev = history[i - 1].close;
-		if (prev <= 0) continue;
-		const date =
-			history[i].date instanceof Date
-				? history[i].date.toISOString().slice(0, 10)
-				: String(history[i].date);
-		results.push({ date, returnPct: (history[i].close - prev) / prev });
-	}
-	return results;
-}
-
 // --- Tools ---
 
 const getCorrelationMatrix = createTool({

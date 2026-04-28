@@ -17,10 +17,9 @@ export interface AgentStepData {
 
 interface AgentTimelineProps {
 	steps: AgentStepData[];
-	onRedesignViewDetails?: () => void;
 }
 
-export function AgentTimeline({ steps, onRedesignViewDetails }: AgentTimelineProps) {
+export function AgentTimeline({ steps }: AgentTimelineProps) {
 	const runningIndex = steps.findIndex((s) => s.status === "running");
 
 	return (

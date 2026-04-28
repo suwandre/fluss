@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm";
 import YahooFinance from "yahoo-finance2";
 import { db } from "@/lib/db";
 import { tickerMetadata } from "@/lib/db/schema";
