@@ -1,3 +1,5 @@
+NOTE: Not used anymore - was mainly used for builder/reviewer agentic loop.
+
 ## Task Workflow
 
 Read `tasks/TASKS.md` and `tasks/progress.md` before starting any work.
