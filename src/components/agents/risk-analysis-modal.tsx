@@ -368,6 +368,7 @@ function UpsideScenariosTable({
 }: {
 	scenarioComparisons: ScenarioComparison[];
 }) {
+	const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 	const upsideRows = scenarioComparisons
 		.filter(
 			(row) =>
@@ -413,10 +414,18 @@ function UpsideScenariosTable({
 				return (
 					<div
 						key={`${row.scenario}-${i}`}
-						className="grid grid-cols-[minmax(120px,1fr)_110px_90px_90px_80px] gap-3 px-4 py-3 text-[12px] font-mono items-center border-b border-border last:border-0"
+						className="grid grid-cols-[minmax(120px,1fr)_110px_90px_90px_80px] gap-3 px-4 py-3 text-[12px] font-mono items-center border-b border-border last:border-0 cursor-pointer transition-colors hover:bg-bg-elevated/30"
+						onClick={() =>
+							setExpandedRows((prev) => {
+								const next = new Set(prev);
+								if (next.has(i)) next.delete(i);
+								else next.add(i);
+								return next;
+							})
+						}
 					>
-						<span className="font-medium text-text truncate">{name}</span>
-						<span className="text-text-dim truncate">{period}</span>
+						<span className={`font-medium text-text ${expandedRows.has(i) ? "whitespace-normal break-words" : "truncate"}`}>{name}</span>
+						<span className={`text-text-dim ${expandedRows.has(i) ? "whitespace-normal break-words" : "truncate"}`}>{period}</span>
 						<span className="text-right text-text-dim">
 							{currentReturn > 0 ? "+" : ""}{currentReturn.toFixed(1)}%
 						</span>
