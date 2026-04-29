@@ -56,6 +56,10 @@ const LABEL_TOOLTIPS: Record<string, string> = {
 	"Max Position %": "Weight of the single largest holding. Lower = more diversified.",
 	"Risk Score": "Composite 0–100 score. Lower = safer. Weights: drawdown (45%), VaR (30%), concentration (25%).",
 	"Proposal Summary": "The agent's own summary of the proposed changes.",
+	"Opportunity Snapshot": "Return-side metrics that help judge whether the rebalance is worth the trade-off.",
+	"Expected Return": "Historical 90-day portfolio return estimate using current market data. Higher = better.",
+	"Sharpe Ratio": "Risk-adjusted return metric. Higher = better.",
+	"Upside/Downside": "Ratio of positive daily returns to negative daily returns over the lookback window. Higher = better.",
 };
 
 function isRoundedZeroPercent(value: number): boolean {
@@ -391,6 +395,53 @@ export function RedesignProposalModal({
 		return { currentScore, proposedScore, delta, improved };
 	})();
 
+	const opportunityItems = (() => {
+		const currentExpectedReturn =
+			typeof riskStructuredOutput?.current_expected_return_90d === "number"
+				? riskStructuredOutput.current_expected_return_90d
+				: null;
+		const proposedExpectedReturn =
+			typeof riskStructuredOutput?.proposed_expected_return_90d === "number"
+				? riskStructuredOutput.proposed_expected_return_90d
+				: null;
+		const currentUpsideDownside =
+			typeof riskStructuredOutput?.current_upside_downside_ratio === "number"
+				? riskStructuredOutput.current_upside_downside_ratio
+				: null;
+		const proposedUpsideDownside =
+			typeof riskStructuredOutput?.proposed_upside_downside_ratio === "number"
+				? riskStructuredOutput.proposed_upside_downside_ratio
+				: null;
+		const proposedSharpe =
+			typeof currentSharpe === "number" && typeof expected_improvement?.sharpe_delta === "number"
+				? currentSharpe + expected_improvement.sharpe_delta
+				: null;
+
+		return [
+			{
+				label: "Expected Return",
+				current: currentExpectedReturn,
+				proposed: proposedExpectedReturn,
+				unit: "%",
+			},
+			{
+				label: "Sharpe Ratio",
+				current: currentSharpe ?? null,
+				proposed: proposedSharpe,
+				unit: "",
+			},
+			{
+				label: "Upside/Downside",
+				current: currentUpsideDownside,
+				proposed: proposedUpsideDownside,
+				unit: "",
+			},
+		].filter(
+			(item) =>
+				typeof item.current === "number" || typeof item.proposed === "number",
+		);
+	})();
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-3xl p-6">
@@ -417,7 +468,7 @@ export function RedesignProposalModal({
 							value="risk"
 							className="text-[12px] font-mono font-medium px-2 py-1 rounded text-text-dim hover:text-text transition-colors data-[state=active]:text-teal data-[state=active]:border-b-2 data-[state=active]:border-teal"
 						>
-							Risk Analysis
+							Risk & Return
 						</TabsTrigger>
 					</TabsList>
 
@@ -567,6 +618,55 @@ export function RedesignProposalModal({
 										</div>
 									))}
 								</div>
+
+								{opportunityItems.length > 0 && (
+									<div className="rounded border border-border bg-bg-elevated p-5">
+										<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3">
+											<LabelWithTooltip label="Opportunity Snapshot" />
+										</div>
+										<div className="grid grid-cols-3 gap-3">
+											{opportunityItems.map((item) => {
+												const current = item.current;
+												const proposed = item.proposed;
+												const delta =
+													typeof current === "number" && typeof proposed === "number"
+														? proposed - current
+														: null;
+												const isUnchanged =
+													typeof delta === "number" && isSameSnapshotValue(current ?? 0, proposed ?? 0, item.unit);
+												return (
+													<div key={item.label} className="rounded border border-border bg-bg-card p-3">
+														<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
+															<LabelWithTooltip label={item.label} />
+														</div>
+														<div className="space-y-1">
+															<div className="flex items-center justify-between">
+																<span className="text-[10px] font-mono text-text-muted">Current</span>
+																<span className="text-[11px] font-mono text-text">
+																	{typeof current === "number" ? `${current.toFixed(2)}${item.unit}` : "N/A"}
+																</span>
+															</div>
+															<div className="flex items-center justify-between">
+																<span className={`text-[10px] font-mono ${isUnchanged ? "text-text-muted" : "text-teal/60"}`}>Proposed</span>
+																<span className={`text-[11px] font-mono font-medium ${isUnchanged ? "text-text-dim" : "text-teal"}`}>
+																	{typeof proposed === "number" ? `${proposed.toFixed(2)}${item.unit}` : "N/A"}
+																</span>
+															</div>
+															{typeof delta === "number" && (
+																<div className="flex items-center justify-between pt-1 border-t border-border/40">
+																	<span className="text-[10px] font-mono text-text-muted">Delta</span>
+																	<span className={`text-[11px] font-mono font-semibold ${deltaTextClassName(delta)}`}>
+																		{delta > 0 ? "+" : ""}{delta.toFixed(2)}{item.unit}
+																	</span>
+																</div>
+															)}
+														</div>
+													</div>
+												);
+											})}
+										</div>
+									</div>
+								)}
 
 							{/* Risk Score + Turnover Gauges */}
 							<div className="grid grid-cols-2 gap-3">

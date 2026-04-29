@@ -8,6 +8,7 @@ interface StressResult {
 	scenario: string;
 	label: string;
 	simulated_drawdown_pct: number;
+	simulated_return_pct?: number;
 	recovery_days: number | null;
 }
 
@@ -220,6 +221,9 @@ interface ScenarioComparison {
 	current_drawdown: number;
 	proposed_drawdown: number;
 	delta_pp: number;
+	current_return?: number;
+	proposed_return?: number;
+	delta_return_pp?: number;
 }
 
 function StressTooltip({ label, tip }: { label: string; tip: string }) {
@@ -327,6 +331,71 @@ function UnifiedStressBars({
 							</span>
 							<span className="text-right text-text-muted">{recoveryText}</span>
 						</div>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+function UpsideScenariosTable({
+	scenarioComparisons,
+}: {
+	scenarioComparisons: ScenarioComparison[];
+}) {
+	const upsideRows = scenarioComparisons
+		.filter(
+			(row) =>
+				typeof row.current_return === "number" &&
+				typeof row.proposed_return === "number" &&
+				(row.current_return > 0 || row.proposed_return > 0),
+		)
+		.sort((a, b) => (b.proposed_return ?? 0) - (a.proposed_return ?? 0));
+
+	if (upsideRows.length === 0) return null;
+
+	return (
+		<div>
+			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[minmax(120px,1fr)_110px_90px_90px_80px] gap-3 border-b border-border">
+				<span>
+					<StressTooltip label="Scenario" tip="Historical scenario name." />
+				</span>
+				<span>
+					<StressTooltip label="Period" tip="Date range of the historical scenario." />
+				</span>
+				<span className="text-right">
+					<StressTooltip label="Current" tip="Return under current portfolio allocation" />
+				</span>
+				<span className="text-right">
+					<StressTooltip label="Proposed" tip="Return under proposed portfolio allocation" />
+				</span>
+				<span className="text-right">
+					<StressTooltip label="Delta" tip="Difference in percentage points. Positive = more upside" />
+				</span>
+			</div>
+			{upsideRows.slice(0, 5).map((row, i) => {
+				const { name, period } = parseScenario(row.scenario);
+				const currentReturn = row.current_return ?? 0;
+				const proposedReturn = row.proposed_return ?? 0;
+				const delta = row.delta_return_pp ?? proposedReturn - currentReturn;
+				const deltaColor = delta > 0 ? "text-green" : delta < 0 ? "text-red" : "text-text-muted";
+
+				return (
+					<div
+						key={`${row.scenario}-${i}`}
+						className="grid grid-cols-[minmax(120px,1fr)_110px_90px_90px_80px] gap-3 px-4 py-3 text-[12px] font-mono items-center border-b border-border last:border-0"
+					>
+						<span className="font-medium text-text truncate">{name}</span>
+						<span className="text-text-dim truncate">{period}</span>
+						<span className="text-right text-text-dim">
+							{currentReturn > 0 ? "+" : ""}{currentReturn.toFixed(1)}%
+						</span>
+						<span className="text-right font-semibold text-teal">
+							{proposedReturn > 0 ? "+" : ""}{proposedReturn.toFixed(1)}%
+						</span>
+						<span className={`text-right font-semibold ${deltaColor}`}>
+							{delta > 0 ? "+" : ""}{delta.toFixed(1)}pp
+						</span>
 					</div>
 				);
 			})}
@@ -447,8 +516,24 @@ export function RiskAnalysisContent({
 	const improvementSummary = typeof structuredOutput.improvement_summary === "string" ? structuredOutput.improvement_summary : "";
 	const stressResults = Array.isArray(structuredOutput.stress_results) ? (structuredOutput.stress_results as StressResult[]) : [];
 	const scenarioComparisons = Array.isArray(structuredOutput.scenario_comparisons)
-		? (structuredOutput.scenario_comparisons as { scenario: string; current_drawdown: number; proposed_drawdown: number; delta_pp: number }[])
+		? (structuredOutput.scenario_comparisons as ScenarioComparison[])
 		: [];
+	const currentExpectedReturn =
+		typeof structuredOutput.current_expected_return_90d === "number"
+			? structuredOutput.current_expected_return_90d
+			: null;
+	const proposedExpectedReturn =
+		typeof structuredOutput.proposed_expected_return_90d === "number"
+			? structuredOutput.proposed_expected_return_90d
+			: null;
+	const currentUpsideDownside =
+		typeof structuredOutput.current_upside_downside_ratio === "number"
+			? structuredOutput.current_upside_downside_ratio
+			: null;
+	const proposedUpsideDownside =
+		typeof structuredOutput.proposed_upside_downside_ratio === "number"
+			? structuredOutput.proposed_upside_downside_ratio
+			: null;
 
 	const rawVar = structuredOutput.var_95;
 	let var95 = typeof rawVar === "number" ? rawVar : typeof rawVar === "string" ? parseFloat(rawVar) || null : null;
@@ -470,6 +555,34 @@ export function RiskAnalysisContent({
 						unit=""
 						isBetterWhenLower={false}
 						tooltip="Risk-adjusted return metric. Higher = better."
+					/>
+					<InlineMetricCard
+						label="Expected Return"
+						current={currentExpectedReturn}
+						proposed={proposedExpectedReturn}
+						delta={
+							typeof currentExpectedReturn === "number" &&
+							typeof proposedExpectedReturn === "number"
+								? proposedExpectedReturn - currentExpectedReturn
+								: null
+						}
+						unit="%"
+						isBetterWhenLower={false}
+						tooltip="Historical 90-day portfolio return estimate. Higher = better."
+					/>
+					<InlineMetricCard
+						label="Upside / Downside"
+						current={currentUpsideDownside}
+						proposed={proposedUpsideDownside}
+						delta={
+							typeof currentUpsideDownside === "number" &&
+							typeof proposedUpsideDownside === "number"
+								? proposedUpsideDownside - currentUpsideDownside
+								: null
+						}
+						unit=""
+						isBetterWhenLower={false}
+						tooltip="Positive daily returns divided by absolute negative daily returns over the lookback window. Higher = better."
 					/>
 					<InlineMetricCard
 						label="Avg Stress Drawdown"
@@ -519,6 +632,20 @@ export function RiskAnalysisContent({
 							<StressTooltip label="Stress Scenarios" tip="Scenario-by-scenario stress test comparing current vs proposed portfolio drawdowns" />
 						</div>
 						<UnifiedStressBars stressResults={stressResults} scenarioComparisons={scenarioComparisons} />
+					</div>
+				)}
+
+				{scenarioComparisons.some(
+					(row) =>
+						typeof row.proposed_return === "number" &&
+						typeof row.current_return === "number" &&
+						(row.current_return > 0 || row.proposed_return > 0),
+				) && (
+					<div className="rounded-lg border border-border bg-bg-elevated p-4">
+						<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-3 pb-2 border-b border-border flex items-center justify-between">
+							<StressTooltip label="Upside Scenarios" tip="Historical scenario returns comparing current vs proposed portfolio allocations." />
+						</div>
+						<UpsideScenariosTable scenarioComparisons={scenarioComparisons} />
 					</div>
 				)}
 

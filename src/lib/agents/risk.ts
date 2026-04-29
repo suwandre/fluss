@@ -16,6 +16,7 @@ export const RiskOutput = z.object({
 			z.object({
 				scenario: z.string(),
 				simulated_drawdown_pct: z.number(),
+				simulated_return_pct: z.number().optional(),
 				recovery_days: z.number().nullable(),
 			}),
 		)
@@ -32,8 +33,23 @@ export const RiskOutput = z.object({
 				current_drawdown: z.number(),
 				proposed_drawdown: z.number(),
 				delta_pp: z.number(),
+				current_return: z.number().optional(),
+				proposed_return: z.number().optional(),
+				delta_return_pp: z.number().optional(),
 			}),
 		)
+		.optional(),
+	current_expected_return_90d: z.number().optional(),
+	proposed_expected_return_90d: z.number().optional(),
+	current_upside_downside_ratio: z.number().optional(),
+	proposed_upside_downside_ratio: z.number().optional(),
+	best_upside_scenario: z
+		.object({
+			scenario: z.string(),
+			current_return: z.number(),
+			proposed_return: z.number(),
+			delta_return_pp: z.number(),
+		})
 		.optional(),
 	// NEW fields — populated by workflow riskStep, NOT by LLM
 	current_avg_drawdown: z.number().optional(),
@@ -137,6 +153,7 @@ export const runHistoricalStressTest = createTool({
 			z.object({
 				scenario: z.string(),
 				simulated_drawdown_pct: z.number(),
+				simulated_return_pct: z.number().optional(),
 				recovery_days: z.number().nullable(),
 			}),
 		),
@@ -210,12 +227,14 @@ export const runHistoricalStressTest = createTool({
 		const stressResults: {
 			scenario: string;
 			simulated_drawdown_pct: number;
+			simulated_return_pct?: number;
 			recovery_days: number | null;
 		}[] = [];
 
 		for (const key of selectedKeys) {
 			const scenario = STRESS_SCENARIOS[key];
 			let portfolioDrawdownPct = 0;
+			let portfolioReturnPct = 0;
 
 			for (const pos of positions) {
 				const ac = pos.assetClass as AssetClass;
@@ -243,23 +262,32 @@ export const runHistoricalStressTest = createTool({
 					}
 				}
 				portfolioDrawdownPct += pos.weight * maxDrawdown;
+
+				const startClose = history[0].close;
+				const endClose = history[history.length - 1].close;
+				if (startClose > 0) {
+					portfolioReturnPct += pos.weight * ((endClose - startClose) / startClose);
+				}
 			}
 
 			// Estimate recovery days (heuristic: drawdown magnitude × 3-7, scale with severity)
 			const ddPct = Math.round(portfolioDrawdownPct * 10000) / 100;
+			const returnPct = Math.round(portfolioReturnPct * 10000) / 100;
 			const recoveryDays =
 				ddPct > 0 ? Math.round(ddPct * (ddPct > 20 ? 5 : 3)) : 0;
 
 			stressResults.push({
 				scenario: scenario.label,
 				simulated_drawdown_pct: ddPct,
+				simulated_return_pct: returnPct,
 				recovery_days: ddPct > 0 ? recoveryDays : null,
 			});
 		}
 
 		return { stress_results: stressResults };
-		} catch (error: any) {
-			return { stress_results: [], error: `Unexpected error during stress test: ${error.message}` };
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			return { stress_results: [], error: `Unexpected error during stress test: ${message}` };
 		}
 	},
 });
@@ -437,7 +465,8 @@ export const computeVar = createTool({
 			lookback_days: lookbackDays,
 			concentration_score,
 		};
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
 			return {
 				var_pct: 0,
 				var_dollar: 0,
@@ -445,7 +474,7 @@ export const computeVar = createTool({
 				confidence_level: input.confidenceLevel ?? 0.95,
 				lookback_days: input.days ?? 252,
 				concentration_score: 0,
-				error: `Unexpected error during VaR computation: ${error.message}`,
+				error: `Unexpected error during VaR computation: ${message}`,
 			};
 		}
 	},

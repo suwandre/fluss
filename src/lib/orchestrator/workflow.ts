@@ -16,11 +16,12 @@ import {
 } from "@/lib/agents/normalize-output";
 import { db } from "@/lib/db";
 import { holdings } from "@/lib/db/schema";
-import { getBatchPrices } from "@/lib/market";
+import { getBatchPrices, getHistory } from "@/lib/market";
 import { computeCorrelationMatrix } from "@/lib/orchestrator/compute-correlation";
 import { computePortfolioMetrics } from "@/lib/orchestrator/compute-metrics";
 import { syncTickerMetadataForHoldings } from "@/lib/market/ticker-metadata";
 import { assetClassForTicker } from "@/lib/agents/redesign";
+import type { AssetClass } from "@/lib/types/visual";
 
 // ── Memory context ──────────────────────────────────────────────────
 // Per-agent thread IDs prevent schema contamination: shared memory ends
@@ -95,6 +96,102 @@ const WorkflowOutputSchema = z.object({
   risk: RiskOutput.nullable(),
   correlationMatrix: CorrelationMatrixSchema,
 });
+
+type PortfolioPosition = {
+  ticker: string;
+  weight: number;
+  assetClass: string;
+  quantity?: number;
+};
+
+type StressTestResult = {
+  stress_results: {
+    scenario: string;
+    simulated_drawdown_pct: number;
+    simulated_return_pct?: number;
+    recovery_days: number | null;
+  }[];
+  error?: string;
+};
+
+type VarResult = {
+  var_pct: number;
+  var_dollar: number;
+  portfolio_value: number;
+  confidence_level: number;
+  lookback_days: number;
+  concentration_score: number;
+  error?: string;
+};
+
+const historicalStressTestTool = runHistoricalStressTest as unknown as {
+  execute(input: { positions_override: PortfolioPosition[] }): Promise<StressTestResult>;
+};
+
+const varTool = computeVar as unknown as {
+  execute(input: { positions_override: PortfolioPosition[] }): Promise<VarResult>;
+};
+
+async function computeOpportunityMetrics(positions: PortfolioPosition[]) {
+  const returnsByTicker = new Map<string, number[]>();
+
+  await Promise.all(
+    positions.map(async (position) => {
+      const history = await getHistory(position.ticker, position.assetClass as AssetClass, {
+        days: 90,
+      });
+      const returns: number[] = [];
+      if (!history || history.length < 2) {
+        returnsByTicker.set(position.ticker, returns);
+        return;
+      }
+      for (let i = 1; i < history.length; i++) {
+        const previousClose = history[i - 1].close;
+        if (previousClose <= 0) continue;
+        returns.push((history[i].close - previousClose) / previousClose);
+      }
+      returnsByTicker.set(position.ticker, returns);
+    }),
+  );
+
+  const minLen = Math.min(
+    ...positions.map((position) => returnsByTicker.get(position.ticker)?.length ?? 0),
+  );
+  if (!Number.isFinite(minLen) || minLen <= 0) {
+    return {
+      expectedReturn90dPct: null,
+      upsideDownsideRatio: null,
+    };
+  }
+
+  const portfolioReturns: number[] = [];
+  for (let i = 0; i < minLen; i++) {
+    let weightedReturn = 0;
+    for (const position of positions) {
+      weightedReturn += position.weight * (returnsByTicker.get(position.ticker)?.[i] ?? 0);
+    }
+    portfolioReturns.push(weightedReturn);
+  }
+
+  const cumulativeReturn = portfolioReturns.reduce(
+    (value, dailyReturn) => value * (1 + dailyReturn),
+    1,
+  ) - 1;
+  const upside = portfolioReturns
+    .filter((dailyReturn) => dailyReturn > 0)
+    .reduce((sum, dailyReturn) => sum + dailyReturn, 0);
+  const downside = Math.abs(
+    portfolioReturns
+      .filter((dailyReturn) => dailyReturn < 0)
+      .reduce((sum, dailyReturn) => sum + dailyReturn, 0),
+  );
+
+  return {
+    expectedReturn90dPct: Math.round(cumulativeReturn * 10000) / 100,
+    upsideDownsideRatio:
+      downside > 0 ? Math.round((upside / downside) * 100) / 100 : null,
+  };
+}
 
 // ── Step 1: Fetch market snapshot ───────────────────────────────────
 
@@ -523,29 +620,60 @@ const riskStep = createStep({
 
     // ── Pre-compute stress + VaR for BOTH portfolios ──────────────────────
     const [currentStress, proposedStress, currentVaR, proposedVaR] = await Promise.all([
-      (runHistoricalStressTest as any).execute({ positions_override: currentPositions }),
+      historicalStressTestTool.execute({ positions_override: currentPositions }),
       proposedPositions.length > 0
-        ? (runHistoricalStressTest as any).execute({ positions_override: proposedPositions })
+        ? historicalStressTestTool.execute({ positions_override: proposedPositions })
         : Promise.resolve({ stress_results: [] }),
-      (computeVar as any).execute({ positions_override: currentPositions }),
+      varTool.execute({ positions_override: currentPositions }),
       proposedPositions.length > 0
-        ? (computeVar as any).execute({ positions_override: proposedPositions })
-        : Promise.resolve({ var_pct: 0, var_dollar: 0, portfolio_value: 0, confidence_level: 0.95, lookback_days: 252 }),
+        ? varTool.execute({ positions_override: proposedPositions })
+        : Promise.resolve({ var_pct: 0, var_dollar: 0, portfolio_value: 0, confidence_level: 0.95, lookback_days: 252, concentration_score: 0 }),
     ]);
 
-    const scenarioComparisons = currentStress.stress_results.map((curr: any) => {
-      const prop = proposedStress.stress_results.find((p: any) => p.scenario === curr.scenario);
+    const [currentOpportunity, proposedOpportunity] = await Promise.all([
+      computeOpportunityMetrics(currentPositions),
+      proposedPositions.length > 0
+        ? computeOpportunityMetrics(proposedPositions)
+        : Promise.resolve({ expectedReturn90dPct: null, upsideDownsideRatio: null }),
+    ]);
+
+    type ScenarioComparisonWithReturn = {
+      scenario: string;
+      current_drawdown: number;
+      proposed_drawdown: number;
+      delta_pp: number;
+      current_return?: number;
+      proposed_return?: number;
+      delta_return_pp?: number;
+    };
+
+    const scenarioComparisons: ScenarioComparisonWithReturn[] = currentStress.stress_results.map((curr) => {
+      const prop = proposedStress.stress_results.find((p) => p.scenario === curr.scenario);
       return {
         scenario: curr.scenario,
         current_drawdown: curr.simulated_drawdown_pct,
         proposed_drawdown: prop ? prop.simulated_drawdown_pct : curr.simulated_drawdown_pct,
         delta_pp: prop ? parseFloat((prop.simulated_drawdown_pct - curr.simulated_drawdown_pct).toFixed(2)) : 0,
+        current_return: curr.simulated_return_pct,
+        proposed_return: prop?.simulated_return_pct,
+        delta_return_pp:
+          typeof curr.simulated_return_pct === "number" &&
+          typeof prop?.simulated_return_pct === "number"
+            ? parseFloat((prop.simulated_return_pct - curr.simulated_return_pct).toFixed(2))
+            : undefined,
       };
     });
 
+    const bestUpsideScenario = scenarioComparisons
+      .filter(
+        (scenario): scenario is ScenarioComparisonWithReturn & { proposed_return: number } =>
+          typeof scenario.proposed_return === "number",
+      )
+      .sort((a, b) => b.proposed_return - a.proposed_return)[0];
+
     // Compute aggregate drawdown metrics and weighted risk score
-    const currentDrawdowns = currentStress.stress_results.map((r: any) => r.simulated_drawdown_pct);
-    const proposedDrawdowns = proposedStress.stress_results.map((r: any) => r.simulated_drawdown_pct);
+    const currentDrawdowns = currentStress.stress_results.map((r) => r.simulated_drawdown_pct);
+    const proposedDrawdowns = proposedStress.stress_results.map((r) => r.simulated_drawdown_pct);
     const currentAvgDrawdown = currentDrawdowns.length > 0 ? currentDrawdowns.reduce((a: number, b: number) => a + b, 0) / currentDrawdowns.length : 0;
     const proposedAvgDrawdown = proposedDrawdowns.length > 0 ? proposedDrawdowns.reduce((a: number, b: number) => a + b, 0) / proposedDrawdowns.length : 0;
     const currentMaxDrawdown = currentDrawdowns.length > 0 ? Math.max(...currentDrawdowns) : 0;
@@ -581,6 +709,8 @@ const riskStep = createStep({
       `Proposed portfolio average drawdown across all stress scenarios: ${proposedAvgDrawdown.toFixed(2)}%`,
       `Proposed portfolio max drawdown across all stress scenarios: ${proposedMaxDrawdown.toFixed(2)}%`,
       `Proposed portfolio concentration score: ${proposedVaR.concentration_score.toFixed(4)}`,
+      `Proposed portfolio expected 90d return: ${proposedOpportunity.expectedReturn90dPct ?? "N/A"}%`,
+      `Proposed portfolio upside/downside ratio: ${proposedOpportunity.upsideDownsideRatio ?? "N/A"}`,
       "",
       "Proposed actions:",
       `${actions?.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ") ?? "none"}`,
@@ -589,6 +719,15 @@ const riskStep = createStep({
       "",
       "Scenario-by-scenario comparison (DO NOT repeat in improvement_summary):",
       JSON.stringify(scenarioComparisons, null, 2),
+      "",
+      "Opportunity comparison:",
+      `Current expected 90d return: ${currentOpportunity.expectedReturn90dPct ?? "N/A"}%`,
+      `Proposed expected 90d return: ${proposedOpportunity.expectedReturn90dPct ?? "N/A"}%`,
+      `Current upside/downside ratio: ${currentOpportunity.upsideDownsideRatio ?? "N/A"}`,
+      `Proposed upside/downside ratio: ${proposedOpportunity.upsideDownsideRatio ?? "N/A"}`,
+      bestUpsideScenario
+        ? `Best proposed upside scenario: ${bestUpsideScenario.scenario} (${bestUpsideScenario.current_return}% current → ${bestUpsideScenario.proposed_return}% proposed)`
+        : "Best proposed upside scenario: N/A",
       "",
       "Current portfolio holdings:",
       JSON.stringify(portfolioData, null, 2),
@@ -613,7 +752,7 @@ const riskStep = createStep({
 
     const riskAgent = (await import("@/lib/agents/risk")).riskAgent;
 
-    let riskResultObj;
+    let riskResultObj: z.infer<typeof RiskOutput> | null;
     try {
       const result = await riskAgent.generate(riskPrompt, {
         structuredOutput: { schema: RiskOutput, jsonPromptInjection: true },
@@ -641,7 +780,7 @@ const riskStep = createStep({
         caveats: ["LLM risk analysis failed to generate. Portfolio rejected by default."],
         risk_summary: "System fallback: Rejected due to internal LLM failure.",
         improvement_summary: "N/A - Auto-rejected.",
-      } as any;
+      };
     }
 
     // Attach structured scenario comparisons for the UI
@@ -661,6 +800,31 @@ const riskStep = createStep({
     riskResultObj.current_concentration_score = currentVaR.concentration_score;
     riskResultObj.proposed_concentration_score = proposedVaR.concentration_score;
     riskResultObj.current_var_95 = currentVaR.var_pct;
+    if (typeof currentOpportunity.expectedReturn90dPct === "number") {
+      riskResultObj.current_expected_return_90d = currentOpportunity.expectedReturn90dPct;
+    }
+    if (typeof proposedOpportunity.expectedReturn90dPct === "number") {
+      riskResultObj.proposed_expected_return_90d = proposedOpportunity.expectedReturn90dPct;
+    }
+    if (typeof currentOpportunity.upsideDownsideRatio === "number") {
+      riskResultObj.current_upside_downside_ratio = currentOpportunity.upsideDownsideRatio;
+    }
+    if (typeof proposedOpportunity.upsideDownsideRatio === "number") {
+      riskResultObj.proposed_upside_downside_ratio = proposedOpportunity.upsideDownsideRatio;
+    }
+    if (
+      bestUpsideScenario &&
+      typeof bestUpsideScenario.current_return === "number" &&
+      typeof bestUpsideScenario.proposed_return === "number" &&
+      typeof bestUpsideScenario.delta_return_pp === "number"
+    ) {
+      riskResultObj.best_upside_scenario = {
+        scenario: bestUpsideScenario.scenario,
+        current_return: bestUpsideScenario.current_return,
+        proposed_return: bestUpsideScenario.proposed_return,
+        delta_return_pp: bestUpsideScenario.delta_return_pp,
+      };
+    }
 
     return { ...inputData, risk: riskResultObj };
   },
