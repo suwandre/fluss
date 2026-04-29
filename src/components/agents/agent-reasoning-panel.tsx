@@ -214,7 +214,6 @@ export function AgentReasoningPanel({
 							<div className="mt-4 pt-4 border-t border-border">
 								<DecisionSupport
 									steps={steps}
-									stressResults={stressResults ?? []}
 									riskMetrics={riskMetrics ?? null}
 									currentAllocations={currentAllocations}
 									riskStructuredOutput={riskStructuredOutput ?? null}
@@ -251,31 +250,42 @@ function formatLossPercent(value: number): string {
 	return `-${abs}%`;
 }
 
-function getMetricRows(riskMetrics: RiskMetrics | null) {
-	if (!riskMetrics) return [];
+function getRiskScore(riskMetrics: RiskMetrics | null) {
+	if (!riskMetrics) return null;
+	const {
+		current_var_95,
+		proposed_var_95,
+		current_avg_drawdown,
+		proposed_avg_drawdown,
+		current_max_drawdown,
+		proposed_max_drawdown,
+	} = riskMetrics;
 
-	const rows = [
-		{
-			label: "VaR 95",
-			current: riskMetrics.current_var_95,
-			proposed: riskMetrics.proposed_var_95,
-		},
-		{
-			label: "Avg stress DD",
-			current: riskMetrics.current_avg_drawdown,
-			proposed: riskMetrics.proposed_avg_drawdown,
-		},
-		{
-			label: "Max stress DD",
-			current: riskMetrics.current_max_drawdown,
-			proposed: riskMetrics.proposed_max_drawdown,
-		},
-	];
+	if (
+		typeof current_var_95 !== "number" ||
+		typeof proposed_var_95 !== "number" ||
+		typeof current_avg_drawdown !== "number" ||
+		typeof proposed_avg_drawdown !== "number" ||
+		typeof current_max_drawdown !== "number" ||
+		typeof proposed_max_drawdown !== "number"
+	) {
+		return null;
+	}
 
-	return rows.filter(
-		(row): row is { label: string; current: number; proposed: number } =>
-			typeof row.current === "number" && typeof row.proposed === "number",
-	);
+	const current =
+		current_avg_drawdown * 0.45 +
+		current_max_drawdown * 0.3 +
+		current_var_95 * 0.25;
+	const proposed =
+		proposed_avg_drawdown * 0.45 +
+		proposed_max_drawdown * 0.3 +
+		proposed_var_95 * 0.25;
+
+	return {
+		current,
+		proposed,
+		delta: proposed - current,
+	};
 }
 
 function formatSignedPercent(value: number): string {
@@ -284,15 +294,10 @@ function formatSignedPercent(value: number): string {
 	return `${sign}${value.toFixed(1)}%`;
 }
 
-function formatActionLabel(action?: ProposedAction["action"]) {
-	const labels: Record<NonNullable<ProposedAction["action"]>, string> = {
-		add: "Add",
-		increase: "Increase",
-		reduce: "Reduce",
-		remove: "Remove",
-		replace: "Replace",
-	};
-	return action ? labels[action] : "Keep";
+function formatSignedNumber(value: number): string {
+	if (Math.abs(value).toFixed(1) === "0.0") return "0.0";
+	const sign = value > 0 ? "+" : "";
+	return `${sign}${value.toFixed(1)}`;
 }
 
 function getProposedActions(steps: AgentStepData[]): ProposedAction[] {
@@ -367,218 +372,209 @@ function getAllocationRows(
 		.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 }
 
-function getImpactRows(
-	riskMetrics: RiskMetrics | null,
-	allocationRows: ReturnType<typeof getAllocationRows>,
-) {
-	const metricRows = getMetricRows(riskMetrics).slice(0, 2).map((row) => ({
-		label: row.label,
-		current: formatLossPercent(row.current),
-		proposed: formatLossPercent(row.proposed),
-		improved: Math.abs(row.proposed) < Math.abs(row.current),
-	}));
-
-	const maxPositionCurrent = allocationRows.length > 0
-		? Math.max(...allocationRows.map((row) => row.current))
-		: null;
-	const maxPositionProposed = allocationRows.length > 0
-		? Math.max(...allocationRows.map((row) => row.proposed))
-		: null;
-
-	if (
-		typeof maxPositionCurrent === "number" &&
-		typeof maxPositionProposed === "number"
-	) {
-		metricRows.unshift({
-			label: "Max position",
-			current: `${maxPositionCurrent.toFixed(1)}%`,
-			proposed: `${maxPositionProposed.toFixed(1)}%`,
-			improved: maxPositionProposed < maxPositionCurrent,
-		});
-	}
-
-	return metricRows.slice(0, 3);
-}
-
-function getExecutionChecks({
-	steps,
-	stressResults,
-	riskStructuredOutput,
-	proposedActions,
-}: {
-	steps: AgentStepData[];
-	stressResults: StressResult[];
-	riskStructuredOutput: Record<string, unknown> | null;
-	proposedActions: ProposedAction[];
-}) {
-	const confidence = steps[2]?.structuredOutput?.confidence;
+function getVerdictSummary(steps: AgentStepData[]) {
 	const verdict = typeof steps[3]?.structuredOutput?.verdict === "string"
 		? steps[3].structuredOutput.verdict.toLowerCase()
 		: null;
+
+	if (verdict === "rejected" || verdict === "reject") {
+		return {
+			label: "Blocked",
+			detail: "Keep current portfolio",
+			tone: "red" as const,
+		};
+	}
+
+	if (verdict === "approved_with_caveats" || verdict === "approve_with_caveats") {
+		return {
+			label: "Approved",
+			detail: "Caveats attached",
+			tone: "amber" as const,
+		};
+	}
+
+	if (verdict === "approved" || verdict === "approve") {
+		return {
+			label: "Approved",
+			detail: "Ready to apply",
+			tone: "green" as const,
+		};
+	}
+
+	return {
+		label: "Complete",
+		detail: "Review proposal",
+		tone: "green" as const,
+	};
+}
+
+function getTurnover(allocationRows: ReturnType<typeof getAllocationRows>) {
+	if (allocationRows.length === 0) return null;
+	return allocationRows.reduce((sum, row) => sum + Math.abs(row.delta), 0) / 2;
+}
+
+function getResidualRisk({
+	allocationRows,
+	riskMetrics,
+	riskStructuredOutput,
+}: {
+	allocationRows: ReturnType<typeof getAllocationRows>;
+	riskMetrics: RiskMetrics | null;
+	riskStructuredOutput: Record<string, unknown> | null;
+}) {
+	const largestPosition = allocationRows.reduce<
+		{ ticker: string; proposed: number } | null
+	>((largest, row) => {
+		if (!largest || row.proposed > largest.proposed) {
+			return { ticker: row.ticker, proposed: row.proposed };
+		}
+		return largest;
+	}, null);
+
+	if (largestPosition && largestPosition.proposed >= 50) {
+		return `${largestPosition.ticker} still ${largestPosition.proposed.toFixed(1)}%`;
+	}
+
+	if (
+		typeof riskMetrics?.proposed_max_drawdown === "number" &&
+		Math.abs(riskMetrics.proposed_max_drawdown) >= 25
+	) {
+		return `Max stress DD ${formatLossPercent(riskMetrics.proposed_max_drawdown)}`;
+	}
+
 	const caveats = Array.isArray(riskStructuredOutput?.caveats)
 		? (riskStructuredOutput.caveats as unknown[]).filter(
 				(caveat): caveat is string => typeof caveat === "string",
 			)
 		: [];
-	const approved = verdict === "approved" || verdict === "approved_with_caveats" || verdict === "approve" || verdict === "approve_with_caveats";
+	if (caveats.length > 0) return `${caveats.length} caveat${caveats.length === 1 ? "" : "s"}`;
 
-	const checks = [
-		{
-			label: approved ? "Risk verdict approved" : "Risk verdict blocked",
-			tone: approved ? ("green" as const) : ("red" as const),
-		},
-		{
-			label:
-				typeof confidence === "string"
-					? `${confidence[0]?.toUpperCase()}${confidence.slice(1)} confidence`
-					: "Confidence recorded",
-			tone: confidence === "low" ? ("amber" as const) : ("green" as const),
-		},
-		{
-			label: `${proposedActions.length} action${proposedActions.length === 1 ? "" : "s"} ready`,
-			tone: proposedActions.length > 0 ? ("green" as const) : ("amber" as const),
-		},
-	];
-
-	if (stressResults.length > 0) {
-		checks.push({
-			label: `${stressResults.length} stress scenarios tested`,
-			tone: "green" as const,
-		});
-	}
-
-	if (caveats.length > 0) {
-		checks.push({
-			label: `${caveats.length} caveat${caveats.length === 1 ? "" : "s"} in proposal`,
-			tone: "amber" as const,
-		});
-	}
-
-	return checks.slice(0, 4);
+	return "No major blocker";
 }
 
 function DecisionSupport({
 	steps,
-	stressResults,
 	riskMetrics,
 	currentAllocations,
 	riskStructuredOutput,
 }: {
 	steps: AgentStepData[];
-	stressResults: StressResult[];
 	riskMetrics: RiskMetrics | null;
 	currentAllocations: CurrentAllocation[];
 	riskStructuredOutput: Record<string, unknown> | null;
 }) {
 	const proposedActions = getProposedActions(steps);
 	const allocationRows = getAllocationRows(currentAllocations, proposedActions);
-	const impactRows = getImpactRows(riskMetrics, allocationRows);
-	const executionChecks = getExecutionChecks({
-		steps,
-		stressResults,
+	const verdict = getVerdictSummary(steps);
+	const riskScore = getRiskScore(riskMetrics);
+	const primaryChange = allocationRows[0] ?? null;
+	const turnover = getTurnover(allocationRows);
+	const residualRisk = getResidualRisk({
+		allocationRows,
+		riskMetrics,
 		riskStructuredOutput,
-		proposedActions,
 	});
 
 	return (
-		<div className="space-y-3">
-			<div>
-				<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
-					Proposed Changes
-				</div>
-				<div className="rounded border border-border bg-bg-elevated divide-y divide-border/60">
-					{allocationRows.length > 0 ? (
-						allocationRows.slice(0, 4).map((row) => (
-							<div
-								key={row.ticker}
-								className="grid grid-cols-[auto_1fr_auto] gap-3 px-3 py-2 text-[12px] font-mono items-center"
-							>
-								<span
-									className={cn(
-										"rounded px-1.5 py-0.5 text-[10px]",
-										row.action === "remove" || row.action === "reduce"
-											? "bg-amber/10 text-amber"
-											: "bg-teal/10 text-teal",
-									)}
-								>
-									{formatActionLabel(row.action)}
-								</span>
-								<span className="font-medium text-text truncate">
-									{row.ticker}
-								</span>
-								<span className="text-right">
-									<span className="text-text-dim">
-										{row.current.toFixed(1)}%
-									</span>
-									<span className="mx-1.5 text-text-muted">-&gt;</span>
-									<span className="text-teal font-medium">
-										{row.proposed.toFixed(1)}%
-									</span>
-									<span className={cn(
-										"ml-2 text-[10px]",
-										row.delta < 0 ? "text-amber" : "text-green",
-									)}>
-										{formatSignedPercent(row.delta)}
-									</span>
-								</span>
-							</div>
-						))
-					) : (
-						<div className="px-3 py-3 text-[12px] font-mono text-text-muted">
-							No allocation changes available.
-						</div>
-					)}
-				</div>
+		<div>
+			<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
+				Final Result
 			</div>
-
-			{impactRows.length > 0 && (
-				<div>
-					<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
-						Expected Impact
-					</div>
-					<div className="rounded border border-border bg-bg-elevated divide-y divide-border/60">
-						{impactRows.map((row) => (
-								<div
-									key={row.label}
-									className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2 text-[12px] font-mono"
-								>
-									<span className="text-text-dim">{row.label}</span>
-									<div className="text-right text-text">
-										{row.current}
-										<span className="mx-1.5 text-text-muted">-&gt;</span>
-										<span className={row.improved ? "text-green" : "text-teal"}>
-											{row.proposed}
-										</span>
-									</div>
-								</div>
-						))}
-					</div>
-				</div>
-			)}
-
-			<div>
-				<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
-					Execution Checks
-				</div>
-				<div className="grid grid-cols-1 gap-1.5">
-					{executionChecks.map((check) => (
+			<div className="rounded border border-border bg-bg-elevated p-3">
+				<div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
+					<div>
+						<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide">
+							Verdict
+						</div>
 						<div
-							key={check.label}
 							className={cn(
-								"flex items-center gap-2 rounded border px-2.5 py-2 text-[11px] font-mono leading-snug",
-								check.tone === "red" &&
-									"border-red/20 bg-red/5 text-red",
-								check.tone === "amber" &&
-									"border-amber/20 bg-amber/5 text-amber",
-								check.tone === "green" &&
-									"border-green/20 bg-green/5 text-green",
+								"mt-1 text-[16px] font-mono font-semibold",
+								verdict.tone === "green" && "text-green",
+								verdict.tone === "amber" && "text-amber",
+								verdict.tone === "red" && "text-red",
 							)}
 						>
-							<span className="size-1.5 rounded-full bg-current shrink-0" />
-							<span>{check.label}</span>
+							{verdict.label}
 						</div>
-					))}
+					</div>
+					<div
+						className={cn(
+							"rounded-full border px-2 py-1 text-[11px] font-mono",
+							verdict.tone === "green" && "border-green/20 bg-green/10 text-green",
+							verdict.tone === "amber" && "border-amber/20 bg-amber/10 text-amber",
+							verdict.tone === "red" && "border-red/20 bg-red/10 text-red",
+						)}
+					>
+						{verdict.detail}
+					</div>
 				</div>
+
+				<div className="mt-3 grid gap-2">
+					{riskScore && (
+						<FinalResultRow
+							label="Risk score"
+							value={`${riskScore.current.toFixed(1)} -> ${riskScore.proposed.toFixed(1)}`}
+							detail={`${formatSignedNumber(riskScore.delta)} ${riskScore.delta <= 0 ? "improved" : "worse"}`}
+							tone={riskScore.delta <= 0 ? "green" : "red"}
+						/>
+					)}
+					{primaryChange && (
+						<FinalResultRow
+							label="Main fix"
+							value={`${primaryChange.ticker} ${primaryChange.current.toFixed(1)}% -> ${primaryChange.proposed.toFixed(1)}%`}
+							detail={formatSignedPercent(primaryChange.delta)}
+							tone={primaryChange.delta < 0 ? "amber" : "green"}
+						/>
+					)}
+					{turnover != null && (
+						<FinalResultRow
+							label="Trade size"
+							value={`${turnover.toFixed(1)}% turnover`}
+							detail={`${proposedActions.length} action${proposedActions.length === 1 ? "" : "s"}`}
+							tone="teal"
+						/>
+					)}
+					<FinalResultRow
+						label="Residual risk"
+						value={residualRisk}
+						detail="After rebalance"
+						tone={residualRisk === "No major blocker" ? "green" : "amber"}
+					/>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function FinalResultRow({
+	label,
+	value,
+	detail,
+	tone,
+}: {
+	label: string;
+	value: string;
+	detail: string;
+	tone: "green" | "amber" | "red" | "teal";
+}) {
+	return (
+		<div className="grid grid-cols-[1fr_auto] gap-3 rounded border border-border/70 bg-bg-card px-3 py-2 font-mono">
+			<div className="min-w-0">
+				<div className="text-[10px] uppercase tracking-wide text-text-dim">
+					{label}
+				</div>
+				<div className="mt-0.5 truncate text-[12px] text-text">{value}</div>
+			</div>
+			<div
+				className={cn(
+					"self-center text-right text-[11px]",
+					tone === "green" && "text-green",
+					tone === "amber" && "text-amber",
+					tone === "red" && "text-red",
+					tone === "teal" && "text-teal",
+				)}
+			>
+				{detail}
 			</div>
 		</div>
 	);
