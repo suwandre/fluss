@@ -19,6 +19,15 @@ interface StressResult {
 	recovery_days: number | null;
 }
 
+interface RiskMetrics {
+	current_var_95?: number | null;
+	proposed_var_95?: number | null;
+	current_avg_drawdown?: number | null;
+	proposed_avg_drawdown?: number | null;
+	current_max_drawdown?: number | null;
+	proposed_max_drawdown?: number | null;
+}
+
 interface HistoryRun {
 	runId: string;
 	createdAt: string;
@@ -35,6 +44,8 @@ interface AgentReasoningPanelProps {
 	error?: string | null;
 	onRun?: (preferences?: RebalancePreferences) => void;
 	stressResults?: StressResult[] | null;
+	riskMetrics?: RiskMetrics | null;
+	riskStructuredOutput?: Record<string, unknown> | null;
 	onRestoreRun?: (run: HistoryRun) => void;
 	onRedesignViewDetails?: () => void;
 }
@@ -54,13 +65,15 @@ export function AgentReasoningPanel({
 	error,
 	onRun,
 	stressResults,
+	riskMetrics,
+	riskStructuredOutput,
 	onRestoreRun,
 	onRedesignViewDetails,
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
 	const [prefsModalOpen, setPrefsModalOpen] = useState(false);
 	const riskDone = steps[3]?.status === "done";
-	const showChart = riskDone && stressResults && stressResults.length > 0;
+	const showDecisionSupport = riskDone && (Boolean(riskMetrics) || Boolean(stressResults?.length));
 
 	const handleSelectRun = (run: HistoryRun) => {
 		onRestoreRun?.(run);
@@ -182,22 +195,15 @@ export function AgentReasoningPanel({
 							</button>
 						)}
 
-						{/* Stress test summary — shown after Risk Agent completes */}
-						{showChart && (
+						{/* Decision support — shown after Risk Agent completes */}
+						{showDecisionSupport && (
 							<div className="mt-4 pt-4 border-t border-border">
-								<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">Stress Test Summary</div>
-								<div className="flex items-center gap-2 text-[12px] text-text">
-									<span>{stressResults.length} scenarios tested.</span>
-									<span className="text-text-dim">Worst drawdown: </span>
-									<span className="font-mono font-medium">
-										{(() => {
-											const worst = stressResults.reduce((prev, curr) =>
-												Math.abs(curr.simulated_drawdown_pct || 0) > Math.abs(prev.simulated_drawdown_pct || 0) ? curr : prev
-											);
-												return `-${Math.abs(worst.simulated_drawdown_pct).toFixed(1)}% (${worst.scenario})`;
-										})()}
-									</span>
-								</div>
+								<DecisionSupport
+									steps={steps}
+									stressResults={stressResults ?? []}
+									riskMetrics={riskMetrics ?? null}
+									riskStructuredOutput={riskStructuredOutput ?? null}
+								/>
 							</div>
 						)}
 					</div>
@@ -223,6 +229,207 @@ export function AgentReasoningPanel({
 	);
 }
 
+
+function formatLossPercent(value: number): string {
+	const abs = Math.abs(value).toFixed(1);
+	if (abs === "0.0") return "0.0%";
+	return `-${abs}%`;
+}
+
+function getMetricRows(riskMetrics: RiskMetrics | null) {
+	if (!riskMetrics) return [];
+
+	const rows = [
+		{
+			label: "VaR 95",
+			current: riskMetrics.current_var_95,
+			proposed: riskMetrics.proposed_var_95,
+		},
+		{
+			label: "Avg stress DD",
+			current: riskMetrics.current_avg_drawdown,
+			proposed: riskMetrics.proposed_avg_drawdown,
+		},
+		{
+			label: "Max stress DD",
+			current: riskMetrics.current_max_drawdown,
+			proposed: riskMetrics.proposed_max_drawdown,
+		},
+	];
+
+	return rows.filter(
+		(row): row is { label: string; current: number; proposed: number } =>
+			typeof row.current === "number" && typeof row.proposed === "number",
+	);
+}
+
+function getWorstStressResult(stressResults: StressResult[]) {
+	if (stressResults.length === 0) return null;
+	return stressResults.reduce((worst, current) =>
+		Math.abs(current.simulated_drawdown_pct) >
+		Math.abs(worst.simulated_drawdown_pct)
+			? current
+			: worst,
+	);
+}
+
+function getRiskNotes({
+	steps,
+	stressResults,
+	riskMetrics,
+	riskStructuredOutput,
+}: {
+	steps: AgentStepData[];
+	stressResults: StressResult[];
+	riskMetrics: RiskMetrics | null;
+	riskStructuredOutput: Record<string, unknown> | null;
+}) {
+	const notes: Array<{ text: string; tone: "red" | "amber" | "green" }> = [];
+	const caveats = Array.isArray(riskStructuredOutput?.caveats)
+		? (riskStructuredOutput.caveats as unknown[]).filter(
+				(caveat): caveat is string => typeof caveat === "string",
+			)
+		: [];
+
+	for (const caveat of caveats.slice(0, 2)) {
+		notes.push({ text: caveat, tone: "amber" });
+	}
+
+	const bottleneck = steps[1]?.structuredOutput?.bottleneck;
+	const severity = steps[1]?.structuredOutput?.severity;
+	if (typeof bottleneck === "string" && typeof severity === "string") {
+		notes.push({
+			text: `${bottleneck} remains primary bottleneck (${severity})`,
+			tone: severity.toLowerCase() === "high" ? "red" : "amber",
+		});
+	}
+
+	const proposedMaxDrawdown = riskMetrics?.proposed_max_drawdown;
+	if (typeof proposedMaxDrawdown === "number") {
+		const absoluteDrawdown = Math.abs(proposedMaxDrawdown);
+		if (absoluteDrawdown >= 25) {
+			notes.push({
+				text: `Max stress drawdown still critical at ${formatLossPercent(proposedMaxDrawdown)}`,
+				tone: "red",
+			});
+		} else if (absoluteDrawdown >= 15) {
+			notes.push({
+				text: `Stress losses remain material at ${formatLossPercent(proposedMaxDrawdown)}`,
+				tone: "amber",
+			});
+		}
+	}
+
+	const worst = getWorstStressResult(stressResults);
+	if (worst) {
+		notes.push({
+			text: `Worst scenario: ${worst.scenario}`,
+			tone: "amber",
+		});
+	}
+
+	if (notes.length === 0) {
+		return [{ text: "No major caveats surfaced.", tone: "green" as const }];
+	}
+
+	return notes.slice(0, 3);
+}
+
+function DecisionSupport({
+	steps,
+	stressResults,
+	riskMetrics,
+	riskStructuredOutput,
+}: {
+	steps: AgentStepData[];
+	stressResults: StressResult[];
+	riskMetrics: RiskMetrics | null;
+	riskStructuredOutput: Record<string, unknown> | null;
+}) {
+	const metricRows = getMetricRows(riskMetrics);
+	const riskNotes = getRiskNotes({
+		steps,
+		stressResults,
+		riskMetrics,
+		riskStructuredOutput,
+	});
+
+	return (
+		<div className="space-y-3">
+			{metricRows.length > 0 && (
+				<div>
+					<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
+						Before / After
+					</div>
+					<div className="rounded border border-border bg-bg-elevated divide-y divide-border/60">
+						{metricRows.map((row) => {
+							const current = Math.abs(row.current);
+							const proposed = Math.abs(row.proposed);
+							const delta = proposed - current;
+							const improved = delta < 0;
+							const worsened = delta > 0;
+							const deltaClass = improved
+								? "text-green"
+								: worsened
+									? "text-red"
+									: "text-text-dim";
+							const deltaLabel = improved
+								? `${Math.abs(delta).toFixed(1)}pp better`
+								: worsened
+									? `${Math.abs(delta).toFixed(1)}pp worse`
+									: "No change";
+
+							return (
+								<div
+									key={row.label}
+									className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2 text-[12px] font-mono"
+								>
+									<span className="text-text-dim">{row.label}</span>
+									<div className="text-right">
+										<div className="text-text">
+											{formatLossPercent(row.current)}
+											<span className="mx-1.5 text-text-muted">-&gt;</span>
+											<span className={improved ? "text-green" : "text-teal"}>
+												{formatLossPercent(row.proposed)}
+											</span>
+										</div>
+										<div className={`text-[10px] ${deltaClass}`}>
+											{deltaLabel}
+										</div>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
+
+			<div>
+				<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
+					Key Risks
+				</div>
+				<div className="space-y-1.5">
+					{riskNotes.map((note) => (
+						<div
+							key={note.text}
+							className={cn(
+								"rounded border px-2.5 py-2 text-[11px] font-mono leading-snug",
+								note.tone === "red" &&
+									"border-red/20 bg-red/5 text-red",
+								note.tone === "amber" &&
+									"border-amber/20 bg-amber/5 text-amber",
+								note.tone === "green" &&
+									"border-green/20 bg-green/5 text-green",
+							)}
+						>
+							{note.text}
+						</div>
+					))}
+				</div>
+			</div>
+		</div>
+	);
+}
 
 function PipelineStatusBar({ steps }: { steps: AgentStepData[] }) {
 	const labels = ["Monitor", "Bottleneck", "Redesign", "Risk", "Final"];
