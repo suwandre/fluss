@@ -354,6 +354,7 @@ export default function Home() {
 				onRun={startRun}
 				stressResults={stressResults}
 				riskMetrics={riskMetrics}
+				currentAllocations={currentAllocations}
 				riskStructuredOutput={riskStructuredOutputForModal}
 				onRestoreRun={handleRestoreRun}
 				onRedesignViewDetails={() => setRedesignModalOpen(true)}

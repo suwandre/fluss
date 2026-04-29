@@ -28,6 +28,18 @@ interface RiskMetrics {
 	proposed_max_drawdown?: number | null;
 }
 
+interface CurrentAllocation {
+	ticker: string;
+	weight: number;
+}
+
+interface ProposedAction {
+	action?: "reduce" | "increase" | "replace" | "add" | "remove";
+	ticker: string;
+	target_pct: number;
+	rationale?: string;
+}
+
 interface HistoryRun {
 	runId: string;
 	createdAt: string;
@@ -45,6 +57,7 @@ interface AgentReasoningPanelProps {
 	onRun?: (preferences?: RebalancePreferences) => void;
 	stressResults?: StressResult[] | null;
 	riskMetrics?: RiskMetrics | null;
+	currentAllocations?: CurrentAllocation[];
 	riskStructuredOutput?: Record<string, unknown> | null;
 	onRestoreRun?: (run: HistoryRun) => void;
 	onRedesignViewDetails?: () => void;
@@ -66,6 +79,7 @@ export function AgentReasoningPanel({
 	onRun,
 	stressResults,
 	riskMetrics,
+	currentAllocations = [],
 	riskStructuredOutput,
 	onRestoreRun,
 	onRedesignViewDetails,
@@ -202,6 +216,7 @@ export function AgentReasoningPanel({
 									steps={steps}
 									stressResults={stressResults ?? []}
 									riskMetrics={riskMetrics ?? null}
+									currentAllocations={currentAllocations}
 									riskStructuredOutput={riskStructuredOutput ?? null}
 								/>
 							</div>
@@ -263,166 +278,304 @@ function getMetricRows(riskMetrics: RiskMetrics | null) {
 	);
 }
 
-function getWorstStressResult(stressResults: StressResult[]) {
-	if (stressResults.length === 0) return null;
-	return stressResults.reduce((worst, current) =>
-		Math.abs(current.simulated_drawdown_pct) >
-		Math.abs(worst.simulated_drawdown_pct)
-			? current
-			: worst,
-	);
+function formatSignedPercent(value: number): string {
+	if (Math.abs(value).toFixed(1) === "0.0") return "0.0%";
+	const sign = value > 0 ? "+" : "";
+	return `${sign}${value.toFixed(1)}%`;
 }
 
-function getRiskNotes({
+function formatActionLabel(action?: ProposedAction["action"]) {
+	const labels: Record<NonNullable<ProposedAction["action"]>, string> = {
+		add: "Add",
+		increase: "Increase",
+		reduce: "Reduce",
+		remove: "Remove",
+		replace: "Replace",
+	};
+	return action ? labels[action] : "Keep";
+}
+
+function getProposedActions(steps: AgentStepData[]): ProposedAction[] {
+	const actions = steps[2]?.structuredOutput?.proposed_actions;
+	if (!Array.isArray(actions)) return [];
+
+	return actions.filter((action): action is ProposedAction => {
+		if (!action || typeof action !== "object") return false;
+		const candidate = action as Record<string, unknown>;
+		return (
+			typeof candidate.ticker === "string" &&
+			typeof candidate.target_pct === "number"
+		);
+	});
+}
+
+function getAllocationRows(
+	currentAllocations: CurrentAllocation[],
+	proposedActions: ProposedAction[],
+) {
+	const currentWeightMap = new Map<string, number>();
+	for (const allocation of currentAllocations) {
+		currentWeightMap.set(allocation.ticker.toUpperCase(), allocation.weight);
+	}
+
+	const proposedActionMap = new Map<string, ProposedAction>();
+	for (const action of proposedActions) {
+		proposedActionMap.set(action.ticker.toUpperCase(), action);
+	}
+
+	const tickers = new Set<string>();
+	for (const allocation of currentAllocations) {
+		tickers.add(allocation.ticker.toUpperCase());
+	}
+	for (const ticker of proposedActionMap.keys()) {
+		tickers.add(ticker);
+	}
+
+	const proposedWeightMap = new Map<string, number>();
+	for (const ticker of tickers) {
+		const action = proposedActionMap.get(ticker);
+		const current = currentWeightMap.get(ticker) ?? 0;
+		const target = action
+			? action.action === "remove"
+				? 0
+				: Math.max(action.target_pct, 0)
+			: current;
+		proposedWeightMap.set(ticker, target);
+	}
+
+	const totalWeight = Array.from(proposedWeightMap.values()).reduce(
+		(sum, weight) => sum + weight,
+		0,
+	);
+	const scale = totalWeight > 0 ? 100 / totalWeight : 1;
+
+	return Array.from(tickers)
+		.map((ticker) => {
+			const action = proposedActionMap.get(ticker);
+			const current = currentWeightMap.get(ticker) ?? 0;
+			const proposed = (proposedWeightMap.get(ticker) ?? 0) * scale;
+			return {
+				ticker: action?.ticker ?? ticker,
+				action: action?.action,
+				current,
+				proposed,
+				delta: proposed - current,
+				hasAction: Boolean(action),
+			};
+		})
+		.filter((row) => row.hasAction || Math.abs(row.delta) >= 0.05)
+		.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+function getImpactRows(
+	riskMetrics: RiskMetrics | null,
+	allocationRows: ReturnType<typeof getAllocationRows>,
+) {
+	const metricRows = getMetricRows(riskMetrics).slice(0, 2).map((row) => ({
+		label: row.label,
+		current: formatLossPercent(row.current),
+		proposed: formatLossPercent(row.proposed),
+		improved: Math.abs(row.proposed) < Math.abs(row.current),
+	}));
+
+	const maxPositionCurrent = allocationRows.length > 0
+		? Math.max(...allocationRows.map((row) => row.current))
+		: null;
+	const maxPositionProposed = allocationRows.length > 0
+		? Math.max(...allocationRows.map((row) => row.proposed))
+		: null;
+
+	if (
+		typeof maxPositionCurrent === "number" &&
+		typeof maxPositionProposed === "number"
+	) {
+		metricRows.unshift({
+			label: "Max position",
+			current: `${maxPositionCurrent.toFixed(1)}%`,
+			proposed: `${maxPositionProposed.toFixed(1)}%`,
+			improved: maxPositionProposed < maxPositionCurrent,
+		});
+	}
+
+	return metricRows.slice(0, 3);
+}
+
+function getExecutionChecks({
 	steps,
 	stressResults,
-	riskMetrics,
 	riskStructuredOutput,
+	proposedActions,
 }: {
 	steps: AgentStepData[];
 	stressResults: StressResult[];
-	riskMetrics: RiskMetrics | null;
 	riskStructuredOutput: Record<string, unknown> | null;
+	proposedActions: ProposedAction[];
 }) {
-	const notes: Array<{ text: string; tone: "red" | "amber" | "green" }> = [];
+	const confidence = steps[2]?.structuredOutput?.confidence;
+	const verdict = typeof steps[3]?.structuredOutput?.verdict === "string"
+		? steps[3].structuredOutput.verdict.toLowerCase()
+		: null;
 	const caveats = Array.isArray(riskStructuredOutput?.caveats)
 		? (riskStructuredOutput.caveats as unknown[]).filter(
 				(caveat): caveat is string => typeof caveat === "string",
 			)
 		: [];
+	const approved = verdict === "approved" || verdict === "approved_with_caveats" || verdict === "approve" || verdict === "approve_with_caveats";
 
-	for (const caveat of caveats.slice(0, 2)) {
-		notes.push({ text: caveat, tone: "amber" });
-	}
+	const checks = [
+		{
+			label: approved ? "Risk verdict approved" : "Risk verdict blocked",
+			tone: approved ? ("green" as const) : ("red" as const),
+		},
+		{
+			label:
+				typeof confidence === "string"
+					? `${confidence[0]?.toUpperCase()}${confidence.slice(1)} confidence`
+					: "Confidence recorded",
+			tone: confidence === "low" ? ("amber" as const) : ("green" as const),
+		},
+		{
+			label: `${proposedActions.length} action${proposedActions.length === 1 ? "" : "s"} ready`,
+			tone: proposedActions.length > 0 ? ("green" as const) : ("amber" as const),
+		},
+	];
 
-	const bottleneck = steps[1]?.structuredOutput?.bottleneck;
-	const severity = steps[1]?.structuredOutput?.severity;
-	if (typeof bottleneck === "string" && typeof severity === "string") {
-		notes.push({
-			text: `${bottleneck} remains primary bottleneck (${severity})`,
-			tone: severity.toLowerCase() === "high" ? "red" : "amber",
+	if (stressResults.length > 0) {
+		checks.push({
+			label: `${stressResults.length} stress scenarios tested`,
+			tone: "green" as const,
 		});
 	}
 
-	const proposedMaxDrawdown = riskMetrics?.proposed_max_drawdown;
-	if (typeof proposedMaxDrawdown === "number") {
-		const absoluteDrawdown = Math.abs(proposedMaxDrawdown);
-		if (absoluteDrawdown >= 25) {
-			notes.push({
-				text: `Max stress drawdown still critical at ${formatLossPercent(proposedMaxDrawdown)}`,
-				tone: "red",
-			});
-		} else if (absoluteDrawdown >= 15) {
-			notes.push({
-				text: `Stress losses remain material at ${formatLossPercent(proposedMaxDrawdown)}`,
-				tone: "amber",
-			});
-		}
-	}
-
-	const worst = getWorstStressResult(stressResults);
-	if (worst) {
-		notes.push({
-			text: `Worst scenario: ${worst.scenario}`,
-			tone: "amber",
+	if (caveats.length > 0) {
+		checks.push({
+			label: `${caveats.length} caveat${caveats.length === 1 ? "" : "s"} in proposal`,
+			tone: "amber" as const,
 		});
 	}
 
-	if (notes.length === 0) {
-		return [{ text: "No major caveats surfaced.", tone: "green" as const }];
-	}
-
-	return notes.slice(0, 3);
+	return checks.slice(0, 4);
 }
 
 function DecisionSupport({
 	steps,
 	stressResults,
 	riskMetrics,
+	currentAllocations,
 	riskStructuredOutput,
 }: {
 	steps: AgentStepData[];
 	stressResults: StressResult[];
 	riskMetrics: RiskMetrics | null;
+	currentAllocations: CurrentAllocation[];
 	riskStructuredOutput: Record<string, unknown> | null;
 }) {
-	const metricRows = getMetricRows(riskMetrics);
-	const riskNotes = getRiskNotes({
+	const proposedActions = getProposedActions(steps);
+	const allocationRows = getAllocationRows(currentAllocations, proposedActions);
+	const impactRows = getImpactRows(riskMetrics, allocationRows);
+	const executionChecks = getExecutionChecks({
 		steps,
 		stressResults,
-		riskMetrics,
 		riskStructuredOutput,
+		proposedActions,
 	});
 
 	return (
 		<div className="space-y-3">
-			{metricRows.length > 0 && (
+			<div>
+				<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
+					Proposed Changes
+				</div>
+				<div className="rounded border border-border bg-bg-elevated divide-y divide-border/60">
+					{allocationRows.length > 0 ? (
+						allocationRows.slice(0, 4).map((row) => (
+							<div
+								key={row.ticker}
+								className="grid grid-cols-[auto_1fr_auto] gap-3 px-3 py-2 text-[12px] font-mono items-center"
+							>
+								<span
+									className={cn(
+										"rounded px-1.5 py-0.5 text-[10px]",
+										row.action === "remove" || row.action === "reduce"
+											? "bg-amber/10 text-amber"
+											: "bg-teal/10 text-teal",
+									)}
+								>
+									{formatActionLabel(row.action)}
+								</span>
+								<span className="font-medium text-text truncate">
+									{row.ticker}
+								</span>
+								<span className="text-right">
+									<span className="text-text-dim">
+										{row.current.toFixed(1)}%
+									</span>
+									<span className="mx-1.5 text-text-muted">-&gt;</span>
+									<span className="text-teal font-medium">
+										{row.proposed.toFixed(1)}%
+									</span>
+									<span className={cn(
+										"ml-2 text-[10px]",
+										row.delta < 0 ? "text-amber" : "text-green",
+									)}>
+										{formatSignedPercent(row.delta)}
+									</span>
+								</span>
+							</div>
+						))
+					) : (
+						<div className="px-3 py-3 text-[12px] font-mono text-text-muted">
+							No allocation changes available.
+						</div>
+					)}
+				</div>
+			</div>
+
+			{impactRows.length > 0 && (
 				<div>
 					<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
-						Before / After
+						Expected Impact
 					</div>
 					<div className="rounded border border-border bg-bg-elevated divide-y divide-border/60">
-						{metricRows.map((row) => {
-							const current = Math.abs(row.current);
-							const proposed = Math.abs(row.proposed);
-							const delta = proposed - current;
-							const improved = delta < 0;
-							const worsened = delta > 0;
-							const deltaClass = improved
-								? "text-green"
-								: worsened
-									? "text-red"
-									: "text-text-dim";
-							const deltaLabel = improved
-								? `${Math.abs(delta).toFixed(1)}pp better`
-								: worsened
-									? `${Math.abs(delta).toFixed(1)}pp worse`
-									: "No change";
-
-							return (
+						{impactRows.map((row) => (
 								<div
 									key={row.label}
 									className="grid grid-cols-[1fr_auto] gap-3 px-3 py-2 text-[12px] font-mono"
 								>
 									<span className="text-text-dim">{row.label}</span>
-									<div className="text-right">
-										<div className="text-text">
-											{formatLossPercent(row.current)}
-											<span className="mx-1.5 text-text-muted">-&gt;</span>
-											<span className={improved ? "text-green" : "text-teal"}>
-												{formatLossPercent(row.proposed)}
-											</span>
-										</div>
-										<div className={`text-[10px] ${deltaClass}`}>
-											{deltaLabel}
-										</div>
+									<div className="text-right text-text">
+										{row.current}
+										<span className="mx-1.5 text-text-muted">-&gt;</span>
+										<span className={row.improved ? "text-green" : "text-teal"}>
+											{row.proposed}
+										</span>
 									</div>
 								</div>
-							);
-						})}
+						))}
 					</div>
 				</div>
 			)}
 
 			<div>
 				<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
-					Key Risks
+					Execution Checks
 				</div>
-				<div className="space-y-1.5">
-					{riskNotes.map((note) => (
+				<div className="grid grid-cols-1 gap-1.5">
+					{executionChecks.map((check) => (
 						<div
-							key={note.text}
+							key={check.label}
 							className={cn(
-								"rounded border px-2.5 py-2 text-[11px] font-mono leading-snug",
-								note.tone === "red" &&
+								"flex items-center gap-2 rounded border px-2.5 py-2 text-[11px] font-mono leading-snug",
+								check.tone === "red" &&
 									"border-red/20 bg-red/5 text-red",
-								note.tone === "amber" &&
+								check.tone === "amber" &&
 									"border-amber/20 bg-amber/5 text-amber",
-								note.tone === "green" &&
+								check.tone === "green" &&
 									"border-green/20 bg-green/5 text-green",
 							)}
 						>
-							{note.text}
+							<span className="size-1.5 rounded-full bg-current shrink-0" />
+							<span>{check.label}</span>
 						</div>
 					))}
 				</div>
