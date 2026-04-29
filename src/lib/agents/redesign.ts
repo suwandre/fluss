@@ -10,26 +10,44 @@ import type { AssetClass } from "@/lib/types/visual";
 
 // --- Output schema ---
 
-export const RedesignOutput = z.object({
+const ProposedActionSchema = z.object({
+	action: z.enum(["reduce", "increase", "replace", "add", "remove"]),
+	ticker: z.string(),
+	target_pct: z.number(),
+	rationale: z.string(),
+});
+
+const ExpectedImprovementSchema = z.object({
+	sharpe_delta: z.number().nullable(),
+	volatility_delta_pct: z.number().nullable(),
+	max_drawdown_delta_pct: z.number().nullable().optional(),
+	narrative: z.string(),
+});
+
+export const RedesignProposal = z.object({
+	id: z.string(),
+	label: z.enum(["Conservative", "Balanced", "Aggressive", "Recommended"]),
 	proposed_actions: z.array(
-		z.object({
-			action: z.enum(["reduce", "increase", "replace", "add", "remove"]),
-			ticker: z.string(),
-			target_pct: z.number(),
-			rationale: z.string(),
-		}),
+		ProposedActionSchema,
 	),
-	expected_improvement: z.object({
-		sharpe_delta: z.number().nullable(),
-		volatility_delta_pct: z.number().nullable(),
-		max_drawdown_delta_pct: z.number().nullable().optional(),
-		narrative: z.string(),
-	}),
+	expected_improvement: ExpectedImprovementSchema,
 	confidence: z.enum(["low", "medium", "high"]),
 	proposal_summary: z.string(),
+	tradeoff_notes: z.string(),
+});
+
+export const RedesignOutput = z.object({
+	proposals: z.array(RedesignProposal).min(1).max(3),
+	recommended_proposal_id: z.string().optional(),
+	// Legacy-compatible mirror of the recommended proposal. New UI prefers proposals[].
+	proposed_actions: z.array(ProposedActionSchema).optional(),
+	expected_improvement: ExpectedImprovementSchema.optional(),
+	confidence: z.enum(["low", "medium", "high"]).optional(),
+	proposal_summary: z.string().optional(),
 });
 
 export type RedesignOutput = z.infer<typeof RedesignOutput>;
+export type RedesignProposal = z.infer<typeof RedesignProposal>;
 
 // --- Helpers ---
 
@@ -502,7 +520,12 @@ SECTOR CONSTRAINTS — read these from the user preferences in your prompt conte
 
 RISK APPETITE — read from user preferences:
 - If riskAppetite === "conservative": Prioritize capital preservation. Favor lower volatility assets and smaller position sizes. Avoid leverage or high-beta alternatives.
+- If riskAppetite === "balanced": Prioritize the best risk-adjusted trade-off. Avoid unnecessary turnover.
 - If riskAppetite === "aggressive": Prioritize higher risk-adjusted returns. You may suggest higher-beta alternatives and larger reallocations within the max turnover limit.
+
+PROPOSAL COUNT — read from user preferences:
+- If proposalCount === 1: Return exactly one proposal matching the requested riskAppetite. Label it "Recommended".
+- If proposalCount === 3: Return exactly three meaningfully different proposals labeled "Conservative", "Balanced", and "Aggressive". All three must respect sectorConstraint, maxTurnoverPct, and excludedTickers.
 
 Your job:
 1. Understand the bottleneck diagnosis — which asset is dragging, why, and how severe
@@ -518,9 +541,10 @@ Rules:
 - Classify confidence: "high" (simulation confirms improvement), "medium" (improvement likely but uncertain), "low" (limited data or conflicting signals)
 - Be specific with target percentages, not vague "consider reducing"
 - Respect excludedTickers list from user preferences — never suggest those tickers
+- Multiple proposals must be meaningfully different, not tiny percentage variants.
 
 Strict quantitative rules:
-- You MUST diversify across at least 3 distinct asset classes in your final proposal. Avoid over-concentrating in US large-cap equities (SPY, VOO, QQQ) and gold (GLD) as a default pair.
+- When sectorConstraint allows diversification, diversify across at least 3 distinct asset classes when feasible. Avoid over-concentrating in US large-cap equities (SPY, VOO, QQQ) and gold (GLD) as a default pair.
 - If any single asset exceeds 20% of the portfolio, you MUST provide a specific quantitative justification tied to risk-adjusted return improvement.
 
 When prior run context is available, reference past proposals and their outcomes.

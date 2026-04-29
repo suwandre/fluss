@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 
 export interface RebalancePreferences {
 	sectorConstraint: "same_sector" | "diversify";
-	riskAppetite: "aggressive" | "conservative";
+	riskAppetite: "aggressive" | "balanced" | "conservative";
+	proposalCount: 1 | 3;
 	maxTurnoverPct: number;
 	excludedTickers: string[];
 }
@@ -29,13 +30,15 @@ export function RebalancePreferencesModal({
 	onConfirm,
 }: RebalancePreferencesModalProps) {
 	const [sectorConstraint, setSectorConstraint] = useState<"same_sector" | "diversify">("same_sector");
-	const [riskAppetite, setRiskAppetite] = useState<"aggressive" | "conservative">("aggressive");
+	const [riskAppetite, setRiskAppetite] = useState<"aggressive" | "balanced" | "conservative">("balanced");
+	const [proposalCount, setProposalCount] = useState<1 | 3>(3);
 	const [maxTurnoverPct, setMaxTurnoverPct] = useState(30);
 
 	const handleConfirm = () => {
 		onConfirm({
 			sectorConstraint,
 			riskAppetite,
+			proposalCount,
 			maxTurnoverPct,
 			excludedTickers: [],
 		});
@@ -46,10 +49,29 @@ export function RebalancePreferencesModal({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
-					<DialogTitle>Rebalancing Preferences</DialogTitle>
+					<DialogTitle>Proposal Settings</DialogTitle>
 				</DialogHeader>
 
 				<div className="space-y-5 py-2">
+					<div className="space-y-2">
+						<label className="text-[12px] font-medium text-text/80 uppercase tracking-wide">
+							Proposal Count
+						</label>
+						<select
+							value={proposalCount}
+							onChange={(e) => setProposalCount(Number(e.target.value) === 1 ? 1 : 3)}
+							className="w-full rounded border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text focus:outline-none focus:border-border-bright cursor-pointer"
+						>
+							<option value={3}>3 — compare strategies</option>
+							<option value={1}>1 — recommended only</option>
+						</select>
+						<p className="text-[11px] text-text-muted leading-relaxed">
+							{proposalCount === 3
+								? "Agents will compare conservative, balanced, and aggressive proposals."
+								: "Agents will generate one focused proposal for the selected style."}
+						</p>
+					</div>
+
 					{/* Sector Constraint */}
 					<div className="space-y-2">
 						<label className="text-[12px] font-medium text-text/80 uppercase tracking-wide">
@@ -84,17 +106,20 @@ export function RebalancePreferencesModal({
 						<select
 							value={riskAppetite}
 							onChange={(e) =>
-								setRiskAppetite(e.target.value as "aggressive" | "conservative")
+								setRiskAppetite(e.target.value as "aggressive" | "balanced" | "conservative")
 							}
 							className="w-full rounded border border-border bg-bg-elevated px-3 py-2 text-[13px] text-text focus:outline-none focus:border-border-bright cursor-pointer"
 						>
+							<option value="balanced">Balanced — best risk-adjusted tradeoff</option>
 							<option value="aggressive">Aggressive — higher potential reward</option>
 							<option value="conservative">Conservative — stable returns</option>
 						</select>
 						<p className="text-[11px] text-text-muted leading-relaxed">
 							{riskAppetite === "aggressive"
-								? "Agents may suggest higher-beta alternatives and larger reallocations."
-								: "Agents will prioritize capital preservation and lower volatility."}
+								? "For one proposal, agents may suggest higher-beta alternatives and larger reallocations."
+								: riskAppetite === "conservative"
+									? "For one proposal, agents will prioritize capital preservation and lower volatility."
+									: "For one proposal, agents will prioritize the best risk-adjusted tradeoff."}
 						</p>
 					</div>
 

@@ -22,6 +22,8 @@ interface CurrentAllocation {
 interface RedesignProposalModalProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	proposals?: ProposalOption[];
+	recommendedProposalId?: string;
 	confidence?: string;
 	proposal_summary?: string;
 	proposed_actions?: ProposedAction[];
@@ -45,6 +47,32 @@ interface RedesignProposalModalProps {
 	} | null;
 	riskStructuredOutput?: Record<string, unknown> | null;
 	sectorExposure?: { current: Record<string, number>; proposed: Record<string, number> } | null;
+}
+
+interface ProposalRiskMetrics {
+	current_var_95?: number | null;
+	proposed_var_95?: number | null;
+	current_avg_drawdown?: number | null;
+	proposed_avg_drawdown?: number | null;
+	current_max_drawdown?: number | null;
+	proposed_max_drawdown?: number | null;
+}
+
+interface ProposalOption {
+	id: string;
+	label: string;
+	confidence?: string;
+	proposal_summary?: string;
+	proposed_actions?: ProposedAction[];
+	expected_improvement?: {
+		sharpe_delta?: number | null;
+		volatility_delta_pct?: number | null;
+		max_drawdown_delta_pct?: number | null;
+		narrative?: string;
+	};
+	tradeoff_notes?: string;
+	riskMetrics?: ProposalRiskMetrics | null;
+	riskStructuredOutput?: Record<string, unknown> | null;
 }
 
 const LABEL_TOOLTIPS: Record<string, string> = {
@@ -123,6 +151,14 @@ function confidenceBadge(confidence?: string) {
 		return { label: "Low", className: "bg-[rgba(239,68,68,0.12)] text-red" };
 	}
 	return { label: "—", className: "bg-bg-elevated text-text-dim" };
+}
+
+function verdictBadge(verdict?: unknown) {
+	const lower = typeof verdict === "string" ? verdict.toLowerCase() : "";
+	if (lower === "approved") return { label: "Approved", className: "bg-green/10 text-green" };
+	if (lower === "approved_with_caveats" || lower === "approve_with_caveats") return { label: "Caveats", className: "bg-amber/10 text-amber" };
+	if (lower === "rejected" || lower === "reject") return { label: "Rejected", className: "bg-red/10 text-red" };
+	return { label: "Pending", className: "bg-bg-card text-text-dim" };
 }
 
 function splitSentences(text: string): string[] {
@@ -287,6 +323,8 @@ function TurnoverGauge({ turnover }: { turnover: number }) {
 export function RedesignProposalModal({
 	open,
 	onOpenChange,
+	proposals,
+	recommendedProposalId,
 	confidence,
 	proposal_summary,
 	proposed_actions,
@@ -300,8 +338,33 @@ export function RedesignProposalModal({
 	sectorExposure,
 }: RedesignProposalModalProps) {
 	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+	const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState<"proposal" | "risk">("proposal");
-	const badge = confidenceBadge(confidence);
+	const proposalOptions: ProposalOption[] = proposals?.length
+		? proposals
+		: [
+				{
+					id: "recommended",
+					label: "Recommended",
+					confidence,
+					proposal_summary,
+					proposed_actions,
+					expected_improvement,
+					riskMetrics,
+					riskStructuredOutput,
+				},
+			];
+	const activeProposal =
+		proposalOptions.find((proposal) => proposal.id === selectedProposalId) ??
+		proposalOptions.find((proposal) => proposal.id === recommendedProposalId) ??
+		proposalOptions[0];
+	const activeConfidence = activeProposal?.confidence ?? confidence;
+	const activeProposalSummary = activeProposal?.proposal_summary ?? proposal_summary;
+	const activeProposedActions = activeProposal?.proposed_actions ?? proposed_actions;
+	const activeExpectedImprovement = activeProposal?.expected_improvement ?? expected_improvement;
+	const activeRiskMetrics = activeProposal?.riskMetrics ?? riskMetrics;
+	const activeRiskStructuredOutput = activeProposal?.riskStructuredOutput ?? riskStructuredOutput;
+	const badge = confidenceBadge(activeConfidence);
 
 	const currentWeightMap = new Map<string, number>();
 	for (const c of currentAllocations) {
@@ -309,7 +372,7 @@ export function RedesignProposalModal({
 	}
 
 	const proposedActionMap = new Map<string, ProposedAction>();
-	for (const action of proposed_actions ?? []) {
+	for (const action of activeProposedActions ?? []) {
 		proposedActionMap.set(action.ticker.toUpperCase(), action);
 	}
 
@@ -396,13 +459,13 @@ export function RedesignProposalModal({
 
 	// Risk Score inline line
 	const riskScoreLine = (() => {
-		if (!riskMetrics) return null;
-		const currentVar = riskMetrics.current_var_95;
-		const proposedVar = riskMetrics.proposed_var_95;
-		const currentAvg = riskMetrics.current_avg_drawdown;
-		const proposedAvg = riskMetrics.proposed_avg_drawdown;
-		const currentMax = riskMetrics.current_max_drawdown;
-		const proposedMax = riskMetrics.proposed_max_drawdown;
+		if (!activeRiskMetrics) return null;
+		const currentVar = activeRiskMetrics.current_var_95;
+		const proposedVar = activeRiskMetrics.proposed_var_95;
+		const currentAvg = activeRiskMetrics.current_avg_drawdown;
+		const proposedAvg = activeRiskMetrics.proposed_avg_drawdown;
+		const currentMax = activeRiskMetrics.current_max_drawdown;
+		const proposedMax = activeRiskMetrics.proposed_max_drawdown;
 		if (
 			typeof currentAvg !== "number" || typeof proposedAvg !== "number" ||
 			typeof currentMax !== "number" || typeof proposedMax !== "number" ||
@@ -417,24 +480,24 @@ export function RedesignProposalModal({
 
 	const opportunityItems = (() => {
 		const currentExpectedReturn =
-			typeof riskStructuredOutput?.current_expected_return_90d === "number"
-				? riskStructuredOutput.current_expected_return_90d
+			typeof activeRiskStructuredOutput?.current_expected_return_90d === "number"
+				? activeRiskStructuredOutput.current_expected_return_90d
 				: null;
 		const proposedExpectedReturn =
-			typeof riskStructuredOutput?.proposed_expected_return_90d === "number"
-				? riskStructuredOutput.proposed_expected_return_90d
+			typeof activeRiskStructuredOutput?.proposed_expected_return_90d === "number"
+				? activeRiskStructuredOutput.proposed_expected_return_90d
 				: null;
 		const currentUpsideDownside =
-			typeof riskStructuredOutput?.current_upside_downside_ratio === "number"
-				? riskStructuredOutput.current_upside_downside_ratio
+			typeof activeRiskStructuredOutput?.current_upside_downside_ratio === "number"
+				? activeRiskStructuredOutput.current_upside_downside_ratio
 				: null;
 		const proposedUpsideDownside =
-			typeof riskStructuredOutput?.proposed_upside_downside_ratio === "number"
-				? riskStructuredOutput.proposed_upside_downside_ratio
+			typeof activeRiskStructuredOutput?.proposed_upside_downside_ratio === "number"
+				? activeRiskStructuredOutput.proposed_upside_downside_ratio
 				: null;
 		const proposedSharpe =
-			typeof currentSharpe === "number" && typeof expected_improvement?.sharpe_delta === "number"
-				? currentSharpe + expected_improvement.sharpe_delta
+			typeof currentSharpe === "number" && typeof activeExpectedImprovement?.sharpe_delta === "number"
+				? currentSharpe + activeExpectedImprovement.sharpe_delta
 				: null;
 
 		return [
@@ -475,6 +538,63 @@ export function RedesignProposalModal({
 						</span>
 					</div>
 				</DialogHeader>
+
+				{proposalOptions.length > 1 && (
+					<div className="grid grid-cols-3 gap-2">
+						{proposalOptions.map((proposal) => {
+							const selected = proposal.id === activeProposal?.id;
+							const risk = proposal.riskStructuredOutput;
+							const verdict = verdictBadge(risk?.verdict);
+							const isRecommended = proposal.id === recommendedProposalId;
+							const expectedReturn =
+								typeof risk?.proposed_expected_return_90d === "number"
+									? risk.proposed_expected_return_90d
+									: null;
+							const drawdown =
+								typeof risk?.proposed_avg_drawdown === "number"
+									? risk.proposed_avg_drawdown
+									: null;
+							const turnover =
+								typeof risk?.proposal_turnover_pct === "number"
+									? risk.proposal_turnover_pct
+									: null;
+							return (
+								<button
+									key={proposal.id}
+									type="button"
+									onClick={() => setSelectedProposalId(proposal.id)}
+									className={`rounded border p-3 text-left transition-colors ${selected ? "border-teal bg-teal/5" : "border-border bg-bg-elevated hover:border-border-bright"}`}
+								>
+									<div className="flex items-center justify-between gap-2">
+										<span className="truncate text-[12px] font-mono font-semibold text-text">
+											{proposal.label}
+										</span>
+										<span className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-mono ${verdict.className}`}>
+											{verdict.label}
+										</span>
+									</div>
+									{isRecommended && (
+										<div className="mt-1 text-[10px] font-mono text-teal">Recommended</div>
+									)}
+									<div className="mt-3 space-y-1 text-[10px] font-mono">
+										<div className="flex justify-between gap-2">
+											<span className="text-text-muted">Return</span>
+											<span className="text-text">{expectedReturn == null ? "N/A" : `${expectedReturn.toFixed(2)}%`}</span>
+										</div>
+										<div className="flex justify-between gap-2">
+											<span className="text-text-muted">Avg DD</span>
+											<span className="text-text">{drawdown == null ? "N/A" : `${drawdown.toFixed(2)}%`}</span>
+										</div>
+										<div className="flex justify-between gap-2">
+											<span className="text-text-muted">Turnover</span>
+											<span className="text-text">{turnover == null ? "N/A" : `${turnover.toFixed(1)}%`}</span>
+										</div>
+									</div>
+								</button>
+							);
+						})}
+					</div>
+				)}
 
 				<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "proposal" | "risk")}>
 					<TabsList className="flex gap-2 border-b border-border pb-1 mb-4">
@@ -718,7 +838,7 @@ export function RedesignProposalModal({
 								<TurnoverGauge turnover={turnover} />
 								{(() => {
 									if (!riskScoreLine) {
-										if (!riskMetrics) {
+										if (!activeRiskMetrics) {
 											return (
 												<div className="rounded border border-border bg-bg-elevated p-4 h-full flex flex-col">
 													<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-2">
@@ -743,12 +863,12 @@ export function RedesignProposalModal({
 							</div>
 
 								{/* Proposal Summary Bullets */}
-								{proposal_summary && (
+								{activeProposalSummary && (
 									<div className="rounded border border-border bg-bg-elevated p-4 space-y-3">
 										<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide mb-1">
 											<LabelWithTooltip label="Proposal Summary" />
 										</div>
-										{splitSentences(proposal_summary).map((sentence, i) => (
+										{splitSentences(activeProposalSummary).map((sentence, i) => (
 											<div key={i} className="flex items-start gap-2 text-[13px] text-text-dim leading-relaxed">
 												<span className="text-teal mt-1 shrink-0">•</span>
 												<span>{sentence}</span>
@@ -761,13 +881,13 @@ export function RedesignProposalModal({
 
 						<TabsContent value="risk">
 							<div>
-								{riskStructuredOutput && (
+								{activeRiskStructuredOutput && (
 									<RiskAnalysisContent
-										structuredOutput={riskStructuredOutput}
+										structuredOutput={activeRiskStructuredOutput}
 										currentSharpe={currentSharpe}
 										currentVolatility={currentVolatility}
 										currentMaxDrawdown={currentMaxDrawdown}
-										sharpeDelta={expected_improvement?.sharpe_delta ?? null}
+										sharpeDelta={activeExpectedImprovement?.sharpe_delta ?? null}
 									/>
 								)}
 							</div>

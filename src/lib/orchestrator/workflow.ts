@@ -40,7 +40,8 @@ const MEMORY_RESOURCE_ID = "portfolio-factory";
 
 const PreferencesSchema = z.object({
   sectorConstraint: z.enum(["same_sector", "diversify"]).default("same_sector"),
-  riskAppetite: z.enum(["aggressive", "conservative"]).default("aggressive"),
+  riskAppetite: z.enum(["aggressive", "balanced", "conservative"]).default("balanced"),
+  proposalCount: z.union([z.literal(1), z.literal(3)]).default(3),
   maxTurnoverPct: z.number().default(30),
   excludedTickers: z.array(z.string()).default([]),
 });
@@ -62,7 +63,7 @@ const MarketSnapshotSchema = z.object({
   totalValue: z.number(),
   totalCost: z.number(),
   tickers: z.array(z.string()),
-  preferences: PreferencesSchema.default({ sectorConstraint: "same_sector", riskAppetite: "aggressive", maxTurnoverPct: 30, excludedTickers: [] }),
+  preferences: PreferencesSchema.default({ sectorConstraint: "same_sector", riskAppetite: "balanced", proposalCount: 3, maxTurnoverPct: 30, excludedTickers: [] }),
 });
 
 const CorrelationPairSchema = z.object({
@@ -127,6 +128,28 @@ type VarResult = {
   concentration_score: number;
   error?: string;
 };
+
+type RedesignProposalForRisk = z.infer<typeof RedesignOutput>["proposals"][number];
+
+function normalizeRedesignOutput(
+  output: z.infer<typeof RedesignOutput>,
+): z.infer<typeof RedesignOutput> {
+  const proposals = output.proposals.slice(0, 3);
+  const recommendedProposal =
+    proposals.find((proposal) => proposal.id === output.recommended_proposal_id) ??
+    proposals.find((proposal) => proposal.label === "Balanced") ??
+    proposals[0];
+
+  return {
+    ...output,
+    proposals,
+    recommended_proposal_id: recommendedProposal.id,
+    proposed_actions: recommendedProposal.proposed_actions,
+    expected_improvement: recommendedProposal.expected_improvement,
+    confidence: recommendedProposal.confidence,
+    proposal_summary: recommendedProposal.proposal_summary,
+  };
+}
 
 const historicalStressTestTool = runHistoricalStressTest as unknown as {
   execute(input: { positions_override: PortfolioPosition[]; scenarios?: string[] }): Promise<StressTestResult>;
@@ -510,10 +533,10 @@ const redesignStep = createStep({
       "",
       "CRITICAL: Output ONLY raw valid JSON matching this exact schema:",
       "{",
-      '  "proposed_actions": [{ "action": "reduce"|"increase"|"replace"|"add"|"remove", "ticker": string, "target_pct": number, "rationale": string }, ...],',
-      '  "expected_improvement": { "sharpe_delta": number|null, "volatility_delta_pct": number|null, "narrative": string },',
-      '  "confidence": "low"|"medium"|"high",',
-      '  "proposal_summary": string',
+      '  "proposals": [',
+      '    { "id": string, "label": "Conservative"|"Balanced"|"Aggressive"|"Recommended", "proposed_actions": [{ "action": "reduce"|"increase"|"replace"|"add"|"remove", "ticker": string, "target_pct": number, "rationale": string }, ...], "expected_improvement": { "sharpe_delta": number|null, "volatility_delta_pct": number|null, "max_drawdown_delta_pct": number|null, "narrative": string }, "confidence": "low"|"medium"|"high", "proposal_summary": string, "tradeoff_notes": string }',
+      '  ],',
+      '  "recommended_proposal_id": string',
       "}",
       "",
       "The Bottleneck Agent has diagnosed a problem.",
@@ -526,13 +549,17 @@ const redesignStep = createStep({
       "",
       "User preferences:",
       `- Sector constraint: ${preferences.sectorConstraint === "same_sector" ? "Stay within current sectors only" : "Allow cross-sector diversification (ETFs, bonds, FX, equities)"}`,
-      `- Risk appetite: ${preferences.riskAppetite === "aggressive" ? "Aggressive — higher potential reward" : "Conservative — stable returns, capital preservation"}`,
+      `- Risk appetite: ${preferences.riskAppetite === "aggressive" ? "Aggressive — higher potential reward" : preferences.riskAppetite === "conservative" ? "Conservative — stable returns, capital preservation" : "Balanced — best risk-adjusted tradeoff"}`,
+      `- Proposal count: ${preferences.proposalCount}`,
       `- Max turnover: ${preferences.maxTurnoverPct}%`,
       preferences.excludedTickers.length > 0 ? `- Excluded tickers: ${preferences.excludedTickers.join(", ")}` : "",
       "",
       "Allowed asset classes for alternatives:",
       JSON.stringify(allowedAssetClasses),
       "",
+      preferences.proposalCount === 3
+        ? "Generate exactly 3 proposals labeled Conservative, Balanced, and Aggressive. They must be meaningfully different and all must respect the same hard constraints."
+        : `Generate exactly 1 proposal labeled Recommended for the ${preferences.riskAppetite} risk appetite.`,
       "Propose concrete rebalancing actions. Analyze the holdings data above and recommend specific changes with target percentages.",
     ].join("\n");
 
@@ -546,16 +573,16 @@ const redesignStep = createStep({
         modelSettings: { maxOutputTokens: 4096 },
         activeTools: [],
       });
-      redesignResultObj = result.object;
+      redesignResultObj = normalizeRedesignOutput(result.object);
     } catch (err) {
       if (!isStructuredOutputError(err)) throw err;
-      redesignResultObj = await recoverStructuredOutput(
+      redesignResultObj = normalizeRedesignOutput(await recoverStructuredOutput(
         redesignAgent,
         redesignPrompt,
         RedesignOutput,
         (r) => r,
         { memory: { thread: MEMORY_THREADS.redesign, resource: MEMORY_RESOURCE_ID } },
-      );
+      ));
     }
 
     return { ...inputData, redesign: redesignResultObj };
@@ -564,7 +591,9 @@ const redesignStep = createStep({
 
 // ── Step 6: Risk Agent ────────────────────────────────────────────────
 
-const riskStep = createStep({
+// Kept as an exported legacy step shape while persisted single-proposal runs still
+// exist. The workflow below uses the new multi-proposal riskStep.
+export const legacySingleProposalRiskStep = createStep({
   id: "risk",
   description:
     "Run Risk Agent to stress-test proposed changes (skipped if no redesign)",
@@ -801,8 +830,8 @@ const riskStep = createStep({
       "",
       "Proposed actions:",
       `${actions?.map((a) => `${a.action} ${a.ticker} to ${a.target_pct}%`).join("; ") ?? "none"}`,
-      `Redesign confidence: ${inputData.redesign.confidence}`,
-      `Expected improvement: ${inputData.redesign.expected_improvement.narrative}`,
+      `Redesign confidence: ${inputData.redesign.confidence ?? "medium"}`,
+      `Expected improvement: ${inputData.redesign.expected_improvement?.narrative ?? "N/A"}`,
       "",
       "Scenario-by-scenario comparison (DO NOT repeat in improvement_summary):",
       JSON.stringify(scenarioComparisons, null, 2),
@@ -993,6 +1022,255 @@ const riskStep = createStep({
   },
 });
 
+const riskStep = createStep({
+  id: "risk",
+  description: "Run Risk Agent to stress-test each proposed strategy",
+  inputSchema: WorkflowOutputSchema,
+  outputSchema: WorkflowOutputSchema,
+  execute: async ({ inputData, getStepResult }) => {
+    if (!inputData.redesign) return inputData;
+
+    const marketSnapshot = getStepResult(fetchMarketSnapshot) as z.infer<
+      typeof MarketSnapshotSchema
+    >;
+    const { portfolioData } = marketSnapshot;
+    const currentPositions = portfolioData.map((d) => ({
+      ticker: d.ticker,
+      weight:
+        marketSnapshot.totalValue > 0 && d.marketValue != null
+          ? d.marketValue / marketSnapshot.totalValue
+          : 0,
+      assetClass: d.assetClass,
+      quantity: d.quantity,
+    }));
+    type ProposedAction = { action: string; ticker: string; target_pct: number };
+
+    async function buildProposedPositions(actions: ProposedAction[]) {
+      const proposedMap = new Map<string, { ticker: string; weight: number; assetClass: string; quantity: number }>();
+      for (const position of currentPositions) {
+        proposedMap.set(position.ticker.toUpperCase(), {
+          ticker: position.ticker,
+          weight: position.weight,
+          assetClass: position.assetClass,
+          quantity: position.quantity,
+        });
+      }
+
+      const newTickers = actions
+        .map((action) => action.ticker)
+        .filter((ticker) => !portfolioData.some((holding) => holding.ticker.toUpperCase() === ticker.toUpperCase()));
+      const newPriceMap = newTickers.length > 0
+        ? await getBatchPrices(newTickers.map((ticker) => ({ ticker, assetClass: assetClassForTicker(ticker) })))
+        : new Map<string, { price: number | null }>();
+
+      for (const action of actions) {
+        const upperTicker = action.ticker.toUpperCase();
+        if (action.action === "remove") {
+          proposedMap.delete(upperTicker);
+          continue;
+        }
+
+        const existing = portfolioData.find((holding) => holding.ticker.toUpperCase() === upperTicker);
+        const currentPrice = existing?.currentPrice ?? newPriceMap.get(action.ticker)?.price ?? null;
+        if (currentPrice == null || currentPrice <= 0) continue;
+
+        const targetWeight = Math.max(action.target_pct, 0) / 100;
+        proposedMap.set(upperTicker, {
+          ticker: action.ticker,
+          weight: targetWeight,
+          assetClass: existing?.assetClass ?? assetClassForTicker(action.ticker),
+          quantity: (targetWeight * marketSnapshot.totalValue) / currentPrice,
+        });
+      }
+
+      const totalWeight = Array.from(proposedMap.values()).reduce((sum, position) => sum + position.weight, 0);
+      if (totalWeight <= 0) return [];
+      return Array.from(proposedMap.values()).map((position) => ({
+        ...position,
+        weight: position.weight / totalWeight,
+      }));
+    }
+
+    function computeTurnoverPct(proposedPositions: PortfolioPosition[]) {
+      const currentWeights = new Map(currentPositions.map((position) => [position.ticker.toUpperCase(), position.weight]));
+      const proposedWeights = new Map(proposedPositions.map((position) => [position.ticker.toUpperCase(), position.weight]));
+      const tickers = new Set([...currentWeights.keys(), ...proposedWeights.keys()]);
+      let totalDelta = 0;
+      for (const ticker of tickers) {
+        totalDelta += Math.abs((proposedWeights.get(ticker) ?? 0) - (currentWeights.get(ticker) ?? 0));
+      }
+      return parseFloat(((totalDelta / 2) * 100).toFixed(2));
+    }
+
+    async function evaluateProposal(proposal: RedesignProposalForRisk): Promise<z.infer<typeof RiskOutput>> {
+      const proposedPositions = await buildProposedPositions(proposal.proposed_actions);
+      const stressScenarioKeys = selectStressScenarioKeys([...currentPositions, ...proposedPositions]);
+      const [currentStress, proposedStress, currentVaR, proposedVaR] = await Promise.all([
+        historicalStressTestTool.execute({ positions_override: currentPositions, scenarios: stressScenarioKeys }),
+        proposedPositions.length > 0
+          ? historicalStressTestTool.execute({ positions_override: proposedPositions, scenarios: stressScenarioKeys })
+          : Promise.resolve({ stress_results: [] } as StressTestResult),
+        varTool.execute({ positions_override: currentPositions }),
+        proposedPositions.length > 0
+          ? varTool.execute({ positions_override: proposedPositions })
+          : Promise.resolve({ var_pct: 0, var_dollar: 0, portfolio_value: 0, confidence_level: 0.95, lookback_days: 252, concentration_score: 0 }),
+      ]);
+      const [currentOpportunity, proposedOpportunity] = await Promise.all([
+        computeOpportunityMetrics(currentPositions),
+        proposedPositions.length > 0
+          ? computeOpportunityMetrics(proposedPositions)
+          : Promise.resolve({ expectedReturn90dPct: null, upsideDownsideRatio: null }),
+      ]);
+      const currentDrawdowns = currentStress.stress_results.map((result) => result.simulated_drawdown_pct);
+      const proposedDrawdowns = proposedStress.stress_results.map((result) => result.simulated_drawdown_pct);
+      const currentAvgDrawdown = currentDrawdowns.length > 0 ? currentDrawdowns.reduce((sum, value) => sum + value, 0) / currentDrawdowns.length : 0;
+      const proposedAvgDrawdown = proposedDrawdowns.length > 0 ? proposedDrawdowns.reduce((sum, value) => sum + value, 0) / proposedDrawdowns.length : 0;
+      const currentMaxDrawdown = currentDrawdowns.length > 0 ? Math.max(...currentDrawdowns) : 0;
+      const proposedMaxDrawdown = proposedDrawdowns.length > 0 ? Math.max(...proposedDrawdowns) : 0;
+      const currentScore = 0.30 * currentVaR.var_pct + 0.45 * currentMaxDrawdown + 0.25 * currentVaR.concentration_score;
+      const proposedScore = 0.30 * proposedVaR.var_pct + 0.45 * proposedMaxDrawdown + 0.25 * proposedVaR.concentration_score;
+      const deltaScore = parseFloat((proposedScore - currentScore).toFixed(2));
+      const verdict = deltaScore < -0.05 ? "approved" : deltaScore > 0.05 ? "rejected" : "approved_with_caveats";
+      const currentStressByScenario = new Map(currentStress.stress_results.map((result) => [result.scenario, result]));
+      const proposedStressByScenario = new Map(proposedStress.stress_results.map((result) => [result.scenario, result]));
+      const scenarioNames = Array.from(new Set([...currentStressByScenario.keys(), ...proposedStressByScenario.keys()]));
+      const scenarioComparisons = scenarioNames.map((scenario) => {
+        const current = currentStressByScenario.get(scenario);
+        const proposed = proposedStressByScenario.get(scenario);
+        return {
+          scenario,
+          current_drawdown: current?.simulated_drawdown_pct,
+          proposed_drawdown: proposed?.simulated_drawdown_pct,
+          delta_pp:
+            typeof current?.simulated_drawdown_pct === "number" && typeof proposed?.simulated_drawdown_pct === "number"
+              ? parseFloat((proposed.simulated_drawdown_pct - current.simulated_drawdown_pct).toFixed(2))
+              : undefined,
+          current_return: current?.simulated_return_pct,
+          proposed_return: proposed?.simulated_return_pct,
+          delta_return_pp:
+            typeof current?.simulated_return_pct === "number" && typeof proposed?.simulated_return_pct === "number"
+              ? parseFloat((proposed.simulated_return_pct - current.simulated_return_pct).toFixed(2))
+              : undefined,
+          current_data_coverage_pct: current?.data_coverage_pct,
+          proposed_data_coverage_pct: proposed?.data_coverage_pct,
+        };
+      });
+      const fallbackRiskSummary = buildRiskSummary({
+        verdict,
+        currentScore,
+        proposedScore,
+        deltaScore,
+        currentAvgDrawdown,
+        proposedAvgDrawdown,
+        currentVaR: currentVaR.var_pct,
+        proposedVaR: proposedVaR.var_pct,
+      });
+      const fallbackImprovementSummary = buildImprovementSummary({
+        currentAvgDrawdown,
+        proposedAvgDrawdown,
+        currentMaxDrawdown,
+        proposedMaxDrawdown,
+        currentVaR: currentVaR.var_pct,
+        proposedVaR: proposedVaR.var_pct,
+        currentConcentration: currentVaR.concentration_score,
+        proposedConcentration: proposedVaR.concentration_score,
+      });
+      const riskPrompt = [
+        "Output only valid JSON matching this schema:",
+        '{"verdict":"approved"|"approved_with_caveats"|"rejected","caveats":[string],"risk_summary":string,"improvement_summary":string}',
+        `Proposal: ${proposal.label} (${proposal.id})`,
+        `Computed verdict: ${verdict}`,
+        `Risk score current -> proposed: ${currentScore.toFixed(2)} -> ${proposedScore.toFixed(2)}.`,
+        `Current avg drawdown ${currentAvgDrawdown.toFixed(2)}%, proposed avg drawdown ${proposedAvgDrawdown.toFixed(2)}%.`,
+        `Current VaR ${currentVaR.var_pct.toFixed(2)}%, proposed VaR ${proposedVaR.var_pct.toFixed(2)}%.`,
+        `Current concentration ${currentVaR.concentration_score.toFixed(4)}, proposed concentration ${proposedVaR.concentration_score.toFixed(4)}.`,
+        `Turnover: ${computeTurnoverPct(proposedPositions)}%.`,
+        `Actions: ${proposal.proposed_actions.map((action) => `${action.action} ${action.ticker} to ${action.target_pct}%`).join("; ")}`,
+        "Do not change the computed verdict unless caveats make it strictly more conservative.",
+      ].join("\n");
+      const riskAgent = (await import("@/lib/agents/risk")).riskAgent;
+      let riskOutput: z.infer<typeof RiskOutput> | null = null;
+      try {
+        const result = await riskAgent.generate(riskPrompt, {
+          structuredOutput: { schema: RiskOutput, jsonPromptInjection: true },
+          memory: { thread: `${MEMORY_THREADS.risk}-${proposal.id}`, resource: MEMORY_RESOURCE_ID },
+          modelSettings: { maxOutputTokens: 2048 },
+          activeTools: [],
+        });
+        riskOutput = result.object;
+      } catch (err) {
+        if (!isStructuredOutputError(err)) throw err;
+        const raw = extractStructuredOutputValue(err);
+        const parsed = typeof raw === "string" ? parseRawAgentText(raw) : raw;
+        if (parsed && typeof parsed === "object") {
+          try {
+            riskOutput = RiskOutput.parse(parsed);
+          } catch {
+            riskOutput = null;
+          }
+        }
+      }
+
+      const turnoverPct = computeTurnoverPct(proposedPositions);
+      return {
+        stress_results: proposedStress.stress_results,
+        var_95: proposedVaR.var_pct,
+        verdict: riskOutput?.verdict ?? verdict,
+        caveats: riskOutput?.caveats?.length ? riskOutput.caveats : ["Risk metrics were computed from historical stress and VaR data."],
+        risk_summary: riskOutput?.risk_summary || fallbackRiskSummary,
+        improvement_summary: riskOutput?.improvement_summary || fallbackImprovementSummary,
+        scenario_comparisons: scenarioComparisons,
+        current_avg_drawdown: currentAvgDrawdown,
+        proposed_avg_drawdown: proposedAvgDrawdown,
+        current_max_drawdown: currentMaxDrawdown,
+        proposed_max_drawdown: proposedMaxDrawdown,
+        current_concentration_score: currentVaR.concentration_score,
+        proposed_concentration_score: proposedVaR.concentration_score,
+        current_var_95: currentVaR.var_pct,
+        current_expected_return_90d: currentOpportunity.expectedReturn90dPct ?? undefined,
+        proposed_expected_return_90d: proposedOpportunity.expectedReturn90dPct ?? undefined,
+        current_upside_downside_ratio: currentOpportunity.upsideDownsideRatio ?? undefined,
+        proposed_upside_downside_ratio: proposedOpportunity.upsideDownsideRatio ?? undefined,
+        proposal_id: proposal.id,
+        proposal_label: proposal.label,
+        proposal_turnover_pct: turnoverPct,
+        proposal_risk_score: proposedScore,
+      } satisfies z.infer<typeof RiskOutput>;
+    }
+
+    const proposalRisks = await Promise.all(
+      inputData.redesign.proposals.map((proposal) => evaluateProposal(proposal)),
+    );
+    const rankedRisks = [...proposalRisks].sort((a, b) => {
+      const verdictRank = { approved: 3, approved_with_caveats: 2, rejected: 1 };
+      const verdictDelta = verdictRank[b.verdict] - verdictRank[a.verdict];
+      if (verdictDelta !== 0) return verdictDelta;
+      const riskDelta = (a.proposal_risk_score ?? Number.POSITIVE_INFINITY) - (b.proposal_risk_score ?? Number.POSITIVE_INFINITY);
+      if (Math.abs(riskDelta) > 0.01) return riskDelta;
+      const returnDelta = (b.proposed_expected_return_90d ?? Number.NEGATIVE_INFINITY) - (a.proposed_expected_return_90d ?? Number.NEGATIVE_INFINITY);
+      if (Math.abs(returnDelta) > 0.01) return returnDelta;
+      return (a.proposal_turnover_pct ?? Number.POSITIVE_INFINITY) - (b.proposal_turnover_pct ?? Number.POSITIVE_INFINITY);
+    });
+    const recommendedRisk: z.infer<typeof RiskOutput> = { ...(rankedRisks[0] ?? proposalRisks[0]) };
+    recommendedRisk.proposal_risks = proposalRisks.map((risk) => {
+      const { proposal_risks, recommended_proposal_id, ...rest } = risk;
+      void proposal_risks;
+      void recommended_proposal_id;
+      return rest as NonNullable<z.infer<typeof RiskOutput>["proposal_risks"]>[number];
+    });
+    recommendedRisk.recommended_proposal_id = recommendedRisk.proposal_id;
+
+    return {
+      ...inputData,
+      redesign: {
+        ...inputData.redesign,
+        recommended_proposal_id: recommendedRisk.proposal_id ?? inputData.redesign.recommended_proposal_id,
+      },
+      risk: recommendedRisk,
+    };
+  },
+});
+
 // ── Workflow definition ─────────────────────────────────────────────
 
 export const portfolioFactoryWorkflow = createWorkflow({
@@ -1001,7 +1279,8 @@ export const portfolioFactoryWorkflow = createWorkflow({
     "Full agent pipeline: fetch market data → Monitor → conditional escalation (Bottleneck → Redesign → Risk) or status update",
   inputSchema: z.object({
     sectorConstraint: z.enum(["same_sector", "diversify"]).default("same_sector"),
-    riskAppetite: z.enum(["aggressive", "conservative"]).default("aggressive"),
+    riskAppetite: z.enum(["aggressive", "balanced", "conservative"]).default("balanced"),
+    proposalCount: z.union([z.literal(1), z.literal(3)]).default(3),
     maxTurnoverPct: z.number().default(30),
     excludedTickers: z.array(z.string()).default([]),
   }),

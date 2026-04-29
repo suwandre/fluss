@@ -10,7 +10,7 @@ import type { AssetClass } from "@/lib/types/visual";
 
 // --- Output schema ---
 
-export const RiskOutput = z.object({
+const RiskOutputBase = z.object({
 	stress_results: z
 		.array(
 			z.object({
@@ -63,6 +63,24 @@ export const RiskOutput = z.object({
 	current_concentration_score: z.number().optional(),
 	proposed_concentration_score: z.number().optional(),
 	current_var_95: z.number().optional(),
+});
+
+export const RiskOutput = RiskOutputBase.extend({
+	proposal_id: z.string().optional(),
+	proposal_label: z.string().optional(),
+	proposal_turnover_pct: z.number().optional(),
+	proposal_risk_score: z.number().optional(),
+	recommended_proposal_id: z.string().optional(),
+	proposal_risks: z
+		.array(
+			RiskOutputBase.extend({
+				proposal_id: z.string(),
+				proposal_label: z.string(),
+				proposal_turnover_pct: z.number(),
+				proposal_risk_score: z.number(),
+			}),
+		)
+		.optional(),
 });
 
 export type RiskOutput = z.infer<typeof RiskOutput>;

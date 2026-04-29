@@ -32,10 +32,48 @@ interface HistoryRun {
 }
 
 type ProposedActionForExposure = {
-	action?: string;
+	action?: "reduce" | "increase" | "replace" | "add" | "remove";
 	ticker: string;
 	target_pct: number;
 };
+
+type ExpectedImprovement = {
+	sharpe_delta?: number | null;
+	volatility_delta_pct?: number | null;
+	max_drawdown_delta_pct?: number | null;
+	narrative?: string;
+};
+
+type ProposalOptionForModal = {
+	id: string;
+	label: string;
+	confidence?: string;
+	proposal_summary?: string;
+	proposed_actions?: ProposedActionForExposure[];
+	expected_improvement?: ExpectedImprovement;
+	tradeoff_notes?: string;
+	riskMetrics?: {
+		current_var_95?: number | null;
+		proposed_var_95?: number | null;
+		current_avg_drawdown?: number | null;
+		proposed_avg_drawdown?: number | null;
+		current_max_drawdown?: number | null;
+		proposed_max_drawdown?: number | null;
+	} | null;
+	riskStructuredOutput?: Record<string, unknown> | null;
+};
+
+function riskMetricsFromOutput(risk: Record<string, unknown> | null | undefined) {
+	if (!risk) return null;
+	return {
+		current_var_95: typeof risk.current_var_95 === "number" ? risk.current_var_95 : null,
+		proposed_var_95: typeof risk.var_95 === "number" ? risk.var_95 : null,
+		current_avg_drawdown: typeof risk.current_avg_drawdown === "number" ? risk.current_avg_drawdown : null,
+		proposed_avg_drawdown: typeof risk.proposed_avg_drawdown === "number" ? risk.proposed_avg_drawdown : null,
+		current_max_drawdown: typeof risk.current_max_drawdown === "number" ? risk.current_max_drawdown : null,
+		proposed_max_drawdown: typeof risk.proposed_max_drawdown === "number" ? risk.proposed_max_drawdown : null,
+	};
+}
 
 export default function Home() {
 	const [holdingsInputOpen, setHoldingsInputOpen] = useState(false);
@@ -213,21 +251,57 @@ export default function Home() {
 		}));
 	}, [holdingsList]);
 
-	// Extract full redesign data for proposal modal
-	const redesignData = useMemo(() => {
+	const proposalData = useMemo(() => {
 		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
-		if (!redesign) return undefined;
-		return {
-			confidence: typeof redesign.confidence === "string" ? redesign.confidence : undefined,
-			proposal_summary: typeof redesign.proposal_summary === "string" ? redesign.proposal_summary : undefined,
-			proposed_actions: Array.isArray(redesign.proposed_actions) ? redesign.proposed_actions : undefined,
-			expected_improvement: redesign.expected_improvement as {
-				sharpe_delta?: number | null;
-				volatility_delta_pct?: number | null;
-				max_drawdown_delta_pct?: number | null;
-				narrative?: string;
-			} | undefined,
-		};
+		if (!redesign) return null;
+		const risk = workflowOutput?.risk as Record<string, unknown> | undefined;
+		const proposalRisks = Array.isArray(risk?.proposal_risks)
+			? (risk.proposal_risks as Record<string, unknown>[])
+			: [];
+		const riskByProposalId = new Map(
+			proposalRisks
+				.filter((proposalRisk) => typeof proposalRisk.proposal_id === "string")
+				.map((proposalRisk) => [proposalRisk.proposal_id as string, proposalRisk]),
+		);
+		const recommendedProposalId =
+			(typeof risk?.recommended_proposal_id === "string" && risk.recommended_proposal_id) ||
+			(typeof redesign.recommended_proposal_id === "string" && redesign.recommended_proposal_id) ||
+			undefined;
+		const rawProposals = Array.isArray(redesign.proposals)
+			? (redesign.proposals as Record<string, unknown>[])
+			: [
+					{
+						id: "recommended",
+						label: "Recommended",
+						confidence: redesign.confidence,
+						proposal_summary: redesign.proposal_summary,
+						proposed_actions: redesign.proposed_actions,
+						expected_improvement: redesign.expected_improvement,
+					},
+				];
+		const proposals: ProposalOptionForModal[] = rawProposals.map((proposal, index) => {
+			const id = typeof proposal.id === "string" ? proposal.id : `proposal-${index + 1}`;
+			const proposalRisk =
+				riskByProposalId.get(id) ??
+				(id === recommendedProposalId ? risk : null);
+			return {
+				id,
+				label: typeof proposal.label === "string" ? proposal.label : index === 0 ? "Recommended" : `Proposal ${index + 1}`,
+				confidence: typeof proposal.confidence === "string" ? proposal.confidence : undefined,
+				proposal_summary: typeof proposal.proposal_summary === "string" ? proposal.proposal_summary : undefined,
+				proposed_actions: Array.isArray(proposal.proposed_actions)
+					? (proposal.proposed_actions as ProposedActionForExposure[])
+					: undefined,
+				expected_improvement: proposal.expected_improvement as ExpectedImprovement | undefined,
+				tradeoff_notes: typeof proposal.tradeoff_notes === "string" ? proposal.tradeoff_notes : undefined,
+				riskMetrics: riskMetricsFromOutput(proposalRisk),
+				riskStructuredOutput: proposalRisk ?? null,
+			};
+		});
+		const recommendedProposal =
+			proposals.find((proposal) => proposal.id === recommendedProposalId) ??
+			proposals[0];
+		return { proposals, recommendedProposalId, recommendedProposal };
 	}, [workflowOutput]);
 	const riskStructuredOutputForModal = useMemo(() => {
 		if (!workflowOutput?.risk) return null;
@@ -236,15 +310,7 @@ export default function Home() {
 
 	const riskMetrics = useMemo(() => {
 		if (!workflowOutput?.risk) return null;
-		const r = workflowOutput.risk as Record<string, unknown>;
-		return {
-			current_var_95: typeof r.current_var_95 === "number" ? r.current_var_95 : null,
-			proposed_var_95: typeof r.var_95 === "number" ? r.var_95 : null,
-			current_avg_drawdown: typeof r.current_avg_drawdown === "number" ? r.current_avg_drawdown : null,
-			proposed_avg_drawdown: typeof r.proposed_avg_drawdown === "number" ? r.proposed_avg_drawdown : null,
-			current_max_drawdown: typeof r.current_max_drawdown === "number" ? r.current_max_drawdown : null,
-			proposed_max_drawdown: typeof r.proposed_max_drawdown === "number" ? r.proposed_max_drawdown : null,
-		};
+		return riskMetricsFromOutput(workflowOutput.risk as Record<string, unknown>);
 	}, [workflowOutput]);
 
 	// Compute current holdings with sector info from API
@@ -265,9 +331,8 @@ export default function Home() {
 	// Build the final proposed allocation with the same semantics as riskStep:
 	// current portfolio + actions, with omitted current holdings carried forward.
 	const proposedActions = useMemo(() => {
-		const redesign = workflowOutput?.redesign as Record<string, unknown> | undefined;
-		if (!redesign || !Array.isArray(redesign.proposed_actions)) return null;
-		const actions = redesign.proposed_actions as ProposedActionForExposure[];
+		const actions = proposalData?.recommendedProposal?.proposed_actions;
+		if (!actions?.length) return null;
 		const TICKER_ASSET_CLASS: Record<string, string> = {
 			BTC: "crypto",
 			ETH: "crypto",
@@ -315,7 +380,7 @@ export default function Home() {
 				assetClass: metadata?.assetClass ?? TICKER_ASSET_CLASS[ticker] ?? "equity",
 			};
 		});
-	}, [currentHoldingsForHeatmap, workflowOutput]);
+	}, [currentHoldingsForHeatmap, proposalData]);
 
 	const sectorExposure = useSectorExposure(currentHoldingsForHeatmap, proposedActions);
 
@@ -355,7 +420,7 @@ export default function Home() {
 				stressResults={stressResults}
 				riskMetrics={riskMetrics}
 				currentAllocations={currentAllocations}
-				proposedActions={redesignData?.proposed_actions}
+				proposedActions={proposalData?.recommendedProposal?.proposed_actions}
 				riskStructuredOutput={riskStructuredOutputForModal}
 				onRestoreRun={handleRestoreRun}
 				onRedesignViewDetails={() => setRedesignModalOpen(true)}
@@ -365,10 +430,12 @@ export default function Home() {
 		<RedesignProposalModal
 			open={redesignModalOpen}
 			onOpenChange={setRedesignModalOpen}
-			confidence={redesignData?.confidence}
-			proposal_summary={redesignData?.proposal_summary}
-			proposed_actions={redesignData?.proposed_actions}
-			expected_improvement={redesignData?.expected_improvement}
+			proposals={proposalData?.proposals}
+			recommendedProposalId={proposalData?.recommendedProposalId}
+			confidence={proposalData?.recommendedProposal?.confidence}
+			proposal_summary={proposalData?.recommendedProposal?.proposal_summary}
+			proposed_actions={proposalData?.recommendedProposal?.proposed_actions}
+			expected_improvement={proposalData?.recommendedProposal?.expected_improvement}
 			currentAllocations={currentAllocations}
 			currentSharpe={summaryMetrics.sharpeRatio}
 			currentMaxDrawdown={summaryMetrics.maxDrawdownPct}

@@ -48,14 +48,31 @@ function buildStructuredOutput(
 		}
 		case "redesign":
 			return {
-				actions: Array.isArray(output.proposed_actions)
-					? output.proposed_actions.length
-					: 0,
-				confidence: output.confidence,
+				proposals: Array.isArray(output.proposals) ? output.proposals.length : 1,
+				actions: Array.isArray(output.proposals)
+					? output.proposals.reduce((sum, proposal) => {
+							if (!proposal || typeof proposal !== "object") return sum;
+							const actions = (proposal as Record<string, unknown>).proposed_actions;
+							return sum + (Array.isArray(actions) ? actions.length : 0);
+						}, 0)
+					: Array.isArray(output.proposed_actions)
+						? output.proposed_actions.length
+						: 0,
+				confidence: typeof output.confidence === "string"
+					? output.confidence
+					: Array.isArray(output.proposals)
+						? (output.proposals[0] as Record<string, unknown> | undefined)?.confidence
+						: undefined,
+				recommended: typeof output.recommended_proposal_id === "string"
+					? output.recommended_proposal_id
+					: undefined,
 			};
 		case "risk":
 			return {
 				verdict: output.verdict,
+				proposals: Array.isArray(output.proposal_risks)
+					? output.proposal_risks.length
+					: 0,
 				scenarios: Array.isArray(output.stress_results)
 					? output.stress_results.length
 					: 0,
@@ -83,7 +100,8 @@ export interface UseAgentRunReturn {
 
 export interface UserPreferences {
 	sectorConstraint?: "same_sector" | "diversify";
-	riskAppetite?: "aggressive" | "conservative";
+	riskAppetite?: "aggressive" | "balanced" | "conservative";
+	proposalCount?: 1 | 3;
 	maxTurnoverPct?: number;
 	excludedTickers?: string[];
 }
@@ -187,7 +205,7 @@ export function useAgentRun(): UseAgentRunReturn {
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [rebuildStepsFromOutput]);
 
 	const startRun = useCallback(async (preferences?: UserPreferences) => {
 		// Abort any in-flight run
@@ -231,7 +249,6 @@ export function useAgentRun(): UseAgentRunReturn {
 			let buffer = "";
 			let lastActivity = Date.now();
 
-			// eslint-disable-next-line no-constant-condition
 			while (true) {
 				// Timeout check — if no data arrives for STREAM_TIMEOUT_MS, abort
 				const readResult = await Promise.race([
