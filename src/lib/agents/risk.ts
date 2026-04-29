@@ -17,6 +17,8 @@ export const RiskOutput = z.object({
 				scenario: z.string(),
 				simulated_drawdown_pct: z.number(),
 				simulated_return_pct: z.number().optional(),
+				data_coverage_pct: z.number().optional(),
+				skipped_assets: z.array(z.string()).optional(),
 				recovery_days: z.number().nullable(),
 			}),
 		)
@@ -30,12 +32,14 @@ export const RiskOutput = z.object({
 		.array(
 			z.object({
 				scenario: z.string(),
-				current_drawdown: z.number(),
-				proposed_drawdown: z.number(),
-				delta_pp: z.number(),
+				current_drawdown: z.number().optional(),
+				proposed_drawdown: z.number().optional(),
+				delta_pp: z.number().optional(),
 				current_return: z.number().optional(),
 				proposed_return: z.number().optional(),
 				delta_return_pp: z.number().optional(),
+				current_data_coverage_pct: z.number().optional(),
+				proposed_data_coverage_pct: z.number().optional(),
 			}),
 		)
 		.optional(),
@@ -105,10 +109,34 @@ const STRESS_SCENARIOS = {
 		period2: "2020-03-23",
 		cryptoOnly: false,
 	},
+	post_covid_recovery: {
+		label: "Post-COVID Recovery Rally (Mar – Aug 2020)",
+		period1: "2020-03-23",
+		period2: "2020-08-31",
+		cryptoOnly: false,
+	},
 	rate_hike_2022: {
 		label: "2022 Rate Hike Cycle (Jan – Oct 2022)",
 		period1: "2022-01-03",
 		period2: "2022-10-14",
+		cryptoOnly: false,
+	},
+	rate_cut_pivot_rally: {
+		label: "Rate-Cut Pivot Rally (Oct – Dec 2023)",
+		period1: "2023-10-27",
+		period2: "2023-12-29",
+		cryptoOnly: false,
+	},
+	ai_mega_cap_rally: {
+		label: "AI Mega-Cap Rally (Jan – Jul 2023)",
+		period1: "2023-01-03",
+		period2: "2023-07-31",
+		cryptoOnly: false,
+	},
+	gold_breakout_rally: {
+		label: "Gold Breakout Rally (Feb – Apr 2024)",
+		period1: "2024-02-14",
+		period2: "2024-04-12",
 		cryptoOnly: false,
 	},
 	gfc_2008: {
@@ -120,6 +148,19 @@ const STRESS_SCENARIOS = {
 } as const;
 
 type ScenarioKey = keyof typeof STRESS_SCENARIOS;
+
+export function selectStressScenarioKeys(
+	positions: { assetClass: string }[],
+): ScenarioKey[] {
+	const hasCrypto = positions.some((p) => p.assetClass === "crypto");
+	const hasTraditional = positions.some((p) => p.assetClass !== "crypto");
+	const keys = Object.keys(STRESS_SCENARIOS) as ScenarioKey[];
+
+	if (hasCrypto && hasTraditional) return keys;
+	if (hasCrypto) return keys.filter((key) => STRESS_SCENARIOS[key].cryptoOnly);
+	if (hasTraditional) return keys.filter((key) => !STRESS_SCENARIOS[key].cryptoOnly);
+	return [];
+}
 
 // --- Tools ---
 
@@ -154,6 +195,8 @@ export const runHistoricalStressTest = createTool({
 				scenario: z.string(),
 				simulated_drawdown_pct: z.number(),
 				simulated_return_pct: z.number().optional(),
+				data_coverage_pct: z.number().optional(),
+				skipped_assets: z.array(z.string()).optional(),
 				recovery_days: z.number().nullable(),
 			}),
 		),
@@ -200,9 +243,6 @@ export const runHistoricalStressTest = createTool({
 
 		if (positions.length === 0) return { stress_results: [] };
 
-		const hasCrypto = positions.some((p) => p.assetClass === "crypto");
-		const hasTraditional = positions.some((p) => p.assetClass !== "crypto");
-
 		// Select scenarios
 		let selectedKeys: ScenarioKey[];
 		if (input.scenarios && input.scenarios.length > 0) {
@@ -210,24 +250,15 @@ export const runHistoricalStressTest = createTool({
 				(s): s is ScenarioKey => s in STRESS_SCENARIOS,
 			);
 		} else {
-			selectedKeys = (Object.keys(STRESS_SCENARIOS) as ScenarioKey[]).filter(
-				(key) => {
-					if (STRESS_SCENARIOS[key].cryptoOnly && !hasCrypto) return false;
-					if (
-						!STRESS_SCENARIOS[key].cryptoOnly &&
-						!hasTraditional &&
-						!hasCrypto
-					)
-						return false;
-					return true;
-				},
-			);
+			selectedKeys = selectStressScenarioKeys(positions);
 		}
 
 		const stressResults: {
 			scenario: string;
 			simulated_drawdown_pct: number;
 			simulated_return_pct?: number;
+			data_coverage_pct?: number;
+			skipped_assets?: string[];
 			recovery_days: number | null;
 		}[] = [];
 
@@ -235,6 +266,8 @@ export const runHistoricalStressTest = createTool({
 			const scenario = STRESS_SCENARIOS[key];
 			let portfolioDrawdownPct = 0;
 			let portfolioReturnPct = 0;
+			let coveredWeight = 0;
+			const skippedAssets: string[] = [];
 
 			for (const pos of positions) {
 				const ac = pos.assetClass as AssetClass;
@@ -245,11 +278,10 @@ export const runHistoricalStressTest = createTool({
 				});
 
 				if (!history || history.length < 2) {
-					return {
-						stress_results: stressResults,
-						error: `Insufficient historical data for ${pos.ticker} during scenario ${scenario.label}. Asset likely did not exist.`,
-					};
+					skippedAssets.push(pos.ticker);
+					continue;
 				}
+				coveredWeight += pos.weight;
 
 				// Find max drawdown during period
 				let peak = history[0].close;
@@ -270,9 +302,14 @@ export const runHistoricalStressTest = createTool({
 				}
 			}
 
+			if (coveredWeight <= 0) continue;
+			portfolioDrawdownPct /= coveredWeight;
+			portfolioReturnPct /= coveredWeight;
+
 			// Estimate recovery days (heuristic: drawdown magnitude × 3-7, scale with severity)
 			const ddPct = Math.round(portfolioDrawdownPct * 10000) / 100;
 			const returnPct = Math.round(portfolioReturnPct * 10000) / 100;
+			const dataCoveragePct = Math.round(coveredWeight * 10000) / 100;
 			const recoveryDays =
 				ddPct > 0 ? Math.round(ddPct * (ddPct > 20 ? 5 : 3)) : 0;
 
@@ -280,6 +317,8 @@ export const runHistoricalStressTest = createTool({
 				scenario: scenario.label,
 				simulated_drawdown_pct: ddPct,
 				simulated_return_pct: returnPct,
+				data_coverage_pct: dataCoveragePct,
+				skipped_assets: skippedAssets.length > 0 ? skippedAssets : undefined,
 				recovery_days: ddPct > 0 ? recoveryDays : null,
 			});
 		}

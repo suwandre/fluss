@@ -299,7 +299,7 @@ export function RedesignProposalModal({
 	riskStructuredOutput,
 	sectorExposure,
 }: RedesignProposalModalProps) {
-	const [expandedRow, setExpandedRow] = useState<number | null>(null);
+	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 	const [activeTab, setActiveTab] = useState<"proposal" | "risk">("proposal");
 	const badge = confidenceBadge(confidence);
 
@@ -349,6 +349,26 @@ export function RedesignProposalModal({
 			delta,
 		};
 	});
+	const rowKeys = rows.map((row) => row.ticker.toUpperCase());
+	const hasRows = rows.length > 0;
+	const allRationalesExpanded = hasRows && rowKeys.every((key) => expandedRows.has(key));
+
+	function toggleRationale(rowKey: string) {
+		setExpandedRows((prev) => {
+			const next = new Set(prev);
+			if (next.has(rowKey)) next.delete(rowKey);
+			else next.add(rowKey);
+			return next;
+		});
+	}
+
+	function expandAllRationales() {
+		setExpandedRows(new Set(rowKeys));
+	}
+
+	function collapseAllRationales() {
+		setExpandedRows(new Set());
+	}
 
 	// Snapshot card computations
 	const currentCount = currentAllocations.length;
@@ -477,6 +497,29 @@ export function RedesignProposalModal({
 							<div className="space-y-6">
 								{/* Proposed Allocation Table */}
 								<div className="rounded border border-border overflow-hidden">
+									<div className="bg-bg-elevated/60 border-b border-border px-4 py-2 flex items-center justify-between gap-3">
+										<span className="text-[10px] font-mono uppercase tracking-wide text-text-dim">
+											Allocation Rationales
+										</span>
+										<div className="flex items-center gap-3">
+											<button
+												type="button"
+												onClick={expandAllRationales}
+												disabled={!hasRows || allRationalesExpanded}
+												className="text-[11px] font-mono text-teal underline underline-offset-2 hover:text-teal/70 disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
+											>
+												Expand all
+											</button>
+											<button
+												type="button"
+												onClick={collapseAllRationales}
+												disabled={expandedRows.size === 0}
+												className="text-[11px] font-mono text-teal underline underline-offset-2 hover:text-teal/70 disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
+											>
+												Collapse all
+											</button>
+										</div>
+									</div>
 									<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[80px_100px_100px_100px_1fr] gap-4">
 										<span>Ticker</span>
 										<span className="text-right">Current</span>
@@ -485,8 +528,9 @@ export function RedesignProposalModal({
 										<span className="pl-6">Rationale</span>
 									</div>
 									{rows.length > 0 ? (
-										rows.map((row, i) => {
-											const isExpanded = expandedRow === i;
+										rows.map((row) => {
+											const rowKey = row.ticker.toUpperCase();
+											const isExpanded = expandedRows.has(rowKey);
 											const rationale =
 												row.rationale ??
 												(row.hasAction
@@ -495,7 +539,7 @@ export function RedesignProposalModal({
 														: "Target allocation changed by this proposal."
 													: "No change proposed; current allocation carried forward.");
 											return (
-												<div key={i}>
+												<div key={rowKey}>
 													<div
 														className={`grid grid-cols-[80px_100px_100px_100px_1fr] gap-4 px-4 py-3 text-[12px] font-mono border-b border-border last:border-0 items-center transition-colors ${isExpanded ? "bg-bg-elevated/50" : ""}`}
 													>
@@ -513,7 +557,8 @@ export function RedesignProposalModal({
 														</span>
 														<span className="flex items-center justify-center">
 															<button
-																onClick={(e) => { e.stopPropagation(); setExpandedRow(isExpanded ? null : i); }}
+																type="button"
+																onClick={(e) => { e.stopPropagation(); toggleRationale(rowKey); }}
 																className="text-teal text-[11px] font-mono underline underline-offset-2 hover:text-teal/70 cursor-pointer"
 															>
 																{isExpanded ? "Hide Rationale" : "View Rationale"}

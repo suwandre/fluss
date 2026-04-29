@@ -6,8 +6,9 @@ import { BottleneckOutput } from "@/lib/agents/bottleneck";
 import { RedesignOutput } from "@/lib/agents/redesign";
 import { RiskOutput } from "@/lib/agents/risk";
 import {
-	runHistoricalStressTest,
-	computeVar,
+  runHistoricalStressTest,
+  computeVar,
+  selectStressScenarioKeys,
 } from "@/lib/agents/risk";
 import {
 	isStructuredOutputError,
@@ -109,6 +110,8 @@ type StressTestResult = {
     scenario: string;
     simulated_drawdown_pct: number;
     simulated_return_pct?: number;
+    data_coverage_pct?: number;
+    skipped_assets?: string[];
     recovery_days: number | null;
   }[];
   error?: string;
@@ -125,7 +128,7 @@ type VarResult = {
 };
 
 const historicalStressTestTool = runHistoricalStressTest as unknown as {
-  execute(input: { positions_override: PortfolioPosition[] }): Promise<StressTestResult>;
+  execute(input: { positions_override: PortfolioPosition[]; scenarios?: string[] }): Promise<StressTestResult>;
 };
 
 const varTool = computeVar as unknown as {
@@ -618,12 +621,17 @@ const riskStep = createStep({
       proposedPositions.push(...Array.from(proposedMap.values()));
     }
 
+    const stressScenarioKeys = selectStressScenarioKeys([
+      ...currentPositions,
+      ...proposedPositions,
+    ]);
+
     // ── Pre-compute stress + VaR for BOTH portfolios ──────────────────────
     const [currentStress, proposedStress, currentVaR, proposedVaR] = await Promise.all([
-      historicalStressTestTool.execute({ positions_override: currentPositions }),
+      historicalStressTestTool.execute({ positions_override: currentPositions, scenarios: stressScenarioKeys }),
       proposedPositions.length > 0
-        ? historicalStressTestTool.execute({ positions_override: proposedPositions })
-        : Promise.resolve({ stress_results: [] }),
+        ? historicalStressTestTool.execute({ positions_override: proposedPositions, scenarios: stressScenarioKeys })
+        : Promise.resolve({ stress_results: [] } as StressTestResult),
       varTool.execute({ positions_override: currentPositions }),
       proposedPositions.length > 0
         ? varTool.execute({ positions_override: proposedPositions })
@@ -639,34 +647,61 @@ const riskStep = createStep({
 
     type ScenarioComparisonWithReturn = {
       scenario: string;
-      current_drawdown: number;
-      proposed_drawdown: number;
-      delta_pp: number;
+      current_drawdown?: number;
+      proposed_drawdown?: number;
+      delta_pp?: number;
       current_return?: number;
       proposed_return?: number;
       delta_return_pp?: number;
+      current_data_coverage_pct?: number;
+      proposed_data_coverage_pct?: number;
     };
 
-    const scenarioComparisons: ScenarioComparisonWithReturn[] = currentStress.stress_results.map((curr) => {
-      const prop = proposedStress.stress_results.find((p) => p.scenario === curr.scenario);
+    const currentStressByScenario = new Map(
+      currentStress.stress_results.map((result) => [result.scenario, result]),
+    );
+    const proposedStressByScenario = new Map(
+      proposedStress.stress_results.map((result) => [result.scenario, result]),
+    );
+    const scenarioNames = Array.from(
+      new Set([
+        ...currentStressByScenario.keys(),
+        ...proposedStressByScenario.keys(),
+      ]),
+    );
+
+    const scenarioComparisons: ScenarioComparisonWithReturn[] = scenarioNames.map((scenario) => {
+      const curr = currentStressByScenario.get(scenario);
+      const prop = proposedStressByScenario.get(scenario);
+      const currentDrawdown = curr?.simulated_drawdown_pct;
+      const proposedDrawdown = prop?.simulated_drawdown_pct;
+      const currentReturn = curr?.simulated_return_pct;
+      const proposedReturn = prop?.simulated_return_pct;
+      const hasReturnPair =
+        typeof currentReturn === "number" &&
+        typeof proposedReturn === "number";
+
       return {
-        scenario: curr.scenario,
-        current_drawdown: curr.simulated_drawdown_pct,
-        proposed_drawdown: prop ? prop.simulated_drawdown_pct : curr.simulated_drawdown_pct,
-        delta_pp: prop ? parseFloat((prop.simulated_drawdown_pct - curr.simulated_drawdown_pct).toFixed(2)) : 0,
-        current_return: curr.simulated_return_pct,
-        proposed_return: prop?.simulated_return_pct,
-        delta_return_pp:
-          typeof curr.simulated_return_pct === "number" &&
-          typeof prop?.simulated_return_pct === "number"
-            ? parseFloat((prop.simulated_return_pct - curr.simulated_return_pct).toFixed(2))
+        scenario,
+        current_drawdown: currentDrawdown,
+        proposed_drawdown: proposedDrawdown,
+        delta_pp: typeof currentDrawdown === "number" && typeof proposedDrawdown === "number"
+          ? parseFloat((proposedDrawdown - currentDrawdown).toFixed(2))
+          : undefined,
+        current_return: currentReturn,
+        proposed_return: proposedReturn,
+        delta_return_pp: hasReturnPair
+            ? parseFloat((proposedReturn - currentReturn).toFixed(2))
             : undefined,
+        current_data_coverage_pct: curr?.data_coverage_pct,
+        proposed_data_coverage_pct: prop?.data_coverage_pct,
       };
     });
 
     const bestUpsideScenario = scenarioComparisons
       .filter(
-        (scenario): scenario is ScenarioComparisonWithReturn & { proposed_return: number } =>
+        (scenario): scenario is ScenarioComparisonWithReturn & { current_return: number; proposed_return: number } =>
+          typeof scenario.current_return === "number" &&
           typeof scenario.proposed_return === "number",
       )
       .sort((a, b) => b.proposed_return - a.proposed_return)[0];
@@ -698,6 +733,7 @@ const riskStep = createStep({
       "",
       "Current portfolio pre-computed stress results:",
       JSON.stringify(currentStress.stress_results, null, 2),
+      currentStress.error ? `Current stress coverage warning: ${currentStress.error}` : "",
       `Current portfolio VaR 95%: ${currentVaR.var_pct}%`,
       `Current portfolio average drawdown across all stress scenarios: ${currentAvgDrawdown.toFixed(2)}%`,
       `Current portfolio max drawdown across all stress scenarios: ${currentMaxDrawdown.toFixed(2)}%`,
@@ -705,6 +741,7 @@ const riskStep = createStep({
       "",
       "Proposed portfolio pre-computed stress results:",
       JSON.stringify(proposedStress.stress_results, null, 2),
+      proposedStress.error ? `Proposed stress coverage warning: ${proposedStress.error}` : "",
       `Proposed portfolio VaR 95%: ${proposedVaR.var_pct}%`,
       `Proposed portfolio average drawdown across all stress scenarios: ${proposedAvgDrawdown.toFixed(2)}%`,
       `Proposed portfolio max drawdown across all stress scenarios: ${proposedMaxDrawdown.toFixed(2)}%`,

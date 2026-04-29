@@ -9,6 +9,8 @@ interface StressResult {
 	label: string;
 	simulated_drawdown_pct: number;
 	simulated_return_pct?: number;
+	data_coverage_pct?: number;
+	skipped_assets?: string[];
 	recovery_days: number | null;
 }
 
@@ -218,12 +220,14 @@ function RiskCards({ text }: { text: string }) {
 
 interface ScenarioComparison {
 	scenario: string;
-	current_drawdown: number;
-	proposed_drawdown: number;
-	delta_pp: number;
+	current_drawdown?: number;
+	proposed_drawdown?: number;
+	delta_pp?: number;
 	current_return?: number;
 	proposed_return?: number;
 	delta_return_pp?: number;
+	current_data_coverage_pct?: number;
+	proposed_data_coverage_pct?: number;
 }
 
 function StressTooltip({ label, tip }: { label: string; tip: string }) {
@@ -295,15 +299,29 @@ function UnifiedStressBars({
 				</span>
 			</div>
 			{scenarioComparisons.map((row, i) => {
-				const currentDd = Math.abs(row.current_drawdown);
-				const proposedDd = Math.abs(row.proposed_drawdown);
+				const currentDd = typeof row.current_drawdown === "number" ? Math.abs(row.current_drawdown) : null;
+				const proposedDd = typeof row.proposed_drawdown === "number" ? Math.abs(row.proposed_drawdown) : null;
 				const delta = row.delta_pp;
 				const recovery = recoveryMap.get(row.scenario);
 				const recoveryText = recovery != null ? `${recovery}d` : "—";
-				const isProposedSevere = proposedDd > 15;
-				const deltaColor = delta > 0 ? "text-red" : delta < 0 ? "text-green" : "text-text-muted";
+				const isProposedSevere = proposedDd != null && proposedDd > 15;
+				const deltaColor =
+					typeof delta !== "number"
+						? "text-text-muted"
+						: delta > 0
+							? "text-red"
+							: delta < 0
+								? "text-green"
+								: "text-text-muted";
 				const isExpanded = expandedRows.has(i);
 				const { name, period } = parseScenario(row.scenario);
+				const currentCoverage = row.current_data_coverage_pct;
+				const proposedCoverage = row.proposed_data_coverage_pct;
+				const hasCoverageGap =
+					(typeof currentCoverage === "number" && currentCoverage < 99.5) ||
+					(typeof proposedCoverage === "number" && proposedCoverage < 99.5) ||
+					currentDd == null ||
+					proposedDd == null;
 
 				return (
 					<div key={i} className="border-b border-border last:border-0">
@@ -318,16 +336,23 @@ function UnifiedStressBars({
 								})
 							}
 						>
-							<span className={`font-medium text-text ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>
-							{name}
-						</span>
+							<span className={isExpanded ? "whitespace-normal break-words" : "truncate"}>
+								<span className="font-medium text-text">{name}</span>
+								{hasCoverageGap && (
+									<span className="block text-[10px] text-text-muted">
+										Coverage {typeof currentCoverage === "number" ? `${currentCoverage.toFixed(0)}%` : "N/A"} / {typeof proposedCoverage === "number" ? `${proposedCoverage.toFixed(0)}%` : "N/A"}
+									</span>
+								)}
+							</span>
 							<span className={`text-text-dim ${isExpanded ? "whitespace-normal break-words" : "truncate"}`}>{period}</span>
-							<span className="text-right text-text-dim">-{currentDd.toFixed(1)}%</span>
+							<span className="text-right text-text-dim">
+								{currentDd == null ? "N/A" : `-${currentDd.toFixed(1)}%`}
+							</span>
 							<span className={`text-right font-semibold ${isProposedSevere ? "text-red" : "text-amber"}`}>
-								-{proposedDd.toFixed(1)}%
+								{proposedDd == null ? "N/A" : `-${proposedDd.toFixed(1)}%`}
 							</span>
 							<span className={`text-right font-semibold ${deltaColor}`}>
-								{delta > 0 ? "+" : ""}{delta.toFixed(1)}pp
+								{typeof delta === "number" ? `${delta > 0 ? "+" : ""}${delta.toFixed(1)}pp` : "N/A"}
 							</span>
 							<span className="text-right text-text-muted">{recoveryText}</span>
 						</div>
@@ -356,6 +381,11 @@ function UpsideScenariosTable({
 
 	return (
 		<div>
+			{upsideRows.length < 4 && (
+				<div className="px-4 pb-3 text-[11px] font-mono text-amber">
+					Limited upside evidence: only {upsideRows.length} applicable positive historical {upsideRows.length === 1 ? "regime" : "regimes"} found for both portfolios.
+				</div>
+			)}
 			<div className="bg-bg-elevated text-[11px] font-mono text-text-dim uppercase tracking-wide px-4 py-3 grid grid-cols-[minmax(120px,1fr)_110px_90px_90px_80px] gap-3 border-b border-border">
 				<span>
 					<StressTooltip label="Scenario" tip="Historical scenario name." />
