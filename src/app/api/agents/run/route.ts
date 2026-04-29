@@ -8,8 +8,6 @@ export async function POST(req: Request) {
   // Parse preferences from client payload
   let preferences: {
     sectorConstraint?: "same_sector" | "diversify";
-    riskAppetite?: "aggressive" | "balanced" | "conservative";
-    proposalCount?: 1 | 3;
     maxTurnoverPct?: number;
     excludedTickers?: string[];
   } = {};
@@ -42,8 +40,6 @@ export async function POST(req: Request) {
   const runOutput = run.stream({
     inputData: {
       sectorConstraint: preferences.sectorConstraint ?? "same_sector",
-      riskAppetite: preferences.riskAppetite ?? "balanced",
-      proposalCount: preferences.proposalCount === 1 ? 1 : 3,
       maxTurnoverPct: preferences.maxTurnoverPct ?? 30,
       excludedTickers: Array.isArray(preferences.excludedTickers) ? preferences.excludedTickers : [],
     },

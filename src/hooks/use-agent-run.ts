@@ -100,8 +100,6 @@ export interface UseAgentRunReturn {
 
 export interface UserPreferences {
 	sectorConstraint?: "same_sector" | "diversify";
-	riskAppetite?: "aggressive" | "balanced" | "conservative";
-	proposalCount?: 1 | 3;
 	maxTurnoverPct?: number;
 	excludedTickers?: string[];
 }

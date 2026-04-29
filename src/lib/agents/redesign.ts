@@ -518,14 +518,12 @@ SECTOR CONSTRAINTS — read these from the user preferences in your prompt conte
 - If sectorConstraint === "same_sector": Only suggest assets within the SAME asset classes as the user's current holdings. Do NOT suggest ETFs, bonds, FX, or equities if the current portfolio is only crypto.
 - If sectorConstraint === "diversify": You MAY suggest assets from other sectors including ETFs, bonds, FX, and equities to improve risk-adjusted returns.
 
-RISK APPETITE — read from user preferences:
-- If riskAppetite === "conservative": Prioritize capital preservation. Favor lower volatility assets and smaller position sizes. Avoid leverage or high-beta alternatives.
-- If riskAppetite === "balanced": Prioritize the best risk-adjusted trade-off. Avoid unnecessary turnover.
-- If riskAppetite === "aggressive": Prioritize higher risk-adjusted returns. You may suggest higher-beta alternatives and larger reallocations within the max turnover limit.
-
-PROPOSAL COUNT — read from user preferences:
-- If proposalCount === 1: Return exactly one proposal matching the requested riskAppetite. Label it "Recommended".
-- If proposalCount === 3: Return exactly three meaningfully different proposals labeled "Conservative", "Balanced", and "Aggressive". All three must respect sectorConstraint, maxTurnoverPct, and excludedTickers.
+PROPOSAL SET:
+- Return exactly three meaningfully different proposals labeled "Conservative", "Balanced", and "Aggressive".
+- Conservative prioritizes capital preservation, lower volatility, and lower turnover.
+- Balanced prioritizes the best risk-adjusted trade-off.
+- Aggressive prioritizes higher risk-adjusted return within the max turnover limit.
+- All three proposals must respect sectorConstraint, maxTurnoverPct, and excludedTickers.
 
 Your job:
 1. Understand the bottleneck diagnosis — which asset is dragging, why, and how severe

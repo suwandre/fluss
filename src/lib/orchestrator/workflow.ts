@@ -40,8 +40,6 @@ const MEMORY_RESOURCE_ID = "portfolio-factory";
 
 const PreferencesSchema = z.object({
   sectorConstraint: z.enum(["same_sector", "diversify"]).default("same_sector"),
-  riskAppetite: z.enum(["aggressive", "balanced", "conservative"]).default("balanced"),
-  proposalCount: z.union([z.literal(1), z.literal(3)]).default(3),
   maxTurnoverPct: z.number().default(30),
   excludedTickers: z.array(z.string()).default([]),
 });
@@ -63,7 +61,7 @@ const MarketSnapshotSchema = z.object({
   totalValue: z.number(),
   totalCost: z.number(),
   tickers: z.array(z.string()),
-  preferences: PreferencesSchema.default({ sectorConstraint: "same_sector", riskAppetite: "balanced", proposalCount: 3, maxTurnoverPct: 30, excludedTickers: [] }),
+  preferences: PreferencesSchema.default({ sectorConstraint: "same_sector", maxTurnoverPct: 30, excludedTickers: [] }),
 });
 
 const CorrelationPairSchema = z.object({
@@ -549,17 +547,13 @@ const redesignStep = createStep({
       "",
       "User preferences:",
       `- Sector constraint: ${preferences.sectorConstraint === "same_sector" ? "Stay within current sectors only" : "Allow cross-sector diversification (ETFs, bonds, FX, equities)"}`,
-      `- Risk appetite: ${preferences.riskAppetite === "aggressive" ? "Aggressive — higher potential reward" : preferences.riskAppetite === "conservative" ? "Conservative — stable returns, capital preservation" : "Balanced — best risk-adjusted tradeoff"}`,
-      `- Proposal count: ${preferences.proposalCount}`,
       `- Max turnover: ${preferences.maxTurnoverPct}%`,
       preferences.excludedTickers.length > 0 ? `- Excluded tickers: ${preferences.excludedTickers.join(", ")}` : "",
       "",
       "Allowed asset classes for alternatives:",
       JSON.stringify(allowedAssetClasses),
       "",
-      preferences.proposalCount === 3
-        ? "Generate exactly 3 proposals labeled Conservative, Balanced, and Aggressive. They must be meaningfully different and all must respect the same hard constraints."
-        : `Generate exactly 1 proposal labeled Recommended for the ${preferences.riskAppetite} risk appetite.`,
+      "Generate exactly 3 proposals labeled Conservative, Balanced, and Aggressive. They must be meaningfully different and all must respect the same hard constraints.",
       "Propose concrete rebalancing actions. Analyze the holdings data above and recommend specific changes with target percentages.",
     ].join("\n");
 
@@ -1279,8 +1273,6 @@ export const portfolioFactoryWorkflow = createWorkflow({
     "Full agent pipeline: fetch market data → Monitor → conditional escalation (Bottleneck → Redesign → Risk) or status update",
   inputSchema: z.object({
     sectorConstraint: z.enum(["same_sector", "diversify"]).default("same_sector"),
-    riskAppetite: z.enum(["aggressive", "balanced", "conservative"]).default("balanced"),
-    proposalCount: z.union([z.literal(1), z.literal(3)]).default(3),
     maxTurnoverPct: z.number().default(30),
     excludedTickers: z.array(z.string()).default([]),
   }),

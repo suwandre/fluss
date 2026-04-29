@@ -220,7 +220,6 @@ async function tick(): Promise<void> {
     const result = await run.start({
       inputData: {
         sectorConstraint: "diversify",
-        riskAppetite: "aggressive",
         maxTurnoverPct: 30,
         excludedTickers: [],
       },
@@ -235,7 +234,6 @@ async function tick(): Promise<void> {
           holdingsCount: rows.length,
           trigger: "cron",
           sectorConstraint: "diversify",
-          riskAppetite: "aggressive",
         },
         output: result.result as Record<string, unknown>,
         reasoning: JSON.stringify(result.result, null, 2),
