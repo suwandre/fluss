@@ -58,6 +58,7 @@ interface AgentReasoningPanelProps {
 	stressResults?: StressResult[] | null;
 	riskMetrics?: RiskMetrics | null;
 	currentAllocations?: CurrentAllocation[];
+	proposedActions?: ProposedAction[];
 	riskStructuredOutput?: Record<string, unknown> | null;
 	onRestoreRun?: (run: HistoryRun) => void;
 	onRedesignViewDetails?: () => void;
@@ -80,6 +81,7 @@ export function AgentReasoningPanel({
 	stressResults,
 	riskMetrics,
 	currentAllocations = [],
+	proposedActions = [],
 	riskStructuredOutput,
 	onRestoreRun,
 	onRedesignViewDetails,
@@ -199,15 +201,6 @@ export function AgentReasoningPanel({
 							<RunSummary steps={steps} />
 						)}
 						<AgentTimeline steps={steps} />
-						{steps[2]?.status === "done" && onRedesignViewDetails && (
-							<button
-								type="button"
-								onClick={onRedesignViewDetails}
-								className="mt-4 w-full py-2.5 rounded border border-border-bright bg-bg-elevated text-text font-mono text-[13px] font-medium hover:bg-bg-card hover:border-border transition-colors cursor-pointer"
-							>
-								View Proposal
-							</button>
-						)}
 
 						{/* Decision support — shown after Risk Agent completes */}
 						{showDecisionSupport && (
@@ -216,9 +209,20 @@ export function AgentReasoningPanel({
 									steps={steps}
 									riskMetrics={riskMetrics ?? null}
 									currentAllocations={currentAllocations}
+									proposedActions={proposedActions}
 									riskStructuredOutput={riskStructuredOutput ?? null}
 								/>
 							</div>
+						)}
+
+						{steps[2]?.status === "done" && onRedesignViewDetails && (
+							<button
+								type="button"
+								onClick={onRedesignViewDetails}
+								className="mt-3 w-full py-2 rounded border border-border bg-bg-elevated text-text-dim font-mono text-[12px] font-medium hover:text-text hover:border-border-bright transition-colors cursor-pointer"
+							>
+								View Proposal
+							</button>
 						)}
 					</div>
 				</div>
@@ -256,7 +260,7 @@ function formatSignedPercent(value: number): string {
 	return `${sign}${value.toFixed(1)}%`;
 }
 
-function getProposedActions(steps: AgentStepData[]): ProposedAction[] {
+function getStepProposedActions(steps: AgentStepData[]): ProposedAction[] {
 	const actions = steps[2]?.structuredOutput?.proposed_actions;
 	if (!Array.isArray(actions)) return [];
 
@@ -424,15 +428,18 @@ function DecisionSupport({
 	steps,
 	riskMetrics,
 	currentAllocations,
+	proposedActions,
 	riskStructuredOutput,
 }: {
 	steps: AgentStepData[];
 	riskMetrics: RiskMetrics | null;
 	currentAllocations: CurrentAllocation[];
+	proposedActions: ProposedAction[];
 	riskStructuredOutput: Record<string, unknown> | null;
 }) {
-	const proposedActions = getProposedActions(steps);
-	const allocationRows = getAllocationRows(currentAllocations, proposedActions);
+	const finalProposedActions =
+		proposedActions.length > 0 ? proposedActions : getStepProposedActions(steps);
+	const allocationRows = getAllocationRows(currentAllocations, finalProposedActions);
 	const verdict = getVerdictSummary(steps);
 	const stressDrawdown = getStressDrawdown(riskMetrics);
 	const primaryChange = allocationRows[0] ?? null;
@@ -448,8 +455,8 @@ function DecisionSupport({
 			<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
 				Final Result
 			</div>
-			<div className="rounded border border-border bg-bg-elevated p-3">
-				<div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
+			<div className="rounded border border-border bg-bg-elevated p-2.5">
+				<div className="flex items-start justify-between gap-3 border-b border-border/60 pb-2">
 					<div>
 						<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide">
 							Verdict
@@ -467,7 +474,7 @@ function DecisionSupport({
 					</div>
 					<div
 						className={cn(
-							"rounded-full border px-2 py-1 text-[11px] font-mono",
+							"rounded-full border px-2 py-0.5 text-[11px] font-mono",
 							verdict.tone === "green" && "border-green/20 bg-green/10 text-green",
 							verdict.tone === "amber" && "border-amber/20 bg-amber/10 text-amber",
 							verdict.tone === "red" && "border-red/20 bg-red/10 text-red",
@@ -477,7 +484,7 @@ function DecisionSupport({
 					</div>
 				</div>
 
-				<div className="mt-3 grid gap-2">
+				<div className="mt-2 grid gap-1.5">
 					{stressDrawdown && (
 						<StressDrawdownBars
 							current={stressDrawdown.current}
@@ -497,7 +504,7 @@ function DecisionSupport({
 						<FinalResultRow
 							label="Trade size"
 							value={`${turnover.toFixed(1)}% turnover`}
-							detail={`${proposedActions.length} action${proposedActions.length === 1 ? "" : "s"}`}
+							detail={`${finalProposedActions.length} action${finalProposedActions.length === 1 ? "" : "s"}`}
 							tone="teal"
 						/>
 					)}
@@ -528,8 +535,8 @@ function StressDrawdownBars({
 	const improved = improvement >= 0;
 
 	return (
-		<div className="rounded border border-border/70 bg-bg-card px-3 py-2.5 font-mono">
-			<div className="mb-2 flex items-center justify-between gap-3">
+		<div className="rounded border border-border/70 bg-bg-card px-2.5 py-2 font-mono">
+			<div className="mb-1.5 flex items-center justify-between gap-3">
 				<div className="text-[10px] uppercase tracking-wide text-text-dim">
 					Stress Drawdown
 				</div>
@@ -537,7 +544,7 @@ function StressDrawdownBars({
 					{Math.abs(improvement).toFixed(1)}pp {improved ? "better" : "worse"}
 				</div>
 			</div>
-			<div className="space-y-2">
+			<div className="space-y-1.5">
 				<StressDrawdownBar
 					label="Current"
 					value={current}
@@ -567,7 +574,7 @@ function StressDrawdownBar({
 	className: string;
 }) {
 	return (
-		<div className="grid grid-cols-[58px_1fr_48px] items-center gap-2 text-[11px]">
+		<div className="grid grid-cols-[58px_1fr_48px] items-center gap-2 text-[10px]">
 			<span className="text-text-dim">{label}</span>
 			<div className="h-2 overflow-hidden rounded bg-bg-elevated">
 				<div
@@ -592,12 +599,12 @@ function FinalResultRow({
 	tone: "green" | "amber" | "red" | "teal";
 }) {
 	return (
-		<div className="grid grid-cols-[1fr_auto] gap-3 rounded border border-border/70 bg-bg-card px-3 py-2 font-mono">
+		<div className="grid grid-cols-[1fr_auto] gap-3 rounded border border-border/70 bg-bg-card px-2.5 py-1.5 font-mono">
 			<div className="min-w-0">
 				<div className="text-[10px] uppercase tracking-wide text-text-dim">
 					{label}
 				</div>
-				<div className="mt-0.5 truncate text-[12px] text-text">{value}</div>
+				<div className="truncate text-[11px] text-text">{value}</div>
 			</div>
 			<div
 				className={cn(
