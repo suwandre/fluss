@@ -250,54 +250,10 @@ function formatLossPercent(value: number): string {
 	return `-${abs}%`;
 }
 
-function getRiskScore(riskMetrics: RiskMetrics | null) {
-	if (!riskMetrics) return null;
-	const {
-		current_var_95,
-		proposed_var_95,
-		current_avg_drawdown,
-		proposed_avg_drawdown,
-		current_max_drawdown,
-		proposed_max_drawdown,
-	} = riskMetrics;
-
-	if (
-		typeof current_var_95 !== "number" ||
-		typeof proposed_var_95 !== "number" ||
-		typeof current_avg_drawdown !== "number" ||
-		typeof proposed_avg_drawdown !== "number" ||
-		typeof current_max_drawdown !== "number" ||
-		typeof proposed_max_drawdown !== "number"
-	) {
-		return null;
-	}
-
-	const current =
-		current_avg_drawdown * 0.45 +
-		current_max_drawdown * 0.3 +
-		current_var_95 * 0.25;
-	const proposed =
-		proposed_avg_drawdown * 0.45 +
-		proposed_max_drawdown * 0.3 +
-		proposed_var_95 * 0.25;
-
-	return {
-		current,
-		proposed,
-		delta: proposed - current,
-	};
-}
-
 function formatSignedPercent(value: number): string {
 	if (Math.abs(value).toFixed(1) === "0.0") return "0.0%";
 	const sign = value > 0 ? "+" : "";
 	return `${sign}${value.toFixed(1)}%`;
-}
-
-function formatSignedNumber(value: number): string {
-	if (Math.abs(value).toFixed(1) === "0.0") return "0.0";
-	const sign = value > 0 ? "+" : "";
-	return `${sign}${value.toFixed(1)}`;
 }
 
 function getProposedActions(steps: AgentStepData[]): ProposedAction[] {
@@ -413,6 +369,18 @@ function getTurnover(allocationRows: ReturnType<typeof getAllocationRows>) {
 	return allocationRows.reduce((sum, row) => sum + Math.abs(row.delta), 0) / 2;
 }
 
+function getStressDrawdown(riskMetrics: RiskMetrics | null) {
+	const current = riskMetrics?.current_max_drawdown;
+	const proposed = riskMetrics?.proposed_max_drawdown;
+	if (typeof current !== "number" || typeof proposed !== "number") return null;
+
+	return {
+		current: Math.abs(current),
+		proposed: Math.abs(proposed),
+		improvement: Math.abs(current) - Math.abs(proposed),
+	};
+}
+
 function getResidualRisk({
 	allocationRows,
 	riskMetrics,
@@ -466,7 +434,7 @@ function DecisionSupport({
 	const proposedActions = getProposedActions(steps);
 	const allocationRows = getAllocationRows(currentAllocations, proposedActions);
 	const verdict = getVerdictSummary(steps);
-	const riskScore = getRiskScore(riskMetrics);
+	const stressDrawdown = getStressDrawdown(riskMetrics);
 	const primaryChange = allocationRows[0] ?? null;
 	const turnover = getTurnover(allocationRows);
 	const residualRisk = getResidualRisk({
@@ -510,12 +478,11 @@ function DecisionSupport({
 				</div>
 
 				<div className="mt-3 grid gap-2">
-					{riskScore && (
-						<FinalResultRow
-							label="Risk score"
-							value={`${riskScore.current.toFixed(1)} -> ${riskScore.proposed.toFixed(1)}`}
-							detail={`${formatSignedNumber(riskScore.delta)} ${riskScore.delta <= 0 ? "improved" : "worse"}`}
-							tone={riskScore.delta <= 0 ? "green" : "red"}
+					{stressDrawdown && (
+						<StressDrawdownBars
+							current={stressDrawdown.current}
+							proposed={stressDrawdown.proposed}
+							improvement={stressDrawdown.improvement}
 						/>
 					)}
 					{primaryChange && (
@@ -542,6 +509,73 @@ function DecisionSupport({
 					/>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function StressDrawdownBars({
+	current,
+	proposed,
+	improvement,
+}: {
+	current: number;
+	proposed: number;
+	improvement: number;
+}) {
+	const max = Math.max(current, proposed, 1);
+	const currentWidth = Math.max((current / max) * 100, 4);
+	const proposedWidth = Math.max((proposed / max) * 100, 4);
+	const improved = improvement >= 0;
+
+	return (
+		<div className="rounded border border-border/70 bg-bg-card px-3 py-2.5 font-mono">
+			<div className="mb-2 flex items-center justify-between gap-3">
+				<div className="text-[10px] uppercase tracking-wide text-text-dim">
+					Stress Drawdown
+				</div>
+				<div className={cn("text-[11px]", improved ? "text-green" : "text-red")}>
+					{Math.abs(improvement).toFixed(1)}pp {improved ? "better" : "worse"}
+				</div>
+			</div>
+			<div className="space-y-2">
+				<StressDrawdownBar
+					label="Current"
+					value={current}
+					width={currentWidth}
+					className="bg-text-muted/40"
+				/>
+				<StressDrawdownBar
+					label="Proposed"
+					value={proposed}
+					width={proposedWidth}
+					className={improved ? "bg-green" : "bg-red"}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function StressDrawdownBar({
+	label,
+	value,
+	width,
+	className,
+}: {
+	label: string;
+	value: number;
+	width: number;
+	className: string;
+}) {
+	return (
+		<div className="grid grid-cols-[58px_1fr_48px] items-center gap-2 text-[11px]">
+			<span className="text-text-dim">{label}</span>
+			<div className="h-2 overflow-hidden rounded bg-bg-elevated">
+				<div
+					className={cn("h-full rounded", className)}
+					style={{ width: `${width}%` }}
+				/>
+			</div>
+			<span className="text-right text-text">{formatLossPercent(value)}</span>
 		</div>
 	);
 }
