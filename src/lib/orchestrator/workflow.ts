@@ -13,6 +13,7 @@ import {
 import {
 	isStructuredOutputError,
 	normalizeMonitorOutput,
+	parseRawAgentText,
 	recoverStructuredOutput,
 } from "@/lib/agents/normalize-output";
 import { db } from "@/lib/db";
@@ -194,6 +195,55 @@ async function computeOpportunityMetrics(positions: PortfolioPosition[]) {
     upsideDownsideRatio:
       downside > 0 ? Math.round((upside / downside) * 100) / 100 : null,
   };
+}
+
+function coerceStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function extractStructuredOutputValue(err: unknown): unknown {
+  if (!err || typeof err !== "object") return null;
+  const details = (err as { details?: { value?: unknown } }).details;
+  return details?.value ?? null;
+}
+
+function buildRiskSummary(params: {
+  verdict: z.infer<typeof RiskOutput>["verdict"];
+  currentScore: number;
+  proposedScore: number;
+  deltaScore: number;
+  currentAvgDrawdown: number;
+  proposedAvgDrawdown: number;
+  currentVaR: number;
+  proposedVaR: number;
+}) {
+  const direction =
+    params.deltaScore < -0.05
+      ? "improves"
+      : params.deltaScore > 0.05
+        ? "worsens"
+        : "roughly preserves";
+
+  return `Risk verdict: ${params.verdict}. The proposal ${direction} the weighted risk score (${params.currentScore.toFixed(2)} -> ${params.proposedScore.toFixed(2)}) while moving average stress drawdown from ${params.currentAvgDrawdown.toFixed(2)}% to ${params.proposedAvgDrawdown.toFixed(2)}% and VaR from ${params.currentVaR.toFixed(2)}% to ${params.proposedVaR.toFixed(2)}%.`;
+}
+
+function buildImprovementSummary(params: {
+  currentAvgDrawdown: number;
+  proposedAvgDrawdown: number;
+  currentMaxDrawdown: number;
+  proposedMaxDrawdown: number;
+  currentVaR: number;
+  proposedVaR: number;
+  currentConcentration: number;
+  proposedConcentration: number;
+}) {
+  return [
+    `Current avg drawdown ${params.currentAvgDrawdown.toFixed(2)}% -> Proposed avg drawdown ${params.proposedAvgDrawdown.toFixed(2)}%, an improvement of ${(params.currentAvgDrawdown - params.proposedAvgDrawdown).toFixed(2)}pp.`,
+    `Current max drawdown ${params.currentMaxDrawdown.toFixed(2)}% -> Proposed max drawdown ${params.proposedMaxDrawdown.toFixed(2)}%.`,
+    `Current VaR ${params.currentVaR.toFixed(2)}% -> Proposed VaR ${params.proposedVaR.toFixed(2)}%.`,
+    `Current concentration ${params.currentConcentration.toFixed(4)} -> Proposed concentration ${params.proposedConcentration.toFixed(4)}.`,
+  ].join(" ");
 }
 
 // ── Step 1: Fetch market snapshot ───────────────────────────────────
@@ -787,6 +837,69 @@ const riskStep = createStep({
       "Provide your verdict, caveats, risk_summary, and improvement_summary based ONLY on the pre-computed numbers above.",
     ].join("\n");
 
+    const fallbackRiskSummary = buildRiskSummary({
+      verdict:
+        deltaScore < -0.05
+          ? "approved"
+          : deltaScore > 0.05
+            ? "rejected"
+            : "approved_with_caveats",
+      currentScore,
+      proposedScore,
+      deltaScore,
+      currentAvgDrawdown,
+      proposedAvgDrawdown,
+      currentVaR: currentVaR.var_pct,
+      proposedVaR: proposedVaR.var_pct,
+    });
+    const fallbackImprovementSummary = buildImprovementSummary({
+      currentAvgDrawdown,
+      proposedAvgDrawdown,
+      currentMaxDrawdown,
+      proposedMaxDrawdown,
+      currentVaR: currentVaR.var_pct,
+      proposedVaR: proposedVaR.var_pct,
+      currentConcentration: currentVaR.concentration_score,
+      proposedConcentration: proposedVaR.concentration_score,
+    });
+    const normalizeRiskOutput = (raw: Record<string, unknown>): Record<string, unknown> => {
+      const verdict =
+        raw.verdict === "approved" ||
+        raw.verdict === "approved_with_caveats" ||
+        raw.verdict === "rejected"
+          ? raw.verdict
+          : deltaScore < -0.05
+            ? "approved"
+            : deltaScore > 0.05
+              ? "rejected"
+              : "approved_with_caveats";
+      const caveats = coerceStringArray(raw.caveats);
+
+      return {
+        ...raw,
+        verdict,
+        caveats: caveats.length > 0 ? caveats : ["Risk Agent returned partial analysis; summaries were completed from computed metrics."],
+        risk_summary:
+          typeof raw.risk_summary === "string" && raw.risk_summary.trim().length > 0
+            ? raw.risk_summary
+            : fallbackRiskSummary,
+        improvement_summary:
+          typeof raw.improvement_summary === "string" && raw.improvement_summary.trim().length > 0
+            ? raw.improvement_summary
+            : fallbackImprovementSummary,
+      };
+    };
+    const parseRiskOutput = (raw: unknown): z.infer<typeof RiskOutput> | null => {
+      const parsed = typeof raw === "string" ? parseRawAgentText(raw) : raw;
+      if (!parsed || typeof parsed !== "object") return null;
+
+      try {
+        return RiskOutput.parse(normalizeRiskOutput(parsed as Record<string, unknown>));
+      } catch {
+        return null;
+      }
+    };
+
     const riskAgent = (await import("@/lib/agents/risk")).riskAgent;
 
     let riskResultObj: z.infer<typeof RiskOutput> | null;
@@ -800,23 +913,36 @@ const riskStep = createStep({
       riskResultObj = result.object;
     } catch (err) {
       if (!isStructuredOutputError(err)) throw err;
-      riskResultObj = await recoverStructuredOutput(
-        riskAgent,
-        riskPrompt,
-        RiskOutput,
-        (r) => r,
-        { memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID } },
-      );
+      riskResultObj = parseRiskOutput(extractStructuredOutputValue(err));
+      if (!riskResultObj) {
+        try {
+          riskResultObj = await recoverStructuredOutput(
+            riskAgent,
+            riskPrompt,
+            RiskOutput,
+            normalizeRiskOutput,
+            { memory: { thread: MEMORY_THREADS.risk, resource: MEMORY_RESOURCE_ID } },
+          );
+        } catch (recoverErr) {
+          console.warn("[riskStep] Structured output recovery failed:", recoverErr);
+          riskResultObj = null;
+        }
+      }
     }
 
     if (!riskResultObj) {
       riskResultObj = {
         stress_results: proposedStress?.stress_results || [],
         var_95: proposedVaR?.var_pct || 0,
-        verdict: "rejected",
-        caveats: ["LLM risk analysis failed to generate. Portfolio rejected by default."],
-        risk_summary: "System fallback: Rejected due to internal LLM failure.",
-        improvement_summary: "N/A - Auto-rejected.",
+        verdict:
+          deltaScore < -0.05
+            ? "approved"
+            : deltaScore > 0.05
+              ? "rejected"
+              : "approved_with_caveats",
+        caveats: ["LLM risk analysis failed to generate; verdict and summaries were computed from deterministic risk metrics."],
+        risk_summary: fallbackRiskSummary,
+        improvement_summary: fallbackImprovementSummary,
       };
     }
 
