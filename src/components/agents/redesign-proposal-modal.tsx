@@ -175,11 +175,123 @@ function fitScoreBadge(score?: number | null) {
 	return { label: `${score}/100`, className: "bg-red/10 text-red" };
 }
 
+function fitScoreTone(score?: number | null) {
+	if (typeof score !== "number") {
+		return { label: "Pending", className: "bg-bg-card text-text-dim", stroke: "rgba(255,255,255,0.22)" };
+	}
+	if (score >= 80) {
+		return { label: "Strong fit", className: "bg-green/10 text-green", stroke: "rgb(34,197,94)" };
+	}
+	if (score >= 60) {
+		return { label: "Good fit", className: "bg-teal/10 text-teal", stroke: "teal" };
+	}
+	if (score >= 40) {
+		return { label: "Mixed fit", className: "bg-amber/10 text-amber", stroke: "rgb(245,158,11)" };
+	}
+	return { label: "Weak fit", className: "bg-red/10 text-red", stroke: "rgb(239,68,68)" };
+}
+
 function splitSentences(text: string): string[] {
 	if (!text) return [];
 	const sentences = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
 	if (sentences.length === 0 && text.trim()) return [text.trim()];
 	return sentences;
+}
+
+function FitScoreGauge({
+	score,
+	isRecommended,
+	confidenceLabel,
+	reasons,
+	tradeoff,
+}: {
+	score?: number | null;
+	isRecommended: boolean;
+	confidenceLabel: string;
+	reasons: string[];
+	tradeoff?: string | null;
+}) {
+	const normalizedScore = typeof score === "number" ? Math.min(Math.max(score, 0), 100) : 0;
+	const tone = fitScoreTone(score);
+	const cx = 100;
+	const cy = 100;
+	const r = 80;
+	const startAngle = Math.PI;
+	const angle = Math.PI - (normalizedScore / 100) * Math.PI;
+
+	function arcPath(angleEnd: number): string {
+		const x1 = cx + r * Math.cos(startAngle);
+		const y1 = cy - r * Math.sin(startAngle);
+		const x2 = cx + r * Math.cos(angleEnd);
+		const y2 = cy - r * Math.sin(angleEnd);
+		return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
+	}
+
+	const fillArc = arcPath(angle);
+	const dotX = cx + r * Math.cos(angle);
+	const dotY = cy - r * Math.sin(angle);
+	const reasonSummary = reasons.slice(0, 2).join(" • ");
+
+	return (
+		<div className="grid grid-cols-[180px_1fr] gap-4 rounded border border-border bg-bg-elevated px-4 py-3">
+			<div className="min-w-0">
+				<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide">
+					<LabelWithTooltip label="Overall Fit" />
+				</div>
+				<div className="relative mt-1 flex items-center justify-center">
+					<svg viewBox="0 0 200 120" className="w-full max-w-[170px]">
+						<path
+							d="M 20 100 A 80 80 0 0 1 180 100"
+							fill="none"
+							stroke="rgba(255,255,255,0.08)"
+							strokeWidth={12}
+							strokeLinecap="round"
+						/>
+						<path
+							d={fillArc}
+							fill="none"
+							stroke={tone.stroke}
+							strokeWidth={10}
+							strokeLinecap="round"
+						/>
+						<circle cx={dotX} cy={dotY} r={4} fill={tone.stroke} />
+					</svg>
+					<div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 translate-y-2 flex-col items-center">
+						<span className="font-mono text-3xl font-bold text-teal">
+							{typeof score === "number" ? score : "--"}
+						</span>
+						<span className="text-[10px] font-mono text-text-dim">/100</span>
+					</div>
+				</div>
+			</div>
+
+			<div className="flex min-w-0 flex-col justify-center gap-2">
+				<div className="flex flex-wrap items-center gap-2">
+					<span className={`rounded-full px-1.5 py-px text-[10px] font-mono ${tone.className}`}>
+						{tone.label}
+					</span>
+					<span className="rounded-full bg-bg-card px-1.5 py-px text-[10px] font-mono text-text-dim">
+						{confidenceLabel} confidence
+					</span>
+					{isRecommended && (
+						<span className="rounded-full bg-teal/10 px-1.5 py-px text-[10px] font-mono text-teal">
+							Recommended
+						</span>
+					)}
+				</div>
+				{reasonSummary && (
+					<div className="truncate text-[12px] font-mono text-text-dim">
+						{reasonSummary}
+					</div>
+				)}
+				{tradeoff && (
+					<div className="truncate text-[11px] font-mono text-text-muted">
+						<span className="text-text-dim">Trade-off:</span> {tradeoff}
+					</div>
+				)}
+			</div>
+		</div>
+	);
 }
 
 function RiskScoreGauge({
@@ -384,7 +496,6 @@ export function RedesignProposalModal({
 	const activeRiskMetrics = activeProposal?.riskMetrics ?? riskMetrics;
 	const activeRiskStructuredOutput = activeProposal?.riskStructuredOutput ?? riskStructuredOutput;
 	const badge = confidenceBadge(activeConfidence);
-	const activeFitBadge = fitScoreBadge(activeProposal?.fitScore);
 	const activeFitReasons = activeProposal?.fitReasons ?? [];
 	const activeFitTradeoff = activeProposal?.fitTradeoff ?? activeProposal?.tradeoff_notes;
 
@@ -624,44 +735,13 @@ export function RedesignProposalModal({
 					</div>
 				)}
 
-				<div className="rounded border border-border bg-bg-elevated p-4">
-					<div className="flex items-start justify-between gap-4">
-						<div className="min-w-0">
-							<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide">
-								<LabelWithTooltip label="Overall Fit" />
-							</div>
-							<div className="mt-1 text-[13px] text-text">
-								{activeProposal?.id === recommendedProposalId
-									? `${activeProposal?.label ?? "Selected"} is the current recommendation.`
-									: `${activeProposal?.label ?? "Selected"} is selected for review.`}
-							</div>
-						</div>
-						<div className="shrink-0 text-right">
-							<div className={`inline-flex rounded-full px-2 py-1 text-[12px] font-mono font-semibold ${activeFitBadge.className}`}>
-								{activeFitBadge.label}
-							</div>
-							<div className="mt-1 text-[10px] font-mono text-text-muted">
-								{badge.label} confidence
-							</div>
-						</div>
-					</div>
-
-					{activeFitReasons.length > 0 && (
-						<div className="mt-3 grid gap-2 sm:grid-cols-3">
-							{activeFitReasons.map((reason) => (
-								<div key={reason} className="rounded border border-border/70 bg-bg-card px-3 py-2 text-[11px] font-mono text-text-dim">
-									{reason}
-								</div>
-							))}
-						</div>
-					)}
-
-					{activeFitTradeoff && (
-						<div className="mt-3 border-t border-border/60 pt-3 text-[12px] font-mono text-text-muted">
-							<span className="text-text-dim">Trade-off:</span> {activeFitTradeoff}
-						</div>
-					)}
-				</div>
+				<FitScoreGauge
+					score={activeProposal?.fitScore}
+					isRecommended={activeProposal?.id === recommendedProposalId}
+					confidenceLabel={badge.label}
+					reasons={activeFitReasons}
+					tradeoff={activeFitTradeoff}
+				/>
 
 				<Tabs
 					value={activeTab}
