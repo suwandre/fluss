@@ -233,13 +233,13 @@ function FitScoreGauge({
 	const reasonSummary = reasons.slice(0, 2).join(" • ");
 
 	return (
-		<div className="grid grid-cols-[180px_1fr] gap-4 rounded border border-border bg-bg-elevated px-4 py-3">
+		<div className="grid grid-cols-[150px_1fr] gap-4 rounded border border-border bg-bg-elevated px-4 py-2.5">
 			<div className="min-w-0">
 				<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide">
 					<LabelWithTooltip label="Overall Fit" />
 				</div>
 				<div className="relative mt-1 flex items-center justify-center">
-					<svg viewBox="0 0 200 120" className="w-full max-w-[170px]">
+					<svg viewBox="0 0 200 120" className="w-full max-w-[145px]">
 						<path
 							d="M 20 100 A 80 80 0 0 1 180 100"
 							fill="none"
@@ -257,7 +257,7 @@ function FitScoreGauge({
 						<circle cx={dotX} cy={dotY} r={4} fill={tone.stroke} />
 					</svg>
 					<div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 translate-y-2 flex-col items-center">
-						<span className="font-mono text-3xl font-bold text-teal">
+						<span className="font-mono text-2xl font-bold text-teal">
 							{typeof score === "number" ? score : "--"}
 						</span>
 						<span className="text-[10px] font-mono text-text-dim">/100</span>
@@ -660,7 +660,7 @@ export function RedesignProposalModal({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="flex max-h-[80vh] flex-col overflow-hidden p-6 sm:max-w-3xl">
+			<DialogContent className="flex max-h-[90vh] flex-col overflow-hidden p-6 sm:max-w-3xl">
 				<DialogHeader>
 					<div className="flex items-center gap-3">
 						<DialogTitle>Portfolio Redesign Proposal</DialogTitle>
@@ -697,7 +697,7 @@ export function RedesignProposalModal({
 									key={proposal.id}
 									type="button"
 									onClick={() => setSelectedProposalId(proposal.id)}
-									className={`rounded border p-3 text-left transition-colors ${selected ? "border-teal bg-teal/5" : "border-border bg-bg-elevated hover:border-border-bright"}`}
+									className={`rounded border p-2.5 text-left transition-colors ${selected ? "border-teal bg-teal/5" : "border-border bg-bg-elevated hover:border-border-bright"}`}
 								>
 									<div className="flex items-center justify-between gap-2">
 										<span className="truncate text-[12px] font-mono font-semibold text-text">
@@ -715,7 +715,7 @@ export function RedesignProposalModal({
 											<span className="text-[10px] font-mono text-teal">Recommended</span>
 										)}
 									</div>
-									<div className="mt-3 space-y-1 text-[10px] font-mono">
+									<div className="mt-2 space-y-0.5 text-[10px] font-mono">
 										<div className="flex justify-between gap-2">
 											<span className="text-text-muted">Return</span>
 											<span className="text-text">{expectedReturn == null ? "N/A" : `${expectedReturn.toFixed(2)}%`}</span>

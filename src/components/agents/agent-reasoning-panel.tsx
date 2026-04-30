@@ -449,17 +449,28 @@ function DecisionSupport({
 		riskMetrics,
 		riskStructuredOutput,
 	});
+	const proposalCount = Array.isArray(riskStructuredOutput?.proposal_risks)
+		? riskStructuredOutput.proposal_risks.length
+		: null;
+	const proposalLabel =
+		typeof riskStructuredOutput?.proposal_label === "string"
+			? riskStructuredOutput.proposal_label
+			: "Recommended";
+	const fitScore =
+		typeof riskStructuredOutput?.proposal_fit_score === "number"
+			? `${riskStructuredOutput.proposal_fit_score}/100`
+			: null;
 
 	return (
 		<div>
 			<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide mb-2">
-				Final Result
+				Recommendation
 			</div>
 			<div className="rounded border border-border bg-bg-elevated p-2.5">
 				<div className="flex items-start justify-between gap-3 border-b border-border/60 pb-2">
 					<div>
 						<div className="text-[10px] font-mono text-text-dim uppercase tracking-wide">
-							Verdict
+							Recommended proposal
 						</div>
 						<div
 							className={cn(
@@ -469,7 +480,7 @@ function DecisionSupport({
 								verdict.tone === "red" && "text-red",
 							)}
 						>
-							{verdict.label}
+							{proposalLabel}
 						</div>
 					</div>
 					<div
@@ -480,11 +491,19 @@ function DecisionSupport({
 							verdict.tone === "red" && "border-red/20 bg-red/10 text-red",
 						)}
 					>
-						{verdict.detail}
+						{fitScore ?? verdict.detail}
 					</div>
 				</div>
 
 				<div className="mt-2 grid gap-1.5">
+					{proposalCount != null && proposalCount > 1 && (
+						<FinalResultRow
+							label="Compared"
+							value={`${proposalCount} proposals evaluated`}
+							detail={verdict.label}
+							tone={verdict.tone === "red" ? "red" : verdict.tone === "amber" ? "amber" : "green"}
+						/>
+					)}
 					{stressDrawdown && (
 						<StressDrawdownBars
 							current={stressDrawdown.current}
