@@ -47,6 +47,15 @@ interface RedesignProposalModalProps {
 	} | null;
 	riskStructuredOutput?: Record<string, unknown> | null;
 	sectorExposure?: { current: Record<string, number>; proposed: Record<string, number> } | null;
+	analysisContext?: ProposalAnalysisContext | null;
+}
+
+interface ProposalAnalysisContext {
+	monitorSummary?: string | null;
+	monitorConcerns?: string[];
+	bottleneckTicker?: string | null;
+	bottleneckSeverity?: string | null;
+	bottleneckAnalysis?: string | null;
 }
 
 interface ProposalRiskMetrics {
@@ -445,6 +454,69 @@ function TurnoverGauge({ turnover }: { turnover: number }) {
 	);
 }
 
+function ProposalAnalysisTab({
+	analysisContext,
+}: {
+	analysisContext?: ProposalAnalysisContext | null;
+}) {
+	const concerns = analysisContext?.monitorConcerns ?? [];
+	const hasAnalysis =
+		Boolean(analysisContext?.monitorSummary) ||
+		Boolean(analysisContext?.bottleneckAnalysis) ||
+		concerns.length > 0;
+
+	if (!hasAnalysis) {
+		return (
+			<div className="rounded border border-border bg-bg-elevated p-4 text-[12px] font-mono text-text-muted">
+				No monitor or bottleneck analysis available for this run.
+			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-4">
+			<div className="rounded border border-border bg-bg-elevated p-4">
+				<div className="text-[10px] font-mono uppercase tracking-wide text-text-dim">
+					Monitor Summary
+				</div>
+				<div className="mt-2 text-[13px] leading-relaxed text-text-dim">
+					{analysisContext?.monitorSummary ?? "No monitor summary available."}
+				</div>
+				{concerns.length > 0 && (
+					<div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+						<div className="text-[10px] font-mono uppercase tracking-wide text-text-dim">
+							Concerns
+						</div>
+						{concerns.map((concern) => (
+							<div key={concern} className="flex items-start gap-2 text-[12px] text-text-dim">
+								<span className="mt-1 text-amber">•</span>
+								<span>{concern}</span>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+
+			<div className="rounded border border-border bg-bg-elevated p-4">
+				<div className="flex items-center justify-between gap-3">
+					<div className="text-[10px] font-mono uppercase tracking-wide text-text-dim">
+						Bottleneck Diagnosis
+					</div>
+					{analysisContext?.bottleneckTicker && (
+						<div className="rounded-full bg-bg-card px-2 py-0.5 text-[10px] font-mono text-text-dim">
+							{analysisContext.bottleneckTicker}
+							{analysisContext.bottleneckSeverity ? ` · ${analysisContext.bottleneckSeverity}` : ""}
+						</div>
+					)}
+				</div>
+				<div className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-text-dim">
+					{analysisContext?.bottleneckAnalysis ?? "No bottleneck analysis available."}
+				</div>
+			</div>
+		</div>
+	);
+}
+
 
 export function RedesignProposalModal({
 	open,
@@ -462,10 +534,11 @@ export function RedesignProposalModal({
 	riskMetrics,
 	riskStructuredOutput,
 	sectorExposure,
+	analysisContext,
 }: RedesignProposalModalProps) {
 	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 	const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
-	const [activeTab, setActiveTab] = useState<"proposal" | "risk">("proposal");
+	const [activeTab, setActiveTab] = useState<"proposal" | "risk" | "analysis">("proposal");
 	const proposalOptions: ProposalOption[] = proposals?.length
 		? proposals
 		: [
@@ -745,7 +818,7 @@ export function RedesignProposalModal({
 
 				<Tabs
 					value={activeTab}
-					onValueChange={(v) => setActiveTab(v as "proposal" | "risk")}
+					onValueChange={(v) => setActiveTab(v as "proposal" | "risk" | "analysis")}
 					className="min-h-0 flex-1"
 				>
 					<TabsList className="flex gap-2 border-b border-border pb-1 mb-4">
@@ -760,6 +833,12 @@ export function RedesignProposalModal({
 							className="text-[12px] font-mono font-medium px-2 py-1 rounded text-text-dim hover:text-text transition-colors data-[state=active]:text-teal data-[state=active]:border-b-2 data-[state=active]:border-teal"
 						>
 							Risk & Return
+						</TabsTrigger>
+						<TabsTrigger
+							value="analysis"
+							className="text-[12px] font-mono font-medium px-2 py-1 rounded text-text-dim hover:text-text transition-colors data-[state=active]:text-teal data-[state=active]:border-b-2 data-[state=active]:border-teal"
+						>
+							Analysis
 						</TabsTrigger>
 					</TabsList>
 
@@ -1042,6 +1121,10 @@ export function RedesignProposalModal({
 									/>
 								)}
 							</div>
+						</TabsContent>
+
+						<TabsContent value="analysis">
+							<ProposalAnalysisTab analysisContext={analysisContext} />
 						</TabsContent>
 					</div>
 				</Tabs>

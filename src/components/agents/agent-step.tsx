@@ -225,7 +225,7 @@ export function AgentStep({
 	const verdict = getVerdictBadge(name, structuredOutput);
 
 	const showStructuredOutput = status === "done" || status === "running";
-	const hasReasoning = !!reasoning || isStreaming;
+	const hasReasoning = Boolean(reasoning?.trim());
 
 	return (
 		<div data-slot="agent-step" className="flex gap-3">
@@ -297,7 +297,7 @@ export function AgentStep({
 											key={key}
 											className="text-[12px] font-mono text-green leading-snug"
 										>
-											✅ Changes approved. Ready to apply.
+											Risk verdict: acceptable.
 										</div>
 									);
 								}
@@ -307,7 +307,7 @@ export function AgentStep({
 											key={key}
 											className="text-[12px] font-mono text-red leading-snug"
 										>
-											❌ Changes rejected. Current portfolio retained.
+											Risk verdict: rejected.
 										</div>
 									);
 								}
@@ -317,7 +317,7 @@ export function AgentStep({
 											key={key}
 											className="text-[12px] font-mono text-amber leading-snug"
 										>
-											⚠️ Approved with conditions. Review caveats.
+											Risk verdict: caveats attached.
 										</div>
 									);
 								}

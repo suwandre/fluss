@@ -32,7 +32,6 @@ function buildStructuredOutput(
 		case "monitor":
 			return {
 				health: output.health_status,
-				summary: output.summary,
 				concerns: Array.isArray(output.concerns) ? output.concerns.length : 0,
 				escalate: output.escalate,
 			};
@@ -43,7 +42,6 @@ function buildStructuredOutput(
 			return {
 				bottleneck: pb?.ticker,
 				severity: pb?.severity,
-				analysis: output.analysis,
 			};
 		}
 		case "redesign":

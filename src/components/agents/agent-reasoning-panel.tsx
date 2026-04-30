@@ -219,9 +219,12 @@ export function AgentReasoningPanel({
 							<button
 								type="button"
 								onClick={onRedesignViewDetails}
-								className="mt-3 w-full py-2 rounded border border-border bg-bg-elevated text-text-dim font-mono text-[12px] font-medium hover:text-text hover:border-border-bright transition-colors cursor-pointer"
+								className="mt-3 w-full rounded border border-teal/40 bg-teal/15 px-3 py-2.5 text-left font-mono text-[12px] font-medium text-teal transition-colors hover:bg-teal/25 hover:text-teal cursor-pointer"
 							>
-								View Proposal
+								<span className="block text-[13px]">Review Proposals</span>
+								<span className="mt-0.5 block text-[10px] font-normal text-teal/70">
+									Compare 3 options, risk, and return
+								</span>
 							</button>
 						)}
 					</div>

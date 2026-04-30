@@ -321,6 +321,29 @@ export default function Home() {
 		return riskMetricsFromOutput(workflowOutput.risk as Record<string, unknown>);
 	}, [workflowOutput]);
 
+	const analysisContext = useMemo(() => {
+		const monitor = workflowOutput?.monitor as Record<string, unknown> | undefined;
+		const bottleneck = workflowOutput?.bottleneck as Record<string, unknown> | undefined;
+		const primaryBottleneck = bottleneck?.primary_bottleneck as Record<string, unknown> | undefined;
+
+		return {
+			monitorSummary: typeof monitor?.summary === "string" ? monitor.summary : null,
+			monitorConcerns: Array.isArray(monitor?.concerns)
+				? monitor.concerns.filter((concern): concern is string => typeof concern === "string")
+				: [],
+			bottleneckTicker:
+				typeof primaryBottleneck?.ticker === "string"
+					? primaryBottleneck.ticker
+					: null,
+			bottleneckSeverity:
+				typeof primaryBottleneck?.severity === "string"
+					? primaryBottleneck.severity
+					: null,
+			bottleneckAnalysis:
+				typeof bottleneck?.analysis === "string" ? bottleneck.analysis : null,
+		};
+	}, [workflowOutput]);
+
 	// Compute current holdings with sector info from API
 	const currentHoldingsForHeatmap = useMemo(() => {
 		const totalValue = holdingsList.reduce((sum, h) => {
@@ -451,6 +474,7 @@ export default function Home() {
 			riskMetrics={riskMetrics}
 			riskStructuredOutput={riskStructuredOutputForModal}
 			sectorExposure={sectorExposure}
+			analysisContext={analysisContext}
 		/>
 	</div>
 );
