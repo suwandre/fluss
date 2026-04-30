@@ -13,6 +13,7 @@ import { useHoldings, type PortfolioOutputData } from "@/hooks/use-holdings";
 import type { HealthState } from "@/lib/types/visual";
 import type { CorrelationEntry } from "@/lib/orchestrator/compute-correlation";
 import { RedesignProposalModal } from "@/components/agents/redesign-proposal-modal";
+import { PortfolioAnalysisModal } from "@/components/agents/portfolio-analysis-modal";
 import { useSectorExposure } from "@/hooks/use-sector-exposure";
 import type { MonitorOutput } from "@/lib/agents/monitor";
 
@@ -81,6 +82,7 @@ function riskMetricsFromOutput(risk: Record<string, unknown> | null | undefined)
 export default function Home() {
 	const [holdingsInputOpen, setHoldingsInputOpen] = useState(false);
 	const [redesignModalOpen, setRedesignModalOpen] = useState(false);
+	const [portfolioAnalysisOpen, setPortfolioAnalysisOpen] = useState(false);
 	const {
 		steps,
 		runId,
@@ -455,6 +457,7 @@ export default function Home() {
 				riskStructuredOutput={riskStructuredOutputForModal}
 				onRestoreRun={handleRestoreRun}
 				onRedesignViewDetails={() => setRedesignModalOpen(true)}
+				onPortfolioAnalysisViewDetails={() => setPortfolioAnalysisOpen(true)}
 			/>
 		</div>
 
@@ -474,6 +477,11 @@ export default function Home() {
 			riskMetrics={riskMetrics}
 			riskStructuredOutput={riskStructuredOutputForModal}
 			sectorExposure={sectorExposure}
+		/>
+
+		<PortfolioAnalysisModal
+			open={portfolioAnalysisOpen}
+			onOpenChange={setPortfolioAnalysisOpen}
 			analysisContext={analysisContext}
 		/>
 	</div>

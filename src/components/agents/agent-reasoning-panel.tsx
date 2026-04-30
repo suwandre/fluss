@@ -62,6 +62,7 @@ interface AgentReasoningPanelProps {
 	riskStructuredOutput?: Record<string, unknown> | null;
 	onRestoreRun?: (run: HistoryRun) => void;
 	onRedesignViewDetails?: () => void;
+	onPortfolioAnalysisViewDetails?: () => void;
 }
 
 type PanelTab = "current" | "history";
@@ -85,6 +86,7 @@ export function AgentReasoningPanel({
 	riskStructuredOutput,
 	onRestoreRun,
 	onRedesignViewDetails,
+	onPortfolioAnalysisViewDetails,
 }: AgentReasoningPanelProps) {
 	const [tab, setTab] = useState<PanelTab>("current");
 	const [prefsModalOpen, setPrefsModalOpen] = useState(false);
@@ -97,6 +99,9 @@ export function AgentReasoningPanel({
 	};
 
 	const allDone = steps.length > 0 && steps.every((s) => s.status === "done");
+	const showProposalAction = steps[2]?.status === "done" && Boolean(onRedesignViewDetails);
+	const showPortfolioAnalysisAction = steps[1]?.status === "done" && Boolean(onPortfolioAnalysisViewDetails);
+	const showRunActions = showProposalAction || showPortfolioAnalysisAction;
 	const riskVerdict = typeof steps[3]?.structuredOutput?.verdict === "string"
 		? steps[3].structuredOutput.verdict.toLowerCase()
 		: null;
@@ -215,17 +220,33 @@ export function AgentReasoningPanel({
 							</div>
 						)}
 
-						{steps[2]?.status === "done" && onRedesignViewDetails && (
-							<button
-								type="button"
-								onClick={onRedesignViewDetails}
-								className="mt-3 w-full rounded border border-teal/40 bg-teal/15 px-3 py-2.5 text-left font-mono text-[12px] font-medium text-teal transition-colors hover:bg-teal/25 hover:text-teal cursor-pointer"
-							>
-								<span className="block text-[13px]">Review Proposals</span>
-								<span className="mt-0.5 block text-[10px] font-normal text-teal/70">
-									Compare 3 options, risk, and return
-								</span>
-							</button>
+						{showRunActions && (
+							<div className="mt-3 space-y-2">
+								{showProposalAction && onRedesignViewDetails && (
+									<button
+										type="button"
+										onClick={onRedesignViewDetails}
+										className="w-full rounded border border-border-bright bg-bg-elevated px-3 py-2.5 text-left font-mono text-[12px] font-medium text-text shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition-colors hover:border-text-dim hover:bg-bg-card cursor-pointer"
+									>
+										<span className="block text-[13px]">Review Proposals</span>
+										<span className="mt-0.5 block text-[10px] font-normal text-text-muted">
+											Compare 3 options, risk, and return
+										</span>
+									</button>
+								)}
+								{showPortfolioAnalysisAction && onPortfolioAnalysisViewDetails && (
+									<button
+										type="button"
+										onClick={onPortfolioAnalysisViewDetails}
+										className="w-full rounded border border-border bg-bg-elevated/70 px-3 py-2 text-left font-mono text-[12px] font-medium text-text-dim transition-colors hover:border-border-bright hover:text-text cursor-pointer"
+									>
+										<span className="block">View Portfolio Analysis</span>
+										<span className="mt-0.5 block text-[10px] font-normal text-text-muted">
+											Monitor and bottleneck details
+										</span>
+									</button>
+								)}
+							</div>
 						)}
 					</div>
 				</div>
