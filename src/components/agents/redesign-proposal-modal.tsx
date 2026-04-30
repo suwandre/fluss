@@ -256,7 +256,7 @@ function FitScoreGauge({
 						/>
 						<circle cx={dotX} cy={dotY} r={4} fill={tone.stroke} />
 					</svg>
-					<div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 translate-y-2 flex-col items-center">
+					<div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 translate-y-0 flex-col items-center">
 						<span className="font-mono text-2xl font-bold text-teal">
 							{typeof score === "number" ? score : "--"}
 						</span>
