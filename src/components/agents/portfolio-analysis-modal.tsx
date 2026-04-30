@@ -29,17 +29,11 @@ export function PortfolioAnalysisModal({
 }: PortfolioAnalysisModalProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="flex max-h-[88vh] w-[min(920px,calc(100vw-32px))] flex-col overflow-hidden border-border bg-bg-card p-0 text-text">
-				<DialogHeader className="border-b border-border px-6 py-5">
-					<DialogTitle className="font-mono text-lg">
-						Current Portfolio Analysis
-					</DialogTitle>
-					<p className="mt-1 text-[12px] text-text-dim">
-						Monitor summary, bottleneck diagnosis, and portfolio concerns for
-						the current run.
-					</p>
+			<DialogContent className="flex max-h-[90vh] flex-col overflow-hidden p-6 sm:max-w-3xl">
+				<DialogHeader>
+					<DialogTitle>Current Portfolio Analysis</DialogTitle>
 				</DialogHeader>
-				<div className="min-h-0 flex-1 overflow-y-auto p-6 custom-scrollbar">
+				<div className="min-h-0 flex-1 overflow-y-auto pr-2 custom-scrollbar">
 					<PortfolioAnalysisContent analysisContext={analysisContext} />
 				</div>
 			</DialogContent>
