@@ -73,6 +73,9 @@ interface ProposalOption {
 	tradeoff_notes?: string;
 	riskMetrics?: ProposalRiskMetrics | null;
 	riskStructuredOutput?: Record<string, unknown> | null;
+	fitScore?: number | null;
+	fitReasons?: string[];
+	fitTradeoff?: string | null;
 }
 
 const LABEL_TOOLTIPS: Record<string, string> = {
@@ -83,6 +86,7 @@ const LABEL_TOOLTIPS: Record<string, string> = {
 	"Sectors": "Number of distinct asset classes / sectors represented.",
 	"Max Position %": "Weight of the single largest holding. Lower = more diversified.",
 	"Risk Score": "Composite 0–100 score. Lower = safer. Weights: drawdown (45%), VaR (30%), concentration (25%).",
+	"Overall Fit": "Aggregate 0–100 proposal score. Higher = better. Combines risk, expected return, turnover, confidence, and caveats.",
 	"Proposal Summary": "The agent's own summary of the proposed changes.",
 	"Opportunity Snapshot": "Return-side metrics that help judge whether the rebalance is worth the trade-off.",
 	"Expected Return": "Historical 90-day portfolio return estimate using current market data. Higher = better.",
@@ -159,6 +163,16 @@ function verdictBadge(verdict?: unknown) {
 	if (lower === "approved_with_caveats" || lower === "approve_with_caveats") return { label: "Caveats", className: "bg-amber/10 text-amber" };
 	if (lower === "rejected" || lower === "reject") return { label: "Rejected", className: "bg-red/10 text-red" };
 	return { label: "Pending", className: "bg-bg-card text-text-dim" };
+}
+
+function fitScoreBadge(score?: number | null) {
+	if (typeof score !== "number") {
+		return { label: "N/A", className: "bg-bg-card text-text-dim" };
+	}
+	if (score >= 80) return { label: `${score}/100`, className: "bg-green/10 text-green" };
+	if (score >= 60) return { label: `${score}/100`, className: "bg-teal/10 text-teal" };
+	if (score >= 40) return { label: `${score}/100`, className: "bg-amber/10 text-amber" };
+	return { label: `${score}/100`, className: "bg-red/10 text-red" };
 }
 
 function splitSentences(text: string): string[] {
@@ -347,13 +361,18 @@ export function RedesignProposalModal({
 					id: "recommended",
 					label: "Recommended",
 					confidence,
-					proposal_summary,
-					proposed_actions,
-					expected_improvement,
-					riskMetrics,
-					riskStructuredOutput,
-				},
-			];
+				proposal_summary,
+				proposed_actions,
+				expected_improvement,
+				riskMetrics,
+				riskStructuredOutput,
+				fitScore: typeof riskStructuredOutput?.proposal_fit_score === "number" ? riskStructuredOutput.proposal_fit_score : null,
+				fitReasons: Array.isArray(riskStructuredOutput?.proposal_fit_reasons)
+					? riskStructuredOutput.proposal_fit_reasons.filter((reason): reason is string => typeof reason === "string")
+					: [],
+				fitTradeoff: typeof riskStructuredOutput?.proposal_fit_tradeoff === "string" ? riskStructuredOutput.proposal_fit_tradeoff : null,
+			},
+		];
 	const activeProposal =
 		proposalOptions.find((proposal) => proposal.id === selectedProposalId) ??
 		proposalOptions.find((proposal) => proposal.id === recommendedProposalId) ??
@@ -365,6 +384,9 @@ export function RedesignProposalModal({
 	const activeRiskMetrics = activeProposal?.riskMetrics ?? riskMetrics;
 	const activeRiskStructuredOutput = activeProposal?.riskStructuredOutput ?? riskStructuredOutput;
 	const badge = confidenceBadge(activeConfidence);
+	const activeFitBadge = fitScoreBadge(activeProposal?.fitScore);
+	const activeFitReasons = activeProposal?.fitReasons ?? [];
+	const activeFitTradeoff = activeProposal?.fitTradeoff ?? activeProposal?.tradeoff_notes;
 
 	const currentWeightMap = new Map<string, number>();
 	for (const c of currentAllocations) {
@@ -545,6 +567,7 @@ export function RedesignProposalModal({
 							const selected = proposal.id === activeProposal?.id;
 							const risk = proposal.riskStructuredOutput;
 							const verdict = verdictBadge(risk?.verdict);
+							const fit = fitScoreBadge(proposal.fitScore);
 							const isRecommended = proposal.id === recommendedProposalId;
 							const expectedReturn =
 								typeof risk?.proposed_expected_return_90d === "number"
@@ -569,13 +592,18 @@ export function RedesignProposalModal({
 										<span className="truncate text-[12px] font-mono font-semibold text-text">
 											{proposal.label}
 										</span>
-										<span className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-mono ${verdict.className}`}>
-											{verdict.label}
+										<span className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-mono ${fit.className}`}>
+											{fit.label}
 										</span>
 									</div>
-									{isRecommended && (
-										<div className="mt-1 text-[10px] font-mono text-teal">Recommended</div>
-									)}
+									<div className="mt-1 flex items-center justify-between gap-2">
+										<span className={`rounded-full px-1.5 py-px text-[9px] font-mono ${verdict.className}`}>
+											{verdict.label}
+										</span>
+										{isRecommended && (
+											<span className="text-[10px] font-mono text-teal">Recommended</span>
+										)}
+									</div>
 									<div className="mt-3 space-y-1 text-[10px] font-mono">
 										<div className="flex justify-between gap-2">
 											<span className="text-text-muted">Return</span>
@@ -595,6 +623,45 @@ export function RedesignProposalModal({
 						})}
 					</div>
 				)}
+
+				<div className="rounded border border-border bg-bg-elevated p-4">
+					<div className="flex items-start justify-between gap-4">
+						<div className="min-w-0">
+							<div className="text-[10px] font-mono uppercase text-text-dim tracking-wide">
+								<LabelWithTooltip label="Overall Fit" />
+							</div>
+							<div className="mt-1 text-[13px] text-text">
+								{activeProposal?.id === recommendedProposalId
+									? `${activeProposal?.label ?? "Selected"} is the current recommendation.`
+									: `${activeProposal?.label ?? "Selected"} is selected for review.`}
+							</div>
+						</div>
+						<div className="shrink-0 text-right">
+							<div className={`inline-flex rounded-full px-2 py-1 text-[12px] font-mono font-semibold ${activeFitBadge.className}`}>
+								{activeFitBadge.label}
+							</div>
+							<div className="mt-1 text-[10px] font-mono text-text-muted">
+								{badge.label} confidence
+							</div>
+						</div>
+					</div>
+
+					{activeFitReasons.length > 0 && (
+						<div className="mt-3 grid gap-2 sm:grid-cols-3">
+							{activeFitReasons.map((reason) => (
+								<div key={reason} className="rounded border border-border/70 bg-bg-card px-3 py-2 text-[11px] font-mono text-text-dim">
+									{reason}
+								</div>
+							))}
+						</div>
+					)}
+
+					{activeFitTradeoff && (
+						<div className="mt-3 border-t border-border/60 pt-3 text-[12px] font-mono text-text-muted">
+							<span className="text-text-dim">Trade-off:</span> {activeFitTradeoff}
+						</div>
+					)}
+				</div>
 
 				<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "proposal" | "risk")}>
 					<TabsList className="flex gap-2 border-b border-border pb-1 mb-4">

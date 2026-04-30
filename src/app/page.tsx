@@ -61,6 +61,9 @@ type ProposalOptionForModal = {
 		proposed_max_drawdown?: number | null;
 	} | null;
 	riskStructuredOutput?: Record<string, unknown> | null;
+	fitScore?: number | null;
+	fitReasons?: string[];
+	fitTradeoff?: string | null;
 };
 
 function riskMetricsFromOutput(risk: Record<string, unknown> | null | undefined) {
@@ -296,6 +299,11 @@ export default function Home() {
 				tradeoff_notes: typeof proposal.tradeoff_notes === "string" ? proposal.tradeoff_notes : undefined,
 				riskMetrics: riskMetricsFromOutput(proposalRisk),
 				riskStructuredOutput: proposalRisk ?? null,
+				fitScore: typeof proposalRisk?.proposal_fit_score === "number" ? proposalRisk.proposal_fit_score : null,
+				fitReasons: Array.isArray(proposalRisk?.proposal_fit_reasons)
+					? proposalRisk.proposal_fit_reasons.filter((reason): reason is string => typeof reason === "string")
+					: [],
+				fitTradeoff: typeof proposalRisk?.proposal_fit_tradeoff === "string" ? proposalRisk.proposal_fit_tradeoff : null,
 			};
 		});
 		const recommendedProposal =

@@ -129,6 +129,87 @@ type VarResult = {
 
 type RedesignProposalForRisk = z.infer<typeof RedesignOutput>["proposals"][number];
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function scoreDelta(delta: number | null, multiplier: number) {
+  if (delta == null || !Number.isFinite(delta)) return 50;
+  return clamp(50 + delta * multiplier, 0, 100);
+}
+
+function confidenceScore(confidence: RedesignProposalForRisk["confidence"]) {
+  if (confidence === "high") return 100;
+  if (confidence === "medium") return 70;
+  return 40;
+}
+
+function formatSigned(value: number, suffix = "") {
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}${suffix}`;
+}
+
+function computeProposalFit(params: {
+  currentRiskScore: number;
+  proposedRiskScore: number;
+  currentExpectedReturn90d: number | null;
+  proposedExpectedReturn90d: number | null;
+  currentUpsideDownsideRatio: number | null;
+  proposedUpsideDownsideRatio: number | null;
+  turnoverPct: number;
+  maxTurnoverPct: number;
+  confidence: RedesignProposalForRisk["confidence"];
+  verdict: z.infer<typeof RiskOutput>["verdict"];
+}) {
+  const riskDelta = params.currentRiskScore - params.proposedRiskScore;
+  const returnDelta =
+    params.currentExpectedReturn90d != null && params.proposedExpectedReturn90d != null
+      ? params.proposedExpectedReturn90d - params.currentExpectedReturn90d
+      : null;
+  const upsideDownsideDelta =
+    params.currentUpsideDownsideRatio != null && params.proposedUpsideDownsideRatio != null
+      ? params.proposedUpsideDownsideRatio - params.currentUpsideDownsideRatio
+      : null;
+  const turnoverBudgetUsed =
+    params.maxTurnoverPct > 0 ? clamp(params.turnoverPct / params.maxTurnoverPct, 0, 1) : 1;
+  const turnoverScore = clamp(100 - turnoverBudgetUsed * 70, 0, 100);
+  const rawScore =
+    scoreDelta(riskDelta, 4) * 0.4 +
+    scoreDelta(returnDelta, 2) * 0.25 +
+    scoreDelta(upsideDownsideDelta, 18) * 0.1 +
+    turnoverScore * 0.15 +
+    confidenceScore(params.confidence) * 0.1;
+  const cappedScore =
+    params.verdict === "rejected"
+      ? Math.min(rawScore, 49)
+      : params.verdict === "approved_with_caveats"
+        ? Math.min(rawScore, 84)
+        : rawScore;
+
+  const reasons = [
+    `${riskDelta >= 0 ? "Risk improves" : "Risk worsens"} by ${Math.abs(riskDelta).toFixed(2)} points`,
+  ];
+  if (returnDelta != null) {
+    reasons.push(`90d expected return ${formatSigned(returnDelta, "pp")}`);
+  }
+  if (upsideDownsideDelta != null) {
+    reasons.push(`Upside/downside ratio ${formatSigned(upsideDownsideDelta)}`);
+  }
+  reasons.push(`${params.turnoverPct.toFixed(1)}% turnover uses ${(turnoverBudgetUsed * 100).toFixed(0)}% of limit`);
+
+  const tradeoffs = [
+    riskDelta < 0 ? `Risk score worsens by ${Math.abs(riskDelta).toFixed(2)} points` : null,
+    returnDelta != null && returnDelta < 0 ? `Expected return falls ${Math.abs(returnDelta).toFixed(2)}pp` : null,
+    params.turnoverPct > params.maxTurnoverPct * 0.6 ? `High turnover at ${params.turnoverPct.toFixed(1)}%` : null,
+    params.confidence === "low" ? "Low agent confidence" : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    score: Math.round(clamp(cappedScore, 0, 100)),
+    reasons: reasons.slice(0, 3),
+    tradeoff: tradeoffs[0] ?? "No major trade-off flagged by aggregate metrics.",
+  };
+}
+
 function normalizeRedesignOutput(
   output: z.infer<typeof RedesignOutput>,
 ): z.infer<typeof RedesignOutput> {
@@ -1169,6 +1250,7 @@ const riskStep = createStep({
         currentConcentration: currentVaR.concentration_score,
         proposedConcentration: proposedVaR.concentration_score,
       });
+      const turnoverPct = computeTurnoverPct(proposedPositions);
       const riskPrompt = [
         "Output only valid JSON matching this schema:",
         '{"verdict":"approved"|"approved_with_caveats"|"rejected","caveats":[string],"risk_summary":string,"improvement_summary":string}',
@@ -1178,7 +1260,7 @@ const riskStep = createStep({
         `Current avg drawdown ${currentAvgDrawdown.toFixed(2)}%, proposed avg drawdown ${proposedAvgDrawdown.toFixed(2)}%.`,
         `Current VaR ${currentVaR.var_pct.toFixed(2)}%, proposed VaR ${proposedVaR.var_pct.toFixed(2)}%.`,
         `Current concentration ${currentVaR.concentration_score.toFixed(4)}, proposed concentration ${proposedVaR.concentration_score.toFixed(4)}.`,
-        `Turnover: ${computeTurnoverPct(proposedPositions)}%.`,
+        `Turnover: ${turnoverPct}%.`,
         `Actions: ${proposal.proposed_actions.map((action) => `${action.action} ${action.ticker} to ${action.target_pct}%`).join("; ")}`,
         "Do not change the computed verdict unless caveats make it strictly more conservative.",
       ].join("\n");
@@ -1205,11 +1287,23 @@ const riskStep = createStep({
         }
       }
 
-      const turnoverPct = computeTurnoverPct(proposedPositions);
+      const finalVerdict = riskOutput?.verdict ?? verdict;
+      const proposalFit = computeProposalFit({
+        currentRiskScore: currentScore,
+        proposedRiskScore: proposedScore,
+        currentExpectedReturn90d: currentOpportunity.expectedReturn90dPct,
+        proposedExpectedReturn90d: proposedOpportunity.expectedReturn90dPct,
+        currentUpsideDownsideRatio: currentOpportunity.upsideDownsideRatio,
+        proposedUpsideDownsideRatio: proposedOpportunity.upsideDownsideRatio,
+        turnoverPct,
+        maxTurnoverPct: marketSnapshot.preferences.maxTurnoverPct,
+        confidence: proposal.confidence,
+        verdict: finalVerdict,
+      });
       return {
         stress_results: proposedStress.stress_results,
         var_95: proposedVaR.var_pct,
-        verdict: riskOutput?.verdict ?? verdict,
+        verdict: finalVerdict,
         caveats: riskOutput?.caveats?.length ? riskOutput.caveats : ["Risk metrics were computed from historical stress and VaR data."],
         risk_summary: riskOutput?.risk_summary || fallbackRiskSummary,
         improvement_summary: riskOutput?.improvement_summary || fallbackImprovementSummary,
@@ -1229,6 +1323,9 @@ const riskStep = createStep({
         proposal_label: proposal.label,
         proposal_turnover_pct: turnoverPct,
         proposal_risk_score: proposedScore,
+        proposal_fit_score: proposalFit.score,
+        proposal_fit_reasons: proposalFit.reasons,
+        proposal_fit_tradeoff: proposalFit.tradeoff,
       } satisfies z.infer<typeof RiskOutput>;
     }
 
@@ -1236,6 +1333,8 @@ const riskStep = createStep({
       inputData.redesign.proposals.map((proposal) => evaluateProposal(proposal)),
     );
     const rankedRisks = [...proposalRisks].sort((a, b) => {
+      const fitDelta = (b.proposal_fit_score ?? Number.NEGATIVE_INFINITY) - (a.proposal_fit_score ?? Number.NEGATIVE_INFINITY);
+      if (Math.abs(fitDelta) > 0.01) return fitDelta;
       const verdictRank = { approved: 3, approved_with_caveats: 2, rejected: 1 };
       const verdictDelta = verdictRank[b.verdict] - verdictRank[a.verdict];
       if (verdictDelta !== 0) return verdictDelta;

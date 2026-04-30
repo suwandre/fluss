@@ -70,6 +70,9 @@ export const RiskOutput = RiskOutputBase.extend({
 	proposal_label: z.string().optional(),
 	proposal_turnover_pct: z.number().optional(),
 	proposal_risk_score: z.number().optional(),
+	proposal_fit_score: z.number().optional(),
+	proposal_fit_reasons: z.array(z.string()).optional(),
+	proposal_fit_tradeoff: z.string().optional(),
 	recommended_proposal_id: z.string().optional(),
 	proposal_risks: z
 		.array(
@@ -78,6 +81,9 @@ export const RiskOutput = RiskOutputBase.extend({
 				proposal_label: z.string(),
 				proposal_turnover_pct: z.number(),
 				proposal_risk_score: z.number(),
+				proposal_fit_score: z.number(),
+				proposal_fit_reasons: z.array(z.string()),
+				proposal_fit_tradeoff: z.string(),
 			}),
 		)
 		.optional(),

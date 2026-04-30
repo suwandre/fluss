@@ -70,6 +70,9 @@ function buildStructuredOutput(
 		case "risk":
 			return {
 				verdict: output.verdict,
+				fit: typeof output.proposal_fit_score === "number"
+					? `${output.proposal_fit_score}/100`
+					: undefined,
 				proposals: Array.isArray(output.proposal_risks)
 					? output.proposal_risks.length
 					: 0,
