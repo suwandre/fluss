@@ -549,7 +549,7 @@ export function RedesignProposalModal({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-3xl p-6">
+			<DialogContent className="flex max-h-[80vh] flex-col overflow-hidden p-6 sm:max-w-3xl">
 				<DialogHeader>
 					<div className="flex items-center gap-3">
 						<DialogTitle>Portfolio Redesign Proposal</DialogTitle>
@@ -663,7 +663,11 @@ export function RedesignProposalModal({
 					)}
 				</div>
 
-				<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "proposal" | "risk")}>
+				<Tabs
+					value={activeTab}
+					onValueChange={(v) => setActiveTab(v as "proposal" | "risk")}
+					className="min-h-0 flex-1"
+				>
 					<TabsList className="flex gap-2 border-b border-border pb-1 mb-4">
 						<TabsTrigger
 							value="proposal"
@@ -679,7 +683,7 @@ export function RedesignProposalModal({
 						</TabsTrigger>
 					</TabsList>
 
-					<div className="h-[65vh] overflow-y-auto pr-2 custom-scrollbar space-y-5">
+					<div className="min-h-0 flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-5">
 						<TabsContent value="proposal">
 							<div className="space-y-6">
 								{/* Proposed Allocation Table */}
