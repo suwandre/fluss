@@ -41,6 +41,20 @@ export function PortfolioAnalysisModal({
 	);
 }
 
+type ConcernSeverity = "critical" | "warning" | "stable";
+
+function parseConcern(concern: string): { severity: ConcernSeverity; text: string } {
+	const match = concern.match(/^(CRITICAL|WARNING|STABLE|STATIC|RECURRING):\s*(.*)/i);
+	if (match) {
+		const raw = match[1].toUpperCase();
+		const text = match[2];
+		if (raw === "CRITICAL") return { severity: "critical", text };
+		if (raw === "WARNING") return { severity: "warning", text };
+		return { severity: "stable", text };
+	}
+	return { severity: "warning", text: concern };
+}
+
 function PortfolioAnalysisContent({
 	analysisContext,
 }: {
@@ -56,6 +70,12 @@ function PortfolioAnalysisContent({
 		Boolean(monitorSummary) ||
 		Boolean(bottleneckAnalysis) ||
 		concerns.length > 0;
+
+	const parsed = concerns.map(parseConcern);
+	const critical = parsed.filter((c) => c.severity === "critical");
+	const warning = parsed.filter((c) => c.severity === "warning");
+	const stable = parsed.filter((c) => c.severity === "stable");
+	const [stableExpanded, setStableExpanded] = useState(stable.length <= 3);
 
 	function toggleSection(section: string) {
 		setExpandedSections((prev) => {
@@ -130,20 +150,73 @@ function PortfolioAnalysisContent({
 			</div>
 
 			{concerns.length > 0 && (
-				<div className="rounded border border-border bg-bg-elevated p-4">
-					<div className="font-mono text-[10px] uppercase tracking-wide text-text-dim">
-						Concerns
-					</div>
-					<div className="mt-3 grid gap-2 sm:grid-cols-2">
-						{concerns.map((concern) => (
-							<div
-								key={concern}
-								className="rounded border border-border/70 bg-bg-card px-3 py-2 text-[12px] text-text-dim"
-							>
-								{concern}
+				<div className="space-y-3">
+					{critical.length > 0 && (
+						<div>
+							<div className="font-mono text-[10px] uppercase tracking-wide text-red">
+								Critical ({critical.length})
 							</div>
-						))}
-					</div>
+							<div className="mt-2 grid gap-2 sm:grid-cols-2">
+								{critical.map((c, i) => (
+									<div
+										key={`critical-${i}`}
+										className="rounded border border-border/70 border-l-2 border-l-red bg-bg-card px-3 py-2 text-[12px] text-text-muted"
+									>
+										{c.text}
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
+					{warning.length > 0 && (
+						<div>
+							<div className="font-mono text-[10px] uppercase tracking-wide text-amber">
+								Warning ({warning.length})
+							</div>
+							<div className="mt-2 grid gap-2 sm:grid-cols-2">
+								{warning.map((c, i) => (
+									<div
+										key={`warning-${i}`}
+										className="rounded border border-border/70 border-l-2 border-l-amber bg-bg-card px-3 py-2 text-[12px] text-text-muted"
+									>
+										{c.text}
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
+					{stable.length > 0 && (
+						<div>
+							<div className="flex items-center justify-between gap-2">
+								<div className="font-mono text-[10px] uppercase tracking-wide text-teal">
+									Stable ({stable.length})
+								</div>
+								{stable.length > 3 && (
+									<button
+										type="button"
+										onClick={() => setStableExpanded((v) => !v)}
+										className="font-mono text-[10px] text-teal underline underline-offset-2 hover:text-teal/70"
+									>
+										{stableExpanded ? "Hide stable metrics" : "Show stable metrics"}
+									</button>
+								)}
+							</div>
+							{stableExpanded && (
+								<div className="mt-2 grid gap-2 sm:grid-cols-2">
+									{stable.map((c, i) => (
+										<div
+											key={`stable-${i}`}
+											className="rounded border border-border/70 border-l-2 border-l-teal bg-bg-card px-3 py-2 text-[12px] text-text-muted"
+										>
+											{c.text}
+										</div>
+									))}
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			)}
 
