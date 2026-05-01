@@ -86,13 +86,70 @@ function PortfolioAnalysisContent({
 		});
 	}
 
-	function preview(text: string) {
+	function highlightKeywords(text: string): React.ReactNode {
+		const keywords: Record<string, string> = {
+			CRITICAL: "text-red",
+			"SLIGHTLY NEGATIVE": "text-amber",
+			WARNING: "text-amber",
+			Watch: "text-amber",
+			STABLE: "text-teal",
+			stable: "text-teal",
+			unchanged: "text-teal",
+			normal: "text-teal",
+			high: "text-red",
+			moderate: "text-amber",
+		};
+
+		const parts: React.ReactNode[] = [];
+		let remaining = text;
+		let key = 0;
+
+		while (remaining.length > 0) {
+			let earliestIndex = Infinity;
+			let earliestKeyword = "";
+			let earliestClass = "";
+
+			for (const [keyword, cls] of Object.entries(keywords)) {
+				const idx = remaining.indexOf(keyword);
+				if (idx !== -1 && idx < earliestIndex) {
+					earliestIndex = idx;
+					earliestKeyword = keyword;
+					earliestClass = cls;
+				}
+			}
+
+			if (earliestKeyword) {
+				if (earliestIndex > 0) {
+					parts.push(
+						<span key={key++}>{remaining.slice(0, earliestIndex)}</span>,
+					);
+				}
+				parts.push(
+					<span key={key++} className={earliestClass}>
+						{earliestKeyword}
+					</span>,
+				);
+				remaining = remaining.slice(
+					earliestIndex + earliestKeyword.length,
+				);
+			} else {
+				parts.push(<span key={key++}>{remaining}</span>);
+				break;
+			}
+		}
+
+		return <>{parts}</>;
+	}
+
+	function preview(text: string): React.ReactNode {
 		if (!text) return "No detail available.";
 		const firstSentence = text.split(/(?<=[.!?])\s+/)[0]?.trim();
 		if (!firstSentence) return text;
-		return firstSentence.length > 180
-			? `${firstSentence.slice(0, 177)}...`
-			: firstSentence;
+		const truncated =
+			firstSentence.length > 180
+				? `${firstSentence.slice(0, 177)}...`
+				: firstSentence;
+		return highlightKeywords(truncated);
 	}
 
 	if (!hasAnalysis) {
